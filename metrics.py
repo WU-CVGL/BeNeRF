@@ -1,9 +1,7 @@
-from skimage import metrics
-import torch
+import numpy as np
 import torch.hub
 from lpips.lpips import LPIPS
-import os
-import numpy as np
+from skimage import metrics
 
 photometric = {
     "mse": None,

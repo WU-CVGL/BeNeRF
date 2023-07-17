@@ -1,12 +1,15 @@
-import numpy as np
-import airsim
+import argparse
+import pickle
+import signal
+import sys
 import time
+
+import airsim
 import cv2
 import matplotlib.pyplot as plt
-import argparse
-import sys, signal
+import numpy as np
 import pandas as pd
-import pickle
+
 from event_simulator import *
 
 parser = argparse.ArgumentParser(description="Simulate event data from AirSim")

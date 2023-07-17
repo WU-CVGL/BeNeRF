@@ -1,6 +1,6 @@
-expname = Living-Room-1000Hz-no-rgb_loss-fixing-window-optimize-pose
-basedir = ./logs/Synthetic-Datasets-Test
-datadir = ./Data/Synthetic-Datasets/Living-Room-1000Hz
+expname = Living-Room-1000Hz-fixing-window-optimize-pose
+basedir = ./logs/Living-Room-1000Hz-Test
+datadir = ./data/Living-Room-1000Hz
 dataset_type = llff
 
 threshold = 0.1
@@ -9,7 +9,6 @@ rgb_loss = True
 single_channel = False
 channels = 3
 
-N_window = 100000    # 5,000,000
 N_pix_no_event = 256
 N_pix_event = 768
 chunk_percent = 0.04
@@ -58,7 +57,6 @@ decay_rate = 0.1
 decay_rate_pose = 0.01
 
 only_optimize_SE3 = False
-use_focal_GT = True
 optimize_se3 = True
 optimize_nerf = True
 trajectory_seg_num = 1
@@ -74,5 +72,5 @@ trajectory_seg_num = 1
 # dist_backend = 'ncll'
 
 deblur_images = 6
-
-ev_alaph = 0.3
+event_coefficient = 0.3
+rgb_coefficient = 1.0

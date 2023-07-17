@@ -1,19 +1,16 @@
 import os
 import random
 
-import torch
+import imageio
+from tqdm import trange, tqdm
 
-from nerf import *
 import optimize_pose_CubicSpline_2
-import compose
-import torchvision.transforms.functional as torchvision_F
-
-import matplotlib.pyplot as plt
-
-from downsample import downsample
-
-from tvloss import EdgeAwareVariationLoss, GrayEdgeAwareVariationLoss
-from metrics import compute_img_metric
+from config import config_parser
+from cubicSpline import se3_to_SE3_N, SE3_to_se3_N
+from load_llff import regenerate_pose, load_llff_data
+from nerf import *
+from run_nerf_helpers import render_video_test, to8b, init_nerf, img2mse, mse2psnr, render_image_test
+from loss.tvloss import EdgeAwareVariationLoss, GrayEdgeAwareVariationLoss
 
 log_eps = 1e-3
 r = 0.299
@@ -152,9 +149,9 @@ def train(args):
 
         print('Model Load Done!')
     else:
-        low, high = 0.0001, 0.001
-        rand = (high - low) * torch.rand(poses_se3.shape[0], 6) + low
-        if args.optimize_se3:  # 只有当需要优化 se3 时才证明目前load 的pose不够精准，否则加上 random noise 会使得性能下降一点点
+        if args.optimize_se3:
+            low, high = 0.0001, 0.001
+            rand = (high - low) * torch.rand(poses_se3.shape[0], 6) + low
             poses_se3 = poses_se3 + rand
         model = optimize_pose_CubicSpline_2.Model(poses_se3, poses_ts)
         graph = model.build_network(args)  # nerf, nerf_fine, forward
@@ -236,6 +233,7 @@ def train(args):
 
         psnr = mse2psnr(img_loss)
 
+        # Event loss
         if 'rgb0' in ret:
             if args.tv_loss is False:
                 img_loss0 = img2mse(log(ret_Gray2['rgb0']) - log(ret_Gray1['rgb0']), target_s)
@@ -243,9 +241,8 @@ def train(args):
                 img_loss0 = img2mse(ret['rgb0'][:-args.tv_width_nerf ** 2], target_s)
             psnr0 = mse2psnr(img_loss0)
 
-
-        img_loss0 *= args.ev_alaph
-        img_loss *= args.ev_alaph
+        img_loss0 *= args.event_coefficient
+        img_loss *= args.event_coefficient
 
         event_loss = img_loss0 + img_loss
 
@@ -264,6 +261,7 @@ def train(args):
 
             loss = loss + args.tv_loss_lambda * loss_tv
 
+        # RGB loss
         if args.rgb_loss:
             target_s = images[0].reshape(-1, H * W, 3)
             target_s = target_s[:, ray_idx]
@@ -274,14 +272,14 @@ def train(args):
             rgb_list = []
             extras_list = []
             for j in range(0, args.deblur_images):
-                rgb_ += ret['rgb_map'][j * interval:(j + 1) * interval]
-                if 'rgb0' in ret:
-                    extras_ += ret['rgb0'][j * interval:(j + 1) * interval]
+                rgb_ += ret_rgb['rgb_map'][j * interval:(j + 1) * interval]
+                if 'rgb0' in ret_rgb:
+                    extras_ += ret_rgb['rgb0'][j * interval:(j + 1) * interval]
                 if (j + 1) % args.deblur_images == 0:
                     rgb_ = rgb_ / args.deblur_images
                     rgb_list.append(rgb_)
                     rgb_ = 0
-                    if 'rgb0' in ret:
+                    if 'rgb0' in ret_rgb:
                         extras_ = extras_ / args.deblur_images
                         extras_list.append(extras_)
                         extras_ = 0
@@ -294,18 +292,23 @@ def train(args):
                 extras_blur = extras_blur.reshape(-1, 3)
 
             rgb_loss_fine = img2mse(rgb_blur, target_s)
+            rgb_loss_fine *= args.rgb_coefficient
 
             if 'rgb0' in ret:
                 rgb_loss_coarse = img2mse(extras_blur, target_s)
+                rgb_loss_coarse *= args.rgb_coefficient
 
             rgb_loss = rgb_loss_fine + rgb_loss_coarse
             loss += rgb_loss
         else:
             rgb_loss = torch.tensor(0)
+            rgb_loss_fine = torch.tensor(0)
+            rgb_loss_coarse = torch.tensor(0)
 
+        # backwawrd
         loss.backward()
 
-        # if i<=threshold:
+        # step
         if optimize_nerf:
             optimizer.step()
         if optimize_se3:
@@ -335,11 +338,11 @@ def train(args):
                     f"event_fine_loss: {img_loss.item()}, event_coarse_loss: {img_loss0.item()}, "
                     f"rgb_loss_fine: {rgb_loss_fine.item()}, rgb_loss_coarse: {rgb_loss_coarse.item()}")
 
-        if i < 50:
+        if i < 20:
             print(
-                    f"[TRAIN] Iter: {i} Loss: {loss.item()}, event_loss: {event_loss.item()}, rgb_loss: {rgb_loss.item()}\n"
-                    f"event_fine_loss: {img_loss.item()}, event_coarse_loss: {img_loss0.item()}, \n"
-                    f"rgb_loss_fine: {rgb_loss_fine.item()}, rgb_loss_coarse: {rgb_loss_coarse.item()}\n")
+                f"[TRAIN] Iter: {i} Loss: {loss.item()}, event_loss: {event_loss.item()}, rgb_loss: {rgb_loss.item()}\n"
+                f"event_fine_loss: {img_loss.item()}, event_coarse_loss: {img_loss0.item()}, \n"
+                f"rgb_loss_fine: {rgb_loss_fine.item()}, rgb_loss_coarse: {rgb_loss_coarse.item()}\n")
 
         if i % args.i_weights == 0 and i > 0:
             path = os.path.join(basedir, expname, '{:06d}.tar'.format(i))

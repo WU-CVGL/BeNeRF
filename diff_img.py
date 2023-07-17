@@ -1,8 +1,6 @@
 import imageio
 import numpy as np
 import os
-import matplotlib.pyplot as plt
-import matplotlib
 
 img1_path = './data/rollingshutter-dataset/linear/train/start'
 img2_path = './logs/linear/linear_only_optimize_SE3/test_poses_start/img_test_180000'

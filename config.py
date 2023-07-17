@@ -1,38 +1,17 @@
-import os, sys
-import numpy as np
-import imageio
-import json
-import random
-import time
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-from tqdm import tqdm, trange
-
-import matplotlib.pyplot as plt
-
-from run_nerf_helpers import *
-
-from load_llff import load_llff_data, regenerate_pose
-
-from cubicSpline import *
-import torchvision.transforms.functional as torchvision_F
-
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-DEBUG = False
+import configargparse
 
 
 def config_parser():
-    import configargparse
     parser = configargparse.ArgumentParser()
 
+    # device
     parser.add_argument("--device", type=int, default=0,
                         help='cuda id to use')
     # others
     parser.add_argument("--seq_num", type=int,
                         help='...to be')
 
-    parser.add_argument('--config', is_config_file=True, default='./configs/Test/50ms-chunk-whole-trajectory.txt',
+    parser.add_argument('--config', is_config_file=True, default='./configs/testconfig.txt',
                         help='config file path')
     parser.add_argument("--expname", type=str,
                         help='experiment name')
@@ -177,15 +156,6 @@ def config_parser():
     parser.add_argument("--barf_end", type=float, default=0.9,
                         help='barf start')
 
-    # rolling shutter
-    parser.add_argument("--row", type=int, default=10,
-                        help='the number chosen from every image')
-    parser.add_argument("--row_", type=int, default=20,
-                        help='the number chosen from every image')
-    parser.add_argument("--chosen_poses", type=int, default=5,
-                        help='the pose numbers to optimize start pose & end pose')
-    parser.add_argument("--pixels_every_pose", type=int, default=7,
-                        help='the pixel numbers chosen from every image')
     parser.add_argument("--delay_time", type=float, default=1,
                         help='interval between two frames')
 
@@ -202,16 +172,12 @@ def config_parser():
                         help='tv_gray')
     parser.add_argument("--tv_loss_lambda", type=float, default=0.001,
                         help='barf start')
-
     parser.add_argument("--n_tvloss", type=int, default=0,
                         help='barf start')
 
     # 分段
     parser.add_argument("--trajectory_seg_num", type=int, default=5,
                         help='the number of segmentation chose to optimize per image')
-
-    parser.add_argument("--use_focal_GT", action='store_true',
-                        help='whether to use the GroundTruth of focal length')
     parser.add_argument("--only_optimize_SE3", action='store_true',
                         help='only load NeRF parameter')
     parser.add_argument("--two_phase", action='store_true',
@@ -220,7 +186,6 @@ def config_parser():
                         help='whether to optimize SE3 network')
     parser.add_argument("--optimize_nerf", action='store_true',
                         help='whether to optimize NeRF network')
-
     parser.add_argument("--load_state", type=str, default=None,
                         help='Load which npy file')
 
@@ -233,8 +198,6 @@ def config_parser():
                         help='use color event or gray event')
     parser.add_argument("--channels", type=int, default=3,
                         help='whether to use 3-channel or single-channel images')
-    parser.add_argument("--N_window", type=int, default=5000000,
-                        help='the length of window used to accumulate events')
     parser.add_argument("--N_pix_no_event", type=int, default=1024,
                         help='number of sampled rays where no events spiking')
     parser.add_argument("--N_pix_event", type=int, default=2048,
@@ -249,7 +212,9 @@ def config_parser():
     parser.add_argument("--sliding_Win", action='store_true',
                         help='whether to use fixing windows or sliding window')
 
-    parser.add_argument("--ev_alaph", type=float, default=1.0,
-                        help='the percentage of key events used for optimization')
+    parser.add_argument("--event_coefficient", type=float, default=1.0,
+                        help='coefficient for event loss')
 
+    parser.add_argument("--rgb_coefficient", type=float, default=1.0,
+                        help='coefficient for rgb loss')
     return parser

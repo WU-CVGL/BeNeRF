@@ -2,8 +2,6 @@ import cv2
 import os
 import numpy as np
 import imageio
-from numba import prange, njit
-import numba
 
 """
     event_sim_config.Cp = 0.05;

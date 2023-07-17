@@ -417,50 +417,6 @@ def Spline4N_new(pose0, pose1, pose2, pose3, poses_number, NUM, delay_time=0):
 
     return poses
 
-
-def SplineRollingShutter(start_pose, end_pose, poses_number, H, delay_time=0):
-    # start_pose & end_pose are se3
-
-    # spline t
-    pose_list = []
-    # pose_time = poses_number.reshape([-1, 1])/(H-1)    # 选择的 pose 对应行数 / 总行数 = 此时对应的 T
-
-    pose_time = poses_number / (H - 1 + delay_time)
-
-    # parallel
-
-    pos_0 = torch.where(pose_time == 0)
-    pose_time[pos_0] = pose_time[pos_0] + 0.000001
-    pos_1 = torch.where(pose_time == 1)
-    pose_time[pos_1] = pose_time[pos_1] - 0.000001
-
-    # pose_time = pose_time.reshape([-1, 1])   # [6] --> [6,1]
-
-    q_start, t_start = se3_2_qt_parallel(
-        start_pose)  # t_start:[35, 3] (35 imgs * 3 dims)    q_start:[35,4] (35 imgs * 4 dims)
-    q_end, t_end = se3_2_qt_parallel(end_pose)
-    # sample t_vector
-    t_t = (1 - pose_time)[..., None] * t_start + pose_time[
-        ..., None] * t_end  # [35, 6, 3] (35 imgs * 6 poses_per_img * 3 dims)
-    # print(t_t[0], t_t[1], t_t[2])
-
-    # sample rotation_vector
-    q_tau_0 = q_to_Q_parallel(q_to_q_conj_parallel(q_start)) @ q_end[..., None]  # [35, 4, 1]  # equation 50 shape:[4]
-    r = pose_time[..., None] * log_q2r_parallel(
-        q_tau_0.squeeze(-1))  # [35, 6, 3]   # [6,1] * [35, 1, 3] = [35, 6, 3]  # equation 51 shape:[3]
-    q_t_0 = exp_r2q_parallel(r)  # equation 52 shape:[4]    # [35, 6, 4]
-    q_t = q_to_Q_parallel(q_start) @ q_t_0[..., None]  # [35, 6, 4, 1]  # equation 53 shape:[4]
-
-    # convert q&t to RT
-    R = q_to_R_parallel(q_t.squeeze(dim=-1))  # [3,3]    # [35, 6, 3, 3]
-    t = t_t.unsqueeze(dim=-1)  # [35, 6, 3, 1]
-    pose_spline = torch.cat([R, t], -1)  # [3, 4]
-
-    poses = pose_spline.reshape([-1, 3, 4])  # [35, 6, 3, 4]
-
-    return poses
-
-
 def SplineEvent(se3_start, se3_end, t_tau, period, delay_time=0):
     # start_pose & end_pose are se3
 

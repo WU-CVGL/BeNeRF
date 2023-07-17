@@ -4,7 +4,7 @@ import torch.nn.functional as F
 
 import numba
 
-from run_nerf import *
+from config import *
 import cubicSpline
 
 PIXELS_EVERY_POSE = 7

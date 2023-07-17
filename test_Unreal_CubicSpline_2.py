@@ -1,23 +1,16 @@
 import os
 
-import torch
+import numpy as np
+from tqdm import trange, tqdm
 
 import load_test_data
-
-from test_nerf import *
 import test_optimize_pose_CubicSpline_2
-import compose
-import torchvision.transforms.functional as torchvision_F
+from cubicSpline import se3_to_SE3_N
+from run_nerf_helpers import init_nerf, img2mse, mse2psnr, render_image_test, render_video_test, to8b
+from test_nerf import *
+from loss.tvloss import EdgeAwareVariationLoss, GrayEdgeAwareVariationLoss
 
-import matplotlib.pyplot as plt
-
-from downsample import downsample
-
-from tvloss import EdgeAwareVariationLoss, GrayEdgeAwareVariationLoss
-from metrics import compute_img_metric
-
-# os.environ["CUDA_VISIBLE_DEVICES"] = "1"
-# torch.cuda.set_device(1)
+import imageio
 
 log_eps = 1e-3
 r = 0.299
@@ -361,8 +354,8 @@ def train(args):
                 optimized_pose = torch.cat([optimized_pose, torch.tensor([H, W, focal]).reshape([1, 3, 1]).repeat(
                     optimized_pose.shape[0], 1, 1)], -1)
                 optimized_pose = optimized_pose.cpu().numpy()
-                render_poses = regenerate_pose(optimized_pose, bds, recenter=True, bd_factor=.75, spherify=False,
-                                               path_zflat=False)
+                render_poses = load_test_data.regenerate_pose(optimized_pose, bds, recenter=True, bd_factor=.75, spherify=False,
+                                                              path_zflat=False)
                 # Turn on testing mode
                 with torch.no_grad():  # here render_video有点问题
                     rgbs, disps = render_video_test(i, graph, render_poses, H, W, K, args)

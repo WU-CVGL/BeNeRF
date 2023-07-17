@@ -1,6 +1,9 @@
+import imageio
+import os
+
 import numpy as np
-import os, imageio
 import torch
+
 from downsample import downsample
 
 
@@ -21,7 +24,6 @@ def _minify(basedir, factors=[], resolutions=[]):  # basedir: ./data/nerf_llff_d
     if not needtoload:
         return
 
-    from shutil import copy
     from subprocess import check_output
 
     imgdir = os.path.join(basedir, 'images')

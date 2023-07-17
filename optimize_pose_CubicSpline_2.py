@@ -78,11 +78,9 @@ class Graph(nerf.Graph):
 
     def get_pose_render(self):
         spline_poses = cubicSpline.se3_to_SE3(self.se3.params.weight)
-
         return spline_poses
 
     def get_pose_i(self, pose_i, args, ray_idx):  # pose_nums ：随机选择的 poses 对应的行
-
         ray_idx = ray_idx.reshape([1, -1])
         spline_poses_ = cubicSpline.se3_to_SE3(self.se3.params.weight[pose_i])
         spline_poses = spline_poses_.reshape([ray_idx.shape[0], 1, 3, 4]).repeat(1, ray_idx.shape[1], 1, 1).reshape(

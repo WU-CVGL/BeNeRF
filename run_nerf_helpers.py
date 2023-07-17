@@ -1,11 +1,9 @@
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-import numpy as np
-
-from tqdm import tqdm, trange
 import os
-import imageio
+
+import numpy as np
+import torch
+from imageio.v3 import imread, imwrite
+from tqdm import tqdm
 
 # Misc
 img2mse = lambda x, y: torch.mean((x - y) ** 2)
@@ -13,13 +11,6 @@ img2se = lambda x, y: (x - y) ** 2
 mse2psnr = lambda x: -10. * torch.log(x) / torch.log(torch.Tensor([10.]))  # logab = logcb / logca
 to8b = lambda x: (255 * np.clip(x, 0, 1)).astype(np.uint8)
 to8b_tensor = lambda x: (255 * torch.clip(x, 0, 1)).type(torch.int)
-
-
-def imread(f):
-    if f.endswith('png'):
-        return imageio.imread(f, ignoregamma=True)
-    else:
-        return imageio.imread(f)
 
 
 def load_imgs(path):
@@ -166,13 +157,13 @@ def render_image_test(i, graph, render_poses, H, W, K, args, dir=None, need_dept
         imgs.append(ret['rgb_map'])
         rgbs = ret['rgb_map'].cpu().numpy()
         rgb8 = to8b(rgbs)
-        imageio.imwrite(os.path.join(img_dir, dir[11:] + '_{:03d}.png'.format(j)), rgb8)
+        imwrite(os.path.join(img_dir, dir[11:] + '_{:03d}.png'.format(j)), rgb8)
         # imageio.imwrite(os.path.join(img_dir, 'rgb_{:03d}.png'.format(j)), rgb8)
         if need_depth:
             depths = ret['disp_map'].cpu().numpy()
             depths_ = depths / np.max(depths)
             depth8 = to8b(depths_)
-            imageio.imwrite(os.path.join(img_dir, 'depth_{:03d}.png'.format(j)), depth8)
+            imwrite(os.path.join(img_dir, 'depth_{:03d}.png'.format(j)), depth8)
     imgs = torch.stack(imgs, 0)
     return imgs
 
@@ -193,7 +184,7 @@ def render_rolling_shutter_(barf_i, graph, render_poses, H, W, K, args, dir=None
         imgs.append(torch.stack(img, 0))
         rgbs = torch.stack(img, 0).cpu().numpy()
         rgb8 = to8b(rgbs)
-        imageio.imwrite(os.path.join(img_dir, dir[11:] + '_{:03d}.png'.format(i)), rgb8)
+        imwrite(os.path.join(img_dir, dir[11:] + '_{:03d}.png'.format(i)), rgb8)
     imgs = torch.stack(imgs, 0)
     return imgs
 

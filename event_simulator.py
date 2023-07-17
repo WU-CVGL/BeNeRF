@@ -1,4 +1,3 @@
-from numba.np.ufunc import parallel
 import numpy as np
 from types import SimpleNamespace
 from numba import njit, prange, set_num_threads

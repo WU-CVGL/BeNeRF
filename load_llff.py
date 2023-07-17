@@ -1,5 +1,6 @@
 import numpy as np
-import os, imageio
+import os
+import imageio
 import torch
 from downsample import downsample
 
@@ -338,7 +339,6 @@ def load_llff_data(basedir, threshold, pose_state=None, factor=1, recenter=True,
     # events_y = events[:,1]
     # events_ts = events[:,2]
     # events_pol = events[:,3]
-
 
     #
     #
