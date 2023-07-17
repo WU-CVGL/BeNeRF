@@ -1,0 +1,74 @@
+expname = fixing-window-optimize-pose-5ms
+basedir = ./logs/Synthetic-Datasets-initialize-with-mid
+datadir = ./Data/Synthetic-Datasets/Living-Room-1000Hz
+dataset_type = llff
+
+# event
+threshold = 0.1
+rgb_loss = False
+
+single_channel = True
+channels = 1    # 3: RGB
+
+N_window = 500000    # 500,000
+N_pix_no_event = 1024
+N_pix_event = 2048
+N_pix_rgb = 1024
+
+sliding_Win = False
+
+factor = 1
+llffhold = 8
+
+focal = 548.409
+
+barf = False
+barf_start = 0.1
+barf_end = 0.5
+
+delay_time = 0
+
+N_samples = 64
+N_importance = 64
+
+use_viewdirs = True
+raw_noise_std = 0
+
+load_weights = True
+weight_iter = 200000
+
+tv_loss = False
+tv_width_nerf = 20
+tv_loss_rgb = True
+tv_loss_gray = True
+
+tv_loss_lambda = 0.001
+
+n_tvloss = 0
+
+i_img = 10000
+i_video = 50000
+i_weights = 10000
+max_iter = 200000
+
+# training parameters
+lrate = 5e-4
+pose_lrate = 1e-3
+decay_rate = 0.1
+decay_rate_pose = 0.01
+
+only_optimize_SE3 = False
+use_focal_GT = True
+optimize_se3 = True
+optimize_nerf = True
+trajectory_seg_num = 1
+load_state = mid
+
+
+# distributed training parameters
+# distributed = True
+# dist_url = "env://"
+# rank = -1
+# multiprocessing_distributed = True
+# world_size = 8
+# dist_backend = 'ncll'
