@@ -357,7 +357,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     # setup device
-    torch.cuda.set_device(args.device)
+    os.environ["CUDA_VISIBLE_DEVICES"] = str(args.device)
 
     # train
     print('Cubic Spline 2!!!\n')
