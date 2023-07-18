@@ -1,6 +1,6 @@
-import torch.nn as nn
+import torch
 
 
-class GrayMSELoss(nn.Module):
-    def __init__(self, *args, **kwargs) -> None:
-        super().__init__(*args, **kwargs)
+class MSELoss:
+    def __call__(self, img, gt_img):
+        return torch.mean((img - gt_img) ** 2)

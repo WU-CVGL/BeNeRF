@@ -1,6 +1,6 @@
 import torch.nn
 
-import cubicSpline
+import spline
 import nerf
 
 
@@ -84,7 +84,7 @@ class Graph(nerf.Graph):
         pose3 = self.se3.end.weight[select_id + 3, :6].reshape(pose_nums.shape[0], trajectory_seg_num, 6)[img_idx][
                 seg_pos_x, seg_pos_y, :]
 
-        spline_poses = cubicSpline.Spline4N_new(pose0, pose1, pose2, pose3, pose_nums_seg, H_seg, args.delay_time)
+        spline_poses = spline.Spline4N_new(pose0, pose1, pose2, pose3, pose_nums_seg, H_seg, args.delay_time)
 
         return spline_poses
 
@@ -98,7 +98,7 @@ class Graph(nerf.Graph):
         se3_start = se3_start[seg_pos_x, :]
         se3_end = se3_end[seg_pos_x, :]
 
-        spline_poses = cubicSpline.SplineN_new(se3_start, se3_end, pose_nums, Num, delay_time=1)
+        spline_poses = spline.SplineN_new(se3_start, se3_end, pose_nums, Num, delay_time=1)
         return spline_poses
 
     def get_gt_pose(self, poses, args):

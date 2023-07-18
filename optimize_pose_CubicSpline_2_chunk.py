@@ -1,6 +1,6 @@
 import torch.nn
 
-import cubicSpline
+import spline
 import nerf_chunk
 
 import numpy as np
@@ -72,14 +72,14 @@ class Graph(nerf_chunk.Graph):
 
         poses_se3 = torch.concatenate(
             [self.se3.start.weight[pose_i].reshape([-1, 6]), self.se3.end.weight[pose_i].reshape([-1, 6])])
-        spline_poses = cubicSpline.se3_to_SE3(poses_se3)
+        spline_poses = spline.se3_to_SE3(poses_se3)
 
         return spline_poses
 
     def get_pose_i(self, pose_i, args, ray_idx):  # pose_nums ：随机选择的 poses 对应的行
 
         ray_idx = ray_idx.reshape([1, -1])
-        spline_poses_ = cubicSpline.se3_to_SE3(self.se3.end.weight[pose_i])
+        spline_poses_ = spline.se3_to_SE3(self.se3.end.weight[pose_i])
         spline_poses = spline_poses_.reshape([ray_idx.shape[0], 1, 3, 4]).repeat(1, ray_idx.shape[1], 1, 1).reshape(
             [-1, 3, 4])
         return spline_poses

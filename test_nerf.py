@@ -1,3 +1,4 @@
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -5,7 +6,8 @@ import torch.nn.functional as F
 import numba
 
 from config import *
-import cubicSpline
+import spline
+from run_nerf_helpers import get_specific_rays, get_rays, ndc_rays, sample_pdf
 
 PIXELS_EVERY_POSE = 7
 max_iter = 200000

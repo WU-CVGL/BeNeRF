@@ -5,20 +5,15 @@ from tqdm import trange, tqdm
 
 import load_test_data
 import test_optimize_pose_CubicSpline_2
-from cubicSpline import se3_to_SE3_N
-from run_nerf_helpers import init_nerf, img2mse, mse2psnr, render_image_test, render_video_test, to8b
+from spline import se3_to_SE3_N
+from run_nerf_helpers import init_nerf, mse2psnr, render_image_test, render_video_test, to8b
 from test_nerf import *
 from loss.tvloss import EdgeAwareVariationLoss, GrayEdgeAwareVariationLoss
 
 import imageio
 
-log_eps = 1e-3
-r = 0.299
-g = 0.587
-b = 0.114
-rgb_weight = torch.Tensor([r, g, b]).to(device)
-RGB_2_Gray = lambda x: torch.sum(x * rgb_weight[None, :], axis=-1)
-log = lambda x: torch.log(x + log_eps)
+from utils import imgutils
+from utils.mathutils import safelog
 
 
 def train(args):
@@ -40,6 +35,10 @@ def train(args):
     K = None
     test_num = 6
     test_id = 0
+
+    # transforms
+    mse_loss = torch.nn.MSELoss()
+    rgb2gray = imgutils.RGB2Gray()
 
     if args.dataset_type == 'llff':
         events, images, poses, bds_start, render_poses, poses_ts = load_test_data.load_llff_data(test_id, args.datadir,
@@ -265,18 +264,18 @@ def train(args):
             optimizer.zero_grad()
 
             if args.tv_loss is False:
-                img_loss = img2mse(log(ret_Gray2['rgb_map']) - log(ret_Gray1['rgb_map']), target_s)
+                img_loss = mse_loss(safelog(rgb2gray(ret_Gray2['rgb_map'])) - safelog(rgb2gray(ret_Gray1['rgb_map'])), target_s)
             else:
-                img_loss = img2mse(ret['rgb_map'][:-args.tv_width_nerf ** 2], target_s)
+                img_loss = mse_loss(ret['rgb_map'][:-args.tv_width_nerf ** 2], target_s)
 
             loss = img_loss
             psnr = mse2psnr(img_loss)
 
             if 'rgb0' in ret:
                 if args.tv_loss is False:
-                    img_loss0 = img2mse(log(ret_Gray2['rgb0']) - log(ret_Gray1['rgb0']), target_s)
+                    img_loss0 = mse_loss(safelog(ret_Gray2['rgb0']) - safelog(ret_Gray1['rgb0']), target_s)
                 else:
-                    img_loss0 = img2mse(ret['rgb0'][:-args.tv_width_nerf ** 2], target_s)
+                    img_loss0 = mse_loss(ret['rgb0'][:-args.tv_width_nerf ** 2], target_s)
                 loss = loss + img_loss0
                 psnr0 = mse2psnr(img_loss0)
 

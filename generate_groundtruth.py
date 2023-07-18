@@ -2,7 +2,7 @@ import cv2
 import os
 import numpy as np
 import imageio.v3 as imageio
-from cubicSpline import *
+from spline import *
 import collections
 
 os.environ["OPENCV_IO_ENABLE_OPENEXR"] = "1"

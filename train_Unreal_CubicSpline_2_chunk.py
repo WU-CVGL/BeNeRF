@@ -4,7 +4,7 @@ from tqdm import trange, tqdm
 
 import optimize_pose_CubicSpline_2_chunk
 from config import config_parser
-from cubicSpline import se3_to_SE3_N, SE3_to_se3_N
+from spline import se3_to_SE3_N, SE3_to_se3_N
 from load_llff import regenerate_pose
 from nerf_chunk import *
 from run_nerf_helpers import img2mse, mse2psnr, render_image_test, render_video_test, to8b, init_nerf
@@ -12,13 +12,7 @@ from loss.tvloss import EdgeAwareVariationLoss, GrayEdgeAwareVariationLoss
 
 import imageio
 
-log_eps = 1e-3
-r = 0.299
-g = 0.587
-b = 0.114
-rgb_weight = torch.Tensor([r, g, b]).to(device)
-RGB_2_Gray = lambda x: torch.sum(x * rgb_weight[None, :], axis=-1)
-log = lambda x: torch.log(x + log_eps)
+from utils.mathutils import safelog
 
 
 def train(args):
@@ -241,7 +235,7 @@ def train(args):
         optimizer.zero_grad()
 
         if args.tv_loss is False:
-            img_loss = img2mse(log(ret_Gray2['rgb_map']) - log(ret_Gray1['rgb_map']), target_s)
+            img_loss = img2mse(safelog(ret_Gray2['rgb_map']) - safelog(ret_Gray1['rgb_map']), target_s)
         else:
             img_loss = img2mse(ret['rgb_map'][:-args.tv_width_nerf ** 2], target_s)
 
@@ -250,7 +244,7 @@ def train(args):
 
         if 'rgb0' in ret:
             if args.tv_loss is False:
-                img_loss0 = img2mse(log(ret_Gray2['rgb0']) - log(ret_Gray1['rgb0']), target_s)
+                img_loss0 = img2mse(safelog(ret_Gray2['rgb0']) - safelog(ret_Gray1['rgb0']), target_s)
             else:
                 img_loss0 = img2mse(ret['rgb0'][:-args.tv_width_nerf ** 2], target_s)
             loss = loss + img_loss0

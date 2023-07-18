@@ -2,23 +2,19 @@ import os
 import random
 
 import imageio
+import torch.nn
 from tqdm import trange, tqdm
 
 import optimize_pose_CubicSpline_2
 from config import config_parser
-from cubicSpline import se3_to_SE3_N, SE3_to_se3_N
+from loss import imgloss
+from spline import se3_to_SE3_N, SE3_to_se3_N
 from load_llff import regenerate_pose, load_llff_data
 from nerf import *
-from run_nerf_helpers import render_video_test, to8b, init_nerf, img2mse, mse2psnr, render_image_test
+from run_nerf_helpers import render_video_test, to8b, init_nerf, mse2psnr, render_image_test
 from loss.tvloss import EdgeAwareVariationLoss, GrayEdgeAwareVariationLoss
-
-log_eps = 1e-3
-r = 0.299
-g = 0.587
-b = 0.114
-rgb_weight = torch.Tensor([r, g, b]).to(device)
-RGB_2_Gray = lambda x: torch.sum(x * rgb_weight[None, :], axis=-1)
-log = lambda x: torch.log(x + log_eps)
+from utils import imgutils
+from utils.mathutils import safelog
 
 
 def train(args):
@@ -27,15 +23,17 @@ def train(args):
     print('lambda: ', args.tv_loss_lambda)
 
     # Load data images are groundtruth
-    # use_GT = False
     optimize_se3 = args.optimize_se3
     optimize_nerf = args.optimize_nerf
     load_state = args.load_state
-    # load_state = 'start_end'
     print('!!! Optimize SE3 Network: ', optimize_se3)
     print('!!! Load which npy file: ', load_state)
     print('load poses correspond to %s line' % args.load_state)
     # focal_GT = torch.tensor([548.409])
+
+    # transforms
+    mse_loss = imgloss.MSELoss()
+    rgb2gray = imgutils.RGB2Gray()
 
     K = None
 
@@ -73,7 +71,6 @@ def train(args):
             near = 0.
             far = 1.
         print('NEAR FAR', near, far)
-
     else:
         print('Unknown dataset type', args.dataset_type, 'exiting')
         return
@@ -202,10 +199,10 @@ def train(args):
 
         pixels_num = ray_idx.shape[0]
 
-        ret_Gray1 = {'rgb_map': ret['rgb_map'][:pixels_num], 'rgb0': ret['rgb0'][:pixels_num]}
-        ret_Gray2 = {'rgb_map': ret['rgb_map'][pixels_num:pixels_num * 2],
+        ret_gray1 = {'rgb_map': ret['rgb_map'][:pixels_num],
+                     'rgb0': ret['rgb0'][:pixels_num]}
+        ret_gray2 = {'rgb_map': ret['rgb_map'][pixels_num:pixels_num * 2],
                      'rgb0': ret['rgb0'][pixels_num:pixels_num * 2]}
-
         ret_rgb = {'rgb_map': ret['rgb_map'][pixels_num * 2:],
                    'rgb0': ret['rgb0'][pixels_num * 2:]}
 
@@ -226,40 +223,21 @@ def train(args):
         optimizer_se3.zero_grad()  # here
         optimizer.zero_grad()
 
-        if args.tv_loss is False:
-            img_loss = img2mse(log(ret_Gray2['rgb_map']) - log(ret_Gray1['rgb_map']), target_s)
-        else:
-            img_loss = img2mse(ret['rgb_map'][:-args.tv_width_nerf ** 2], target_s)
 
+        img_loss = mse_loss(safelog(rgb2gray(ret_gray2['rgb_map'])) - safelog(rgb2gray(ret_gray1['rgb_map'])), target_s)
         psnr = mse2psnr(img_loss)
 
         # Event loss
         if 'rgb0' in ret:
-            if args.tv_loss is False:
-                img_loss0 = img2mse(log(ret_Gray2['rgb0']) - log(ret_Gray1['rgb0']), target_s)
-            else:
-                img_loss0 = img2mse(ret['rgb0'][:-args.tv_width_nerf ** 2], target_s)
+            img_loss0 = mse_loss(safelog(rgb2gray(ret_gray2['rgb0'])) - safelog(rgb2gray(ret_gray1['rgb0'])), target_s)
             psnr0 = mse2psnr(img_loss0)
+            img_loss0 *= args.event_coefficient
 
-        img_loss0 *= args.event_coefficient
         img_loss *= args.event_coefficient
 
         event_loss = img_loss0 + img_loss
 
-        loss = 0
-        loss += event_loss
-
-        if args.tv_loss and i >= args.n_tvloss:
-            if args.tv_loss_rgb and args.tv_loss_gray:
-                loss_tv_rgb = tvloss_fn_rgb(rgb_sharp_tv, mean=True)
-                loss_tv_depth = tvloss_fn_gray(depth_tv, rgb_sharp_tv, mean=True)
-                loss_tv = loss_tv_rgb + loss_tv_depth
-            elif args.tv_loss_rgb:
-                loss_tv = tvloss_fn_rgb(rgb_sharp_tv, mean=True)
-            else:
-                loss_tv = tvloss_fn_gray(depth_tv, rgb_sharp_tv, mean=True)
-
-            loss = loss + args.tv_loss_lambda * loss_tv
+        loss = event_loss
 
         # RGB loss
         if args.rgb_loss:
@@ -291,11 +269,11 @@ def train(args):
                 extras_blur = torch.stack(extras_list, 0)
                 extras_blur = extras_blur.reshape(-1, 3)
 
-            rgb_loss_fine = img2mse(rgb_blur, target_s)
+            rgb_loss_fine = mse_loss(rgb_blur, target_s)
             rgb_loss_fine *= args.rgb_coefficient
 
             if 'rgb0' in ret:
-                rgb_loss_coarse = img2mse(extras_blur, target_s)
+                rgb_loss_coarse = mse_loss(extras_blur, target_s)
                 rgb_loss_coarse *= args.rgb_coefficient
 
             rgb_loss = rgb_loss_fine + rgb_loss_coarse

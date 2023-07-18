@@ -6,8 +6,6 @@ from imageio.v3 import imread, imwrite
 from tqdm import tqdm
 
 # Misc
-img2mse = lambda x, y: torch.mean((x - y) ** 2)
-img2se = lambda x, y: (x - y) ** 2
 mse2psnr = lambda x: -10. * torch.log(x) / torch.log(torch.Tensor([10.]))  # logab = logcb / logca
 to8b = lambda x: (255 * np.clip(x, 0, 1)).astype(np.uint8)
 to8b_tensor = lambda x: (255 * torch.clip(x, 0, 1)).type(torch.int)
@@ -168,27 +166,6 @@ def render_image_test(i, graph, render_poses, H, W, K, args, dir=None, need_dept
     return imgs
 
 
-def render_rolling_shutter_(barf_i, graph, render_poses, H, W, K, args, dir=None, need_depth=False):
-    img_dir = os.path.join(args.basedir, args.expname, dir, 'img_test_{:06d}'.format(barf_i))
-    os.makedirs(img_dir, exist_ok=True)
-    imgs = []
-
-    for i in range(render_poses.shape[0] // H):
-        pose = render_poses[i * H: (i + 1) * H, :3, :4].unsqueeze(1).repeat(1, W, 1, 1).reshape(-1, 3, 4)
-        ray_idx = torch.arange(H * W)
-        img = []
-        for j in range(H):
-            ret = graph.render(barf_i, pose[j * W: (j + 1) * W, ...], ray_idx[j * W: (j + 1) * W, ...], H, W, K, args,
-                               ray_idx_tv=None, training=True)
-            img.append(ret['rgb_map'])
-        imgs.append(torch.stack(img, 0))
-        rgbs = torch.stack(img, 0).cpu().numpy()
-        rgb8 = to8b(rgbs)
-        imwrite(os.path.join(img_dir, dir[11:] + '_{:03d}.png'.format(i)), rgb8)
-    imgs = torch.stack(imgs, 0)
-    return imgs
-
-
 def compute_poses_idx(img_idx, args):
     poses_idx = torch.arange(img_idx.shape[0] * args.deblur_images)
     for i in range(img_idx.shape[0]):
@@ -226,13 +203,5 @@ def init_nerf(nerf):
         init_weights(linear_view)
 
     init_weights(nerf.feature_linear)
-
     init_weights(nerf.alpha_linear)
-
     init_weights(nerf.rgb_linear)
-
-
-if __name__ == '__main__':
-    for i in range(10):
-        ray_idx = compute_ray_idx(5, 6, 6)
-        print(ray_idx.reshape(5, 5))

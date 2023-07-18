@@ -1,6 +1,6 @@
 import torch.nn
 
-import cubicSpline
+import spline
 import nerf
 
 import numpy as np
@@ -64,7 +64,7 @@ class Graph(nerf.Graph):
         period = torch.tensor((poses_ts[up_bound] - poses_ts[low_bound])).float()
         t_tau = torch.tensor((events_ts - poses_ts[low_bound])).float()
 
-        spline_poses = cubicSpline.SplineEvent(se3_start, se3_end, t_tau, period, args.delay_time)
+        spline_poses = spline.SplineEvent(se3_start, se3_end, t_tau, period, args.delay_time)
 
         return spline_poses
 
@@ -73,16 +73,16 @@ class Graph(nerf.Graph):
         se3_end = self.se3.params.weight[1, :].reshape(1, 1, 6)
         pose_nums = torch.arange(args.deblur_images).reshape(1, -1).repeat(se3_start.shape[0], 1)
 
-        spline_poses = cubicSpline.SplineN_linear(se3_start, se3_end, pose_nums, args.deblur_images)
+        spline_poses = spline.SplineN_linear(se3_start, se3_end, pose_nums, args.deblur_images)
         return spline_poses
 
     def get_pose_render(self):
-        spline_poses = cubicSpline.se3_to_SE3(self.se3.params.weight)
+        spline_poses = spline.se3_to_SE3(self.se3.params.weight)
         return spline_poses
 
     def get_pose_i(self, pose_i, args, ray_idx):  # pose_nums ：随机选择的 poses 对应的行
         ray_idx = ray_idx.reshape([1, -1])
-        spline_poses_ = cubicSpline.se3_to_SE3(self.se3.params.weight[pose_i])
+        spline_poses_ = spline.se3_to_SE3(self.se3.params.weight[pose_i])
         spline_poses = spline_poses_.reshape([ray_idx.shape[0], 1, 3, 4]).repeat(1, ray_idx.shape[1], 1, 1).reshape(
             [-1, 3, 4])
         return spline_poses
