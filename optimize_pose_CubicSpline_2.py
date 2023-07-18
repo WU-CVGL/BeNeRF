@@ -10,6 +10,7 @@ class SE3(torch.nn.Module):
     def __init__(self, shape_1, trajectory_seg_num):
         super().__init__()
         self.params = torch.nn.Embedding(shape_1, 6)  # 22和25
+        self.transform = torch.nn.Embedding(1, 6)
         # self.rgb_params = torch.nn.Embedding(2, 6)
 
 class Model(nerf.Model):
@@ -24,7 +25,6 @@ class Model(nerf.Model):
         self.graph.se3 = SE3(self.poses_se3.shape[0], args.trajectory_seg_num)
 
         self.graph.se3.params.weight.data = torch.nn.Parameter(self.poses_se3)
-        # self.graph.se3.rgb_params.weight.data = torch.nn.Parameter(self.poses_se3[:2])
 
         return self.graph
 
