@@ -1,10 +1,9 @@
+import numpy as np
 import torch
 import torch.nn as nn
 
-import spline
 import nerf
-
-import numpy as np
+import spline
 
 
 class CameraPose(nn.Module):
@@ -59,7 +58,6 @@ class Graph(nerf.Graph):
         self.pose_eye = torch.eye(3, 4)
 
     def get_pose(self, i, args, events_ts, poses_ts, trajectory_seg_num):
-
         Dicho_up = poses_ts[:-1][:, np.newaxis].repeat(events_ts.shape[0], axis=1) - events_ts[np.newaxis, :].repeat(
             poses_ts.shape[0] - 1, axis=0)
         Dicho_low = poses_ts[1:][:, np.newaxis].repeat(events_ts.shape[0], axis=1) - events_ts[np.newaxis, :].repeat(
@@ -73,10 +71,13 @@ class Graph(nerf.Graph):
         # start pose
         se3_start = self.transform.params.weight.reshape(1, 1, 6)
         # end pose
-        SE3_from = spline.se3_to_SE3(self.rgb_pose.params.weight.reshape(1, 1, 6))
-        SE3_trans = spline.se3_to_SE3(self.transform.params.weight.reshape(1, 1, 6))
+        i_0 = torch.tensor((.0, .0, .0, 1.)).reshape(1, 4)
+        SE3_from = spline.se3_to_SE3(self.rgb_pose.params.weight.reshape(1, 1, 6)).squeeze()
+        SE3_from = torch.cat((SE3_from, i_0), dim=0)
+        SE3_trans = spline.se3_to_SE3(self.transform.params.weight.reshape(1, 1, 6)).squeeze()
+        SE3_trans = torch.cat((SE3_trans, i_0), dim=0)
         SE3_end = SE3_trans @ SE3_from
-        se3_end = spline.SE3_to_se3(SE3_end)
+        se3_end = spline.SE3_to_se3(SE3_end[:3, :4].reshape(1, 3, 4))
 
         period = torch.tensor((poses_ts[up_bound] - poses_ts[low_bound])).float()
         t_tau = torch.tensor((events_ts - poses_ts[low_bound])).float()
