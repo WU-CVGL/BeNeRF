@@ -72,5 +72,9 @@ trajectory_seg_num = 1
 # dist_backend = 'ncll'
 
 deblur_images = 6
-event_coefficient = 0.3
+event_coefficient = 0.2
 rgb_coefficient = 1.0
+
+optimize_trans = True
+transform_lrate = 1e-4
+decay_rate_transform = 0.01

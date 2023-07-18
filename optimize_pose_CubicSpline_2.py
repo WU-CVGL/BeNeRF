@@ -31,8 +31,8 @@ class Model(nerf.Model):
         self.graph.rgb_pose = CameraPose()
         self.graph.transform = TransformPose()
 
-        self.graph.rgb_pose.params.weight.data = torch.nn.Parameter(torch.rand(1, 6) * 0.01)
-        self.graph.transform.params.weight.data = torch.nn.Parameter(torch.rand(1, 6) * 0.001)
+        self.graph.rgb_pose.params.weight.data = torch.nn.Parameter(torch.rand(1, 6) * 0.1)
+        self.graph.transform.params.weight.data = torch.nn.Parameter(torch.rand(1, 6) * 0.01)
 
         return self.graph
 
@@ -102,7 +102,7 @@ class Graph(nerf.Graph):
         spline_poses = spline.se3_to_SE3(self.se3.params.weight)
         return spline_poses
 
-    def get_pose_i(self, pose_i, args, ray_idx):  # pose_nums ：随机选择的 poses 对应的行
+    def get_pose_i(self, pose_i, args, ray_idx):
         ray_idx = ray_idx.reshape([1, -1])
         spline_poses_ = spline.se3_to_SE3(self.se3.params.weight[pose_i])
         spline_poses = spline_poses_.reshape([ray_idx.shape[0], 1, 3, 4]).repeat(1, ray_idx.shape[1], 1, 1).reshape(

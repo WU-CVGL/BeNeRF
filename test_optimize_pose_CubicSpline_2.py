@@ -9,9 +9,9 @@ import numpy as np
 class SE3(torch.nn.Module):
     def __init__(self, shape_1, trajectory_seg_num):
         super().__init__()
-        self.start = torch.nn.Embedding(shape_1 // trajectory_seg_num, 6 * 1)  # 22和25
-        self.end = torch.nn.Embedding(shape_1 // trajectory_seg_num, 6 * 1)  # 22和25
-        self.mid = torch.nn.Embedding(shape_1 // trajectory_seg_num, 6 * (trajectory_seg_num - 1))  # 22和25
+        self.start = torch.nn.Embedding(shape_1 // trajectory_seg_num, 6 * 1)
+        self.end = torch.nn.Embedding(shape_1 // trajectory_seg_num, 6 * 1)
+        self.mid = torch.nn.Embedding(shape_1 // trajectory_seg_num, 6 * (trajectory_seg_num - 1))
 
 
 class Model(test_nerf.Model):
@@ -33,10 +33,10 @@ class Model(test_nerf.Model):
         grad_vars = list(self.graph.nerf.parameters())
         if args.N_importance > 0:
             grad_vars += list(self.graph.nerf_fine.parameters())
-        self.optim = torch.optim.Adam(params=grad_vars, lr=args.lrate, betas=(0.9, 0.999))  # nerf 的 gradient
+        self.optim = torch.optim.Adam(params=grad_vars, lr=args.lrate, betas=(0.9, 0.999))
 
         grad_vars_se3 = list(self.graph.se3.parameters())
-        self.optim_se3 = torch.optim.Adam(params=grad_vars_se3, lr=args.lrate)  # se3 的 gradient
+        self.optim_se3 = torch.optim.Adam(params=grad_vars_se3, lr=args.lrate)
 
         return self.optim, self.optim_se3
 
@@ -44,10 +44,10 @@ class Model(test_nerf.Model):
 class Graph(test_nerf.Graph):
     def __init__(self, args, D=8, W=256, input_ch=63, input_ch_views=27, output_ch=4, skips=[4], use_viewdirs=True):
         super().__init__(args, D, W, input_ch, input_ch_views, output_ch, skips,
-                         use_viewdirs)  # 继承 nerf 中的 Graph    等价于 nerf.Graph(.......)   继承了父类所有属性，相当于重新构造了一个类
+                         use_viewdirs)
         self.pose_eye = torch.eye(3, 4)
 
-    def get_pose(self, pose_i):  # pose_nums ：随机选择的 poses 对应的行
+    def get_pose(self, pose_i):
 
         poses_se3 = torch.concatenate(
             [self.se3.end.weight[pose_i].reshape([-1, 6]), self.se3.end.weight[pose_i + 1].reshape([-1, 6])])
@@ -55,7 +55,7 @@ class Graph(test_nerf.Graph):
 
         return spline_poses
 
-    def get_pose_i(self, pose_i, args, ray_idx):  # pose_nums ：随机选择的 poses 对应的行
+    def get_pose_i(self, pose_i, args, ray_idx):
 
         ray_idx = ray_idx.reshape([1, -1])
         spline_poses_ = spline.se3_to_SE3(self.se3.end.weight[pose_i])

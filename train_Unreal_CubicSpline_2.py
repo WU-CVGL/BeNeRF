@@ -22,6 +22,7 @@ def train(args):
     # Load data images are groundtruth
     optimize_se3 = args.optimize_se3
     optimize_nerf = args.optimize_nerf
+    optimize_trans = args.optimize_trans
     load_state = args.load_state
     print('!!! Optimize SE3 Network: ', optimize_se3)
     print('!!! Load which npy file: ', load_state)
@@ -268,8 +269,8 @@ def train(args):
             optimizer.step()
         if optimize_se3:
             optimizer_pose.step()
-
-        optimizer_trans.step()
+        if optimize_trans:
+            optimizer_trans.step()
 
         # NOTE: IMPORTANT!
         ###   update learning rate   ###
@@ -283,6 +284,11 @@ def train(args):
         new_lrate_pose = args.pose_lrate * (decay_rate_pose ** (global_step / decay_steps))
         for param_group in optimizer_pose.param_groups:
             param_group['lr'] = new_lrate_pose
+
+        decay_rate_transform = args.decay_rate_transform
+        new_lrate_trans = args.transform_lrate * (decay_rate_transform ** (global_step / decay_steps))
+        for param_group in optimizer_trans.param_groups:
+            param_group['lr'] = new_lrate_trans
         ###############################
 
         if i % args.i_print == 0:

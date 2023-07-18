@@ -44,10 +44,14 @@ def config_parser():
                         help='learning rate of NeRF')
     parser.add_argument("--pose_lrate", type=float, default=1e-3,
                         help='learning rate of SE3 network')
+    parser.add_argument("--transform_lrate", type=float, default=1e-4,
+                        help='learning rate of SE3 network')
 
     parser.add_argument("--decay_rate", type=float, default=0.1,
                         help='learning rate decay of NeRF')
     parser.add_argument("--decay_rate_pose", type=float, default=0.01,
+                        help='learning rate decay of SE network')
+    parser.add_argument("--decay_rate_transform", type=float, default=0.01,
                         help='learning rate decay of SE network')
 
     parser.add_argument("--lrate_decay", type=int, default=200,
@@ -185,6 +189,8 @@ def config_parser():
     parser.add_argument("--optimize_se3", action='store_true',
                         help='whether to optimize SE3 network')
     parser.add_argument("--optimize_nerf", action='store_true',
+                        help='whether to optimize NeRF network')
+    parser.add_argument("--optimize_trans", action='store_true',
                         help='whether to optimize NeRF network')
     parser.add_argument("--load_state", type=str, default=None,
                         help='Load which npy file')

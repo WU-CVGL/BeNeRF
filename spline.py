@@ -90,42 +90,30 @@ def exp_r2q(r):
     return q_
 
 
-def exp_r2q_parallel(r):
+def exp_r2q_parallel(r, eps=1e-9):
     x, y, z = r[..., 0], r[..., 1], r[..., 2]
     theta = 0.5 * torch.sqrt(x ** 2 + y ** 2 + z ** 2)
+    bool_criterion = (theta < eps).unsqueeze(-1).repeat(1, 1, 4)
+    return torch.where(
+        bool_criterion, exp_r2q_taylor_(x, y, z, theta), exp_r2q_(x, y, z, theta)
+    )
 
-    lambda_ = torch.sin(theta) / (2. * theta)
 
-    # Bool_criterion_1 = (theta < 1e-20)
-    # Bool_criterion_2 = ~Bool_criterion_1
-    # Bool_criterion = torch.stack([Bool_criterion_1, Bool_criterion_2], dim=-1)
+def exp_r2q_(x, y, z, theta):
+    lambda_ = torch.sin(theta) / (2.0 * theta)
+    qx = lambda_ * x
+    qy = lambda_ * y
+    qz = lambda_ * z
+    qw = torch.cos(theta)
+    return torch.stack([qx, qy, qz, qw], -1)
 
-    Bool_criterion = (theta < 1e-20)
 
-    """
-    qx = torch.stack([(1. / 2. - 1. / 12. * theta ** 2 - 1. / 240. * theta ** 4) * x, lambda_ * x], dim=-1)[Bool_criterion]
-    qy = torch.stack([(1. / 2. - 1. / 12. * theta ** 2 - 1. / 240. * theta ** 4) * y, lambda_ * y], dim=-1)[Bool_criterion]
-    qz = torch.stack([(1. / 2. - 1. / 12. * theta ** 2 - 1. / 240. * theta ** 4) * z, lambda_ * z], dim=-1)[Bool_criterion]
-    qw = torch.stack([1. - 1. / 2. * theta ** 2 + 1. / 24. * theta ** 4, torch.cos(theta)], dim=-1)[Bool_criterion]
-    """
-    qx = Bool_criterion * (1. / 2. - 1. / 12. * theta ** 2 - 1. / 240. * theta ** 4) * x + (
-        ~Bool_criterion) * lambda_ * x
-    qy = Bool_criterion * (1. / 2. - 1. / 12. * theta ** 2 - 1. / 240. * theta ** 4) * y + (
-        ~Bool_criterion) * lambda_ * y
-    qz = Bool_criterion * (1. / 2. - 1. / 12. * theta ** 2 - 1. / 240. * theta ** 4) * z + (
-        ~Bool_criterion) * lambda_ * z
-    qw = Bool_criterion * (1. - 1. / 2. * theta ** 2 + 1. / 24. * theta ** 4) + (~Bool_criterion) * torch.cos(theta)
-
-    """
-    qx = [((1. / 2. - 1. / 12. * theta ** 2 - 1. / 240. * theta ** 4) * x)[i] if Bool_value else (lambda_ * x)[i] for i, Bool_value in enumerate(Bool_criterion)]
-    qy = [((1. / 2. - 1. / 12. * theta ** 2 - 1. / 240. * theta ** 4) * y)[i] if Bool_value else (lambda_ * y)[i] for i, Bool_value in enumerate(Bool_criterion)]
-    qz = [((1. / 2. - 1. / 12. * theta ** 2 - 1. / 240. * theta ** 4) * z)[i] if Bool_value else (lambda_ * z)[i] for i, Bool_value in enumerate(Bool_criterion)]
-    qw = [(1. - 1. / 2. * theta ** 2 + 1. / 24. * theta ** 4)[i] if Bool_value else (torch.cos(theta))[i] for i, Bool_value in enumerate(Bool_criterion)]
-    """
-
-    q_ = torch.stack([qx, qy, qz, qw], -1)  # xyzw
-
-    return q_
+def exp_r2q_taylor_(x, y, z, theta):
+    qx = (1.0 / 2.0 - 1.0 / 12.0 * theta ** 2 - 1.0 / 240.0 * theta ** 4) * x
+    qy = (1.0 / 2.0 - 1.0 / 12.0 * theta ** 2 - 1.0 / 240.0 * theta ** 4) * y
+    qz = (1.0 / 2.0 - 1.0 / 12.0 * theta ** 2 - 1.0 / 240.0 * theta ** 4) * z
+    qw = 1.0 - 1.0 / 2.0 * theta ** 2 + 1.0 / 24.0 * theta ** 4
+    return torch.stack([qx, qy, qz, qw], -1)
 
 
 def q_to_R(q):  # xyzw    四元数转化为旋转矩阵
@@ -200,16 +188,29 @@ def log_q2r(q):  # here fixme
     return r_
 
 
-def log_q2r_parallel(q):  # here fixme
+def log_q2r_parallel(q, eps_theta=1e-20, eps_w=1e-10):
     x, y, z, w = q[..., 0], q[..., 1], q[..., 2], q[..., 3]
+
     theta = torch.sqrt(x ** 2 + y ** 2 + z ** 2)
 
-    Bool_criterion_1 = (theta < 1e-20)
-    Bool_criterion_2 = (theta >= 1e-20) & (torch.abs(w) < 1e-10)
-    Bool_criterion_3 = (theta >= 1e-20) & (torch.abs(w) >= 1e-10)
+    bool_theta_0 = theta < eps_theta
+    bool_w_0 = torch.abs(w) < eps_w
+    bool_w_0_left = torch.logical_and(bool_w_0, w < 0)
 
-    lambda_ = Bool_criterion_1 * (2. / w - 2. / 3. * (theta ** 2) / (w * w * w)) + Bool_criterion_2 * (
-                w / torch.abs(w) * torch.pi / theta) + Bool_criterion_3 * (2. * (torch.arctan(theta / w)) / theta)
+    lambda_ = torch.where(
+        bool_w_0,
+        torch.where(
+            bool_w_0_left,
+            -torch.pi / theta,
+            torch.pi / theta
+        ),
+        torch.where(
+            bool_theta_0,
+            2.0 / w - 2.0 / 3.0 * (theta ** 2) / (w * w * w),
+            2.0 * (torch.arctan(theta / w)) / theta
+        ),
+    )
+
     r_ = torch.stack([lambda_ * x, lambda_ * y, lambda_ * z], -1)
 
     return r_
@@ -269,51 +270,6 @@ def se3_to_SE3_N(poses_wu):
         pose_se3 = se3_to_SE3(poses_wu[i])
         poses_se3_list.append(pose_se3)
     poses = torch.stack(poses_se3_list, 0)
-
-    return poses
-
-
-def SplineN(start_pose, end_pose, NUM, device=None):
-    # start_pose & end_pose are se3
-
-    # spline t
-    pose_list = []
-    interval = 1 / (NUM - 1)
-    for i in range(0, start_pose.shape[0]):
-        q_start, t_start = se3_2_qt(start_pose[i])  # N poses
-        q_end, t_end = se3_2_qt(end_pose[i])
-        # print('test')
-
-        for j in range(0, NUM):
-            # five variables
-            if j == 0:
-                sample_time = j * interval + 0.000001
-            elif j == (NUM - 1):
-                sample_time = j * interval - 0.000001
-            else:
-                sample_time = j * interval
-            # sample_time = j * interval
-
-            # sample t_vector
-            t_t = (1 - sample_time) * t_start + sample_time * t_end
-            # print(t_t[0], t_t[1], t_t[2])
-
-            # sample rotation_vector
-            q_tau_0 = q_to_Q(q_to_q_conj(q_start)) @ q_end  # equation 50 shape:[4]
-
-            r = sample_time * log_q2r(q_tau_0)  # equation 51 shape:[3]
-            q_t_0 = exp_r2q(r)  # equation 52 shape:[4]
-            q_t = q_to_Q(q_start) @ q_t_0  # equation 53 shape:[4]
-
-            # convert q&t to RT
-            R = q_to_R(q_t)  # [3,3]
-            t = t_t.reshape(3, 1)
-            # R = torch.Tensor(R).to(device)
-            # t = torch.Tensor(t).to(device)
-            pose_spline = torch.cat([R, t], -1)  # [3, 4]
-            pose_list.append(pose_spline)
-
-    poses = torch.stack(pose_list, 0)  # [N, 3, 4]
 
     return poses
 
@@ -417,6 +373,7 @@ def Spline4N_new(pose0, pose1, pose2, pose3, poses_number, NUM, delay_time=0):
 
     return poses
 
+
 def SplineEvent(se3_start, se3_end, t_tau, period, delay_time=0):
     # start_pose & end_pose are se3
 
@@ -455,10 +412,6 @@ def SplineEvent(se3_start, se3_end, t_tau, period, delay_time=0):
     poses = pose_spline.reshape([-1, 3, 4])  # [35, 6, 3, 4]
 
     return poses
-
-
-def get_pose(start_pose, end_pose, NUM, device):
-    return SplineN(start_pose, end_pose, NUM, device)
 
 
 ### here: test ###
