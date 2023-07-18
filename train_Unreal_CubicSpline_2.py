@@ -357,7 +357,6 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     # setup device
-    os.environ["CUDA_VISIBLE_DEVICES"] = str(args.device)
     torch.cuda.set_device(args.device)
 
     # train
