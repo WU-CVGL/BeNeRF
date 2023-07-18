@@ -7,6 +7,7 @@ from tqdm import trange, tqdm
 
 import optimize_pose_CubicSpline_2
 from config import config_parser
+from logger.wandb_logger import WandbLogger
 from loss import imgloss
 from spline import se3_to_SE3_N, SE3_to_se3_N
 from load_llff import regenerate_pose, load_llff_data
@@ -20,14 +21,8 @@ def train(args):
     print('args.barf: ', args.barf, 'args.barf_start_end: ', args.barf_start, args.barf_end)
 
     # Load data images are groundtruth
-    optimize_se3 = args.optimize_se3
-    optimize_nerf = args.optimize_nerf
-    optimize_trans = args.optimize_trans
+    logger = WandbLogger(args)
     load_state = args.load_state
-    print('!!! Optimize SE3 Network: ', optimize_se3)
-    print('!!! Load which npy file: ', load_state)
-    print('load poses correspond to %s line' % args.load_state)
-    # focal_GT = torch.tensor([548.409])
 
     # transforms
     mse_loss = imgloss.MSELoss()
@@ -204,14 +199,16 @@ def train(args):
 
         img_loss = mse_loss(safelog(rgb2gray(ret_gray2['rgb_map'])) - safelog(rgb2gray(ret_gray1['rgb_map'])), target_s)
         psnr = mse2psnr(img_loss)
+        img_loss *= args.event_coefficient
+        logger.write("train_event_loss_fine", img_loss.item())
 
         # Event loss
         if 'rgb0' in ret:
             img_loss0 = mse_loss(safelog(rgb2gray(ret_gray2['rgb0'])) - safelog(rgb2gray(ret_gray1['rgb0'])), target_s)
             psnr0 = mse2psnr(img_loss0)
             img_loss0 *= args.event_coefficient
+            logger.write("train_event_loss_coarse", img_loss0.item())
 
-        img_loss *= args.event_coefficient
 
         event_loss = img_loss0 + img_loss
 
@@ -249,10 +246,12 @@ def train(args):
 
             rgb_loss_fine = mse_loss(rgb_blur, target_s)
             rgb_loss_fine *= args.rgb_coefficient
+            logger.write("train_rgb_loss_fine", rgb_loss_fine.item())
 
             if 'rgb0' in ret:
                 rgb_loss_coarse = mse_loss(extras_blur, target_s)
                 rgb_loss_coarse *= args.rgb_coefficient
+                logger.write("train_rgb_loss_coarse", rgb_loss_coarse.item())
 
             rgb_loss = rgb_loss_fine + rgb_loss_coarse
             loss += rgb_loss
@@ -261,15 +260,16 @@ def train(args):
             rgb_loss_fine = torch.tensor(0)
             rgb_loss_coarse = torch.tensor(0)
 
+        logger.write("train_loss", loss.item())
         # backwawrd
         loss.backward()
 
         # step
-        if optimize_nerf:
+        if args.optimize_nerf:
             optimizer.step()
-        if optimize_se3:
+        if args.optimize_se3:
             optimizer_pose.step()
-        if optimize_trans:
+        if args.optimize_trans:
             optimizer_trans.step()
 
         # NOTE: IMPORTANT!
@@ -341,6 +341,7 @@ def train(args):
             imageio.mimwrite(moviebase + 'rgb.mp4', to8b(rgbs), fps=30, quality=8)
             imageio.mimwrite(moviebase + 'disp.mp4', to8b(disps / np.max(disps)), fps=30, quality=8)
 
+        logger.update_buffer()
         global_step += 1
 
 

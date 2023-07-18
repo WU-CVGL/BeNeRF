@@ -2,6 +2,7 @@ expname = Living-Room-1000Hz-fixing-window-optimize-pose
 basedir = ./logs/Living-Room-1000Hz-Test
 datadir = ./data/Living-Room-1000Hz
 dataset_type = llff
+viewer = wandb
 
 threshold = 0.1
 rgb_loss = True
@@ -60,21 +61,11 @@ only_optimize_SE3 = False
 optimize_se3 = True
 optimize_nerf = True
 trajectory_seg_num = 1
-# load_state = start_end
-
-
-# distributed training parameters
-# distributed = True
-# dist_url = "env://"
-# rank = -1
-# multiprocessing_distributed = True
-# world_size = 8
-# dist_backend = 'ncll'
 
 deblur_images = 6
 event_coefficient = 0.2
 rgb_coefficient = 1.0
 
-optimize_trans = True
-transform_lrate = 1e-4
+optimize_trans = False
+transform_lrate = 1e-6
 decay_rate_transform = 0.01

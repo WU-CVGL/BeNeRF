@@ -32,7 +32,7 @@ class Model(nerf.Model):
         self.graph.transform = TransformPose()
 
         self.graph.rgb_pose.params.weight.data = torch.nn.Parameter(torch.rand(1, 6) * 0.1)
-        self.graph.transform.params.weight.data = torch.nn.Parameter(torch.rand(1, 6) * 0.01)
+        self.graph.transform.params.weight.data = torch.nn.Parameter(torch.zeros(1, 6))
 
         return self.graph
 

@@ -139,9 +139,6 @@ def render_video_test(i_, graph, render_poses, H, W, K, args):
     return rgbs, disps
 
 
-to8b = lambda x: (255 * np.clip(x, 0, 1)).astype(np.uint8)
-
-
 def render_image_test(i, graph, render_poses, H, W, K, args, dir=None, need_depth=True):
     img_dir = os.path.join(args.basedir, args.expname, dir, 'img_test_{:06d}'.format(i))
     os.makedirs(img_dir, exist_ok=True)

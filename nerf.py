@@ -1,7 +1,7 @@
 import numpy as np
 import torch
-from torch import nn
 import torch.nn.functional as F
+from torch import nn
 
 from run_nerf_helpers import get_specific_rays, get_rays, ndc_rays, sample_pdf
 
@@ -77,7 +77,7 @@ def get_embedder(args, multires, i=0):
     return embed, embedder_obj.out_dim
 
 
-class Model():
+class Model:
     def __init__(self):
         super().__init__()
 
@@ -314,8 +314,7 @@ class Graph(nn.Module):
         # step3: 将pose和ray_idx送入render y
 
     def get_pose(self, i, args, events_ts, poses_ts,
-                 trajectory_seg_num):  # 父类 get_pose 会被子类重写，所以后续调用的 get_pose 都为 cubic_spline 之后的 pose
-
+                 trajectory_seg_num):
         return i
 
     def get_pose_render(self):
@@ -420,137 +419,6 @@ class Graph(nn.Module):
             ret['sigma'] = sigma
 
         return ret
-
-    # def render(self, barf_i, poses, ray_idx, H, W, K, args, near=0., far=1., ray_idx_tv=None, training=False):
-    #     # step1: pose:这个pose是直接传入的 y
-    #     # step2: get rays:根据pose得到 y
-    #     # step3: get ray_idx y
-    #
-    #     # rays_list = []
-    #     #
-    #     # for p in poses[:, :3, :4]:
-    #     #     rays_o_, rays_d_ = get_rays(H, W, K, p)
-    #     #     rays_o_d = torch.stack([rays_o_, rays_d_], 0)
-    #     #     rays_list.append(rays_o_d)
-    #     #
-    #     # rays = torch.stack(rays_list, 0)          # [N(poses), ro+rd, H, W, 3]
-    #     # rays = rays.reshape(-1, 2, H * W, 3)      # [N(poses), ro+rd, H * W, 3]    把原始的 矩阵图 展开成一行
-    #     # rays = torch.permute(rays, [0, 2, 1, 3])  # [N(poses), H * W, ro+rd, 3]
-    #
-    #     if training:
-    #
-    #         # pixels = args.pixels_every_pose
-    #         # batch_rays_list = []
-    #         # for i in range(poses.shape[0]):
-    #         #     idx = ray_idx[i * pixels:(i + 1) * pixels]
-    #         #     batch_rays_ = rays[i, idx]
-    #         #     batch_rays_list.append(batch_rays_)
-    #         # batch_rays = torch.stack(batch_rays_list, 0)
-    #
-    #         # change ray_idx to i,j
-    #         j = ray_idx // W
-    #         i = ray_idx % W
-    #         # poses = poses.unsqueeze(1).repeat(1, args.pixels_every_pose, 1, 1).reshape(-1, 3, 4) # repeat the poses for the times of pixels per pose   [poses_num, 3, 4] --> [poses_num * args.pixels_every_pose, 3, 4]
-    #         rays_o_, rays_d_ = get_specific_rays(i, j, K, poses)
-    #         rays_o_d = torch.stack([rays_o_, rays_d_], 0)  # [ro+rd, rays_num, 3]
-    #         batch_rays = torch.permute(rays_o_d, [1, 0, 2])  # # [rays_num, ro+rd, 3]
-    #
-    #     else:
-    #         rays_list = []
-    #
-    #         for p in poses[:, :3, :4]:
-    #             rays_o_, rays_d_ = get_rays(H, W, K, p)
-    #             rays_o_d = torch.stack([rays_o_, rays_d_], 0)
-    #             rays_list.append(rays_o_d)
-    #
-    #         rays = torch.stack(rays_list, 0)  # [N(poses), ro+rd, H, W, 3]
-    #         rays = rays.reshape(-1, 2, H * W, 3)  # [N(poses), ro+rd, H * W, 3]    把原始的 矩阵图 展开成一行
-    #         rays = torch.permute(rays, [0, 2, 1, 3])  # [N(poses), H * W, ro+rd, 3]
-    #
-    #         batch_rays = rays[:, ray_idx]  # [N, N_rand//N, ro+rd, 3]
-    #
-    #     batch_rays = batch_rays.reshape(-1, 2, 3)  # here: 交换位置？[N*N_rand//N, ro+rd, 3]
-    #     batch_rays = torch.transpose(batch_rays, 0, 1)  # [ro+rd, N*N_rand//N, 3]
-    #
-    #     if ray_idx_tv is not None:
-    #         batch_rays_tv = rays[0, ray_idx_tv]
-    #         batch_rays_tv = batch_rays_tv.reshape(-1, 2, 3)
-    #         batch_rays_tv = torch.transpose(batch_rays_tv, 0, 1)
-    #         batch_rays = torch.cat([batch_rays, batch_rays_tv], 1)
-    #
-    #     # get standard rays
-    #     rays_o, rays_d = batch_rays
-    #     if args.use_viewdirs:
-    #         viewdirs = rays_d
-    #         viewdirs = viewdirs / torch.norm(viewdirs, dim=-1, keepdim=True)
-    #         viewdirs = torch.reshape(viewdirs, [-1, 3]).float()
-    #
-    #     sh = rays_d.shape
-    #     if args.ndc:
-    #         rays_o, rays_d = ndc_rays(H, W, K[0][0], 1., rays_o, rays_d)
-    #
-    #     # Create ray batch
-    #     # rays_o = torch.reshape(rays_o, [-1, 3]).float()
-    #     # rays_d = torch.reshape(rays_d, [-1, 3]).float()
-    #
-    #     near, far = near * torch.ones_like(rays_d[..., :1]), far * torch.ones_like(rays_d[..., :1])
-    #     rays = torch.cat([rays_o, rays_d, near, far], -1)
-    #
-    #     if args.use_viewdirs:
-    #         rays = torch.cat([rays, viewdirs], -1)  # this is final rays
-    #
-    #     # step: 这里可以加一步，得到render_rays中的points: 输入是rays here:n
-    #
-    #     N_rays = rays.shape[0]
-    #     rays_o, rays_d = rays[:, 0:3], rays[:, 3:6]  # [N_rays, 3] each
-    #     viewdirs = rays[:, -3:] if rays.shape[-1] > 8 else None
-    #     bounds = torch.reshape(rays[..., 6:8], [-1, 1, 2])
-    #     near, far = bounds[..., 0], bounds[..., 1]
-    #
-    #     t_vals = torch.linspace(0., 1., steps=args.N_samples)
-    #     z_vals = near * (1. - t_vals) + far * (t_vals)
-    #     z_vals = z_vals.expand([N_rays, args.N_samples])
-    #
-    #     # perturb
-    #     # get intervals between samples
-    #     mids = .5 * (z_vals[..., 1:] + z_vals[..., :-1])
-    #     upper = torch.cat([mids, z_vals[..., -1:]], -1)
-    #     lower = torch.cat([z_vals[..., :1], mids], -1)
-    #     # stratified samples in those intervals
-    #     t_rand = torch.rand(z_vals.shape)
-    #     z_vals = lower + (upper - lower) * t_rand
-    #     pts = rays_o[..., None, :] + rays_d[..., None, :] * z_vals[..., :, None]  # [N_rays, N_samples, 3]
-    #
-    #     # step4: forward_rays: nerf.forward: 输入是pts和viewdirs 输出:raw here:n y
-    #     raw_output = self.nerf.forward(barf_i, pts, viewdirs, args)
-    #
-    #     # step5: raw2output: nerf.raw2output 输入:(raw, z_vals, rays_d, raw_noise_std=1.0) y
-    #     rgb_map, disp_map, acc_map, weights, depth_map, sigma = self.nerf.raw2output(raw_output, z_vals, rays_d)
-    #
-    #     # step6: if fine, 重复step3-5
-    #     if args.N_importance > 0:
-    #         rgb_map_0, disp_map_0, acc_map_0 = rgb_map, disp_map, acc_map
-    #         # step3
-    #         z_vals_mid = .5 * (z_vals[..., 1:] + z_vals[..., :-1])
-    #         z_samples = sample_pdf(z_vals_mid, weights[..., 1:-1], args.N_importance)
-    #         z_samples = z_samples.detach()
-    #
-    #         z_vals, _ = torch.sort(torch.cat([z_vals, z_samples], -1), -1)
-    #         pts = rays_o[..., None, :] + rays_d[..., None, :] * z_vals[..., :,
-    #                                                             None]  # [N_rays, N_samples + N_importance, 3]
-    #         # step4 & step5
-    #         raw_output = self.nerf_fine.forward(barf_i, pts, viewdirs, args)
-    #         rgb_map, disp_map, acc_map, weights, depth_map, sigma = self.nerf_fine.raw2output(raw_output, z_vals,
-    #                                                                                           rays_d)
-    #
-    #     ret = {'rgb_map': rgb_map, 'disp_map': disp_map, 'acc_map': acc_map}
-    #     if args.N_importance > 0:
-    #         ret['rgb0'] = rgb_map_0
-    #         ret['disp0'] = disp_map_0
-    #         ret['acc0'] = acc_map_0
-    #         ret['sigma'] = sigma
-    #
-    #     return ret
 
     @torch.no_grad()
     def render_video(self, barf_i, poses, H, W, K, args):

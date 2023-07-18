@@ -220,7 +220,9 @@ def config_parser():
 
     parser.add_argument("--event_coefficient", type=float, default=1.0,
                         help='coefficient for event loss')
-
     parser.add_argument("--rgb_coefficient", type=float, default=1.0,
+                        help='coefficient for rgb loss')
+
+    parser.add_argument("--viewer", type=str, default="wandb",
                         help='coefficient for rgb loss')
     return parser
