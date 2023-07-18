@@ -160,7 +160,7 @@ def train(args):
             update_se3 = torch.concatenate([graph_ckpt['graph']['se3.end.weight'],
                                             graph_ckpt['graph']['se3.end.weight'][-1].unsqueeze(0).repeat(
                                                 [test_num, 1])])
-            graph.se3.end.weight.data = torch.nn.Parameter(update_se3)
+            graph.rgb_pose.end.weight.data = torch.nn.Parameter(update_se3)
             global_step = 1
         else:
             graph.load_state_dict(graph_ckpt['graph'])
@@ -207,7 +207,7 @@ def train(args):
 
         frame_id = frame_num + images.shape[0] - 2
         update_se3[frame_id + 1] = update_se3[frame_id]
-        graph.se3.end.weight.data = torch.nn.Parameter(
+        graph.rgb_pose.end.weight.data = torch.nn.Parameter(
             update_se3)  # initialize pose of new frame with pose of last frame
 
         # load event_data of new frames
@@ -348,7 +348,7 @@ def train(args):
 
             if i % args.i_video == 0 and i > 0:
                 bds = np.array([1 / 0.75, 150 / 0.75])
-                optimized_se3 = graph.se3.end.weight.data
+                optimized_se3 = graph.rgb_pose.end.weight.data
                 optimized_pose = se3_to_SE3_N(optimized_se3)
                 optimized_pose = torch.cat([optimized_pose, torch.tensor([H, W, focal]).reshape([1, 3, 1]).repeat(
                     optimized_pose.shape[0], 1, 1)], -1)

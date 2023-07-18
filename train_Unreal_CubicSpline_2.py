@@ -12,15 +12,12 @@ from spline import se3_to_SE3_N, SE3_to_se3_N
 from load_llff import regenerate_pose, load_llff_data
 from nerf import *
 from run_nerf_helpers import render_video_test, to8b, init_nerf, mse2psnr, render_image_test
-from loss.tvloss import EdgeAwareVariationLoss, GrayEdgeAwareVariationLoss
 from utils import imgutils
 from utils.mathutils import safelog
 
 
 def train(args):
     print('args.barf: ', args.barf, 'args.barf_start_end: ', args.barf_start, args.barf_end)
-    print('tv_width: ', args.tv_width_nerf)
-    print('lambda: ', args.tv_loss_lambda)
 
     # Load data images are groundtruth
     optimize_se3 = args.optimize_se3
@@ -60,13 +57,12 @@ def train(args):
         # poses_start_se3 = SE3_to_se3_N(poses_start[:, :3, :4])[i_train]    # pose 转换为 旋转角速度+运动速度
         poses_se3 = SE3_to_se3_N(poses[:, :3, :4])[i_train]
 
-        print('Loaded llff', images.shape, render_poses.shape, hwf, args.datadir)
+        print('Loaded data', images.shape, render_poses.shape, hwf, args.datadir)
 
         print('DEFINING BOUNDS')
         if args.no_ndc:
             near = torch.min(bds_start) * .9
             far = torch.max(bds_start) * 1.
-
         else:
             near = 0.
             far = 1.
@@ -78,7 +74,6 @@ def train(args):
     # Cast intrinsics to right types
     H, W, focal = hwf
     H, W = int(H), int(W)
-    hwf = [H, W, focal]
 
     if K is None:
         K = torch.Tensor([
@@ -117,7 +112,7 @@ def train(args):
 
         model = optimize_pose_CubicSpline_2.Model(poses_se3, poses_ts)  # 22和25
         graph = model.build_network(args)
-        optimizer, optimizer_se3 = model.setup_optimizer(args)
+        optimizer, optimizer_pose, optimizer_trans = model.setup_optimizer(args)
         path = os.path.join(basedir, expname, '{:06d}.tar'.format(args.weight_iter))  # here
         graph_ckpt = torch.load(path)
 
@@ -138,7 +133,8 @@ def train(args):
         else:
             graph.load_state_dict(graph_ckpt['graph'])
             optimizer.load_state_dict(graph_ckpt['optimizer'])
-            optimizer_se3.load_state_dict(graph_ckpt['optimizer_se3'])
+            optimizer_pose.load_state_dict(graph_ckpt['optimizer_pose'])
+            optimizer_trans.load_state_dict(graph_ckpt['optimizer_trans'])
             if args.two_phase:
                 global_step = 1
             else:
@@ -152,7 +148,7 @@ def train(args):
             poses_se3 = poses_se3 + rand
         model = optimize_pose_CubicSpline_2.Model(poses_se3, poses_ts)
         graph = model.build_network(args)  # nerf, nerf_fine, forward
-        optimizer, optimizer_se3 = model.setup_optimizer(args)
+        optimizer, optimizer_pose, optimizer_trans = model.setup_optimizer(args)
         print('Not Load Model!')
 
     N_iters = args.max_iter + 1
@@ -170,16 +166,8 @@ def train(args):
     # show image
     num = images.shape[0]
 
-    if args.tv_loss:
-        tvloss_fn_rgb = EdgeAwareVariationLoss(in1_nc=3)
-        tvloss_fn_gray = GrayEdgeAwareVariationLoss(in1_nc=1, in2_nc=3)
-
     print('Number is {} !!!'.format(num))
     for i in trange(start, N_iters):
-        ### core optimization loop ###
-        # if i%500==0 and i>0:
-        #     num += 1
-        #     print('Number is {} !!!'.format(num))
         i = i + global_step_
         if i == 0:
             init_nerf(graph.nerf)
@@ -208,21 +196,10 @@ def train(args):
 
         target_s = events_accu.reshape(-1, 1)[ray_idx]
 
-        if args.tv_loss and i >= args.n_tvloss:
-            # if args.tv_loss_rgb:
-            rgb_sharp_tv = ret['rgb_map'][-args.tv_width_nerf ** 2:]
-            rgb_sharp_tv = rgb_sharp_tv.reshape(-1, args.tv_width_nerf, args.tv_width_nerf, 3)  # [NHWC]
-            rgb_sharp_tv = torch.permute(rgb_sharp_tv, (0, 3, 1, 2))
-            if args.tv_loss_gray:
-                gray = ret['disp_map'][-args.tv_width_nerf ** 2:]
-                depth_tv = gray
-                depth_tv = depth_tv.reshape(-1, args.tv_width_nerf, args.tv_width_nerf, 1)  # [NHWC]
-                depth_tv = torch.permute(depth_tv, (0, 3, 1, 2))
-
         # backward
-        optimizer_se3.zero_grad()  # here
+        optimizer_pose.zero_grad()
+        optimizer_trans.zero_grad()
         optimizer.zero_grad()
-
 
         img_loss = mse_loss(safelog(rgb2gray(ret_gray2['rgb_map'])) - safelog(rgb2gray(ret_gray1['rgb_map'])), target_s)
         psnr = mse2psnr(img_loss)
@@ -290,7 +267,9 @@ def train(args):
         if optimize_nerf:
             optimizer.step()
         if optimize_se3:
-            optimizer_se3.step()
+            optimizer_pose.step()
+
+        optimizer_trans.step()
 
         # NOTE: IMPORTANT!
         ###   update learning rate   ###
@@ -302,19 +281,15 @@ def train(args):
 
         decay_rate_pose = args.decay_rate_pose
         new_lrate_pose = args.pose_lrate * (decay_rate_pose ** (global_step / decay_steps))
-        for param_group in optimizer_se3.param_groups:
+        for param_group in optimizer_pose.param_groups:
             param_group['lr'] = new_lrate_pose
         ###############################
 
         if i % args.i_print == 0:
-            if args.tv_loss and i >= args.n_tvloss:
-                tqdm.write(
-                    f"[TRAIN] Iter: {i} Loss: {loss.item()}  coarse_loss:, {img_loss0.item()}, rgb_loss: {rgb_loss.item()} TV Loss: {loss_tv.item()}")
-            else:
-                tqdm.write(
-                    f"[TRAIN] Iter: {i} Loss: {loss.item()}, event_loss: {event_loss.item()}, rgb_loss: {rgb_loss.item()}, "
-                    f"event_fine_loss: {img_loss.item()}, event_coarse_loss: {img_loss0.item()}, "
-                    f"rgb_loss_fine: {rgb_loss_fine.item()}, rgb_loss_coarse: {rgb_loss_coarse.item()}")
+            tqdm.write(
+                f"[TRAIN] Iter: {i} Loss: {loss.item()}, event_loss: {event_loss.item()}, rgb_loss: {rgb_loss.item()}, "
+                f"event_fine_loss: {img_loss.item()}, event_coarse_loss: {img_loss0.item()}, "
+                f"rgb_loss_fine: {rgb_loss_fine.item()}, rgb_loss_coarse: {rgb_loss_coarse.item()}")
 
         if i < 20:
             print(
@@ -328,7 +303,8 @@ def train(args):
                 'global_step': global_step,
                 'graph': graph.state_dict(),
                 'optimizer': optimizer.state_dict(),
-                'optimizer_se3': optimizer_se3.state_dict(),
+                'optimizer_pose': optimizer_pose.state_dict(),
+                'optimizer_trans': optimizer_trans.state_dict(),
             }, path)
             print('Saved checkpoints at', path)
 
@@ -343,7 +319,7 @@ def train(args):
 
         if i % args.i_video == 0 and i > 0:
             bds = np.array([1 / 0.75, 150 / 0.75])
-            optimized_se3 = graph.se3.end.weight.data
+            optimized_se3 = graph.rgb_pose.end.weight.data
             optimized_pose = se3_to_SE3_N(optimized_se3)
             optimized_pose = torch.cat(
                 [optimized_pose, torch.tensor([H, W, focal]).reshape([1, 3, 1]).repeat(optimized_pose.shape[0], 1, 1)],

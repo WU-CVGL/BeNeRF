@@ -1,4 +1,5 @@
-import torch.nn
+import torch
+import torch.nn as nn
 
 import spline
 import nerf
@@ -6,12 +7,18 @@ import nerf
 import numpy as np
 
 
-class SE3(torch.nn.Module):
-    def __init__(self, shape_1, trajectory_seg_num):
+class CameraPose(nn.Module):
+    def __init__(self):
         super().__init__()
-        self.params = torch.nn.Embedding(shape_1, 6)  # 22和25
-        self.transform = torch.nn.Embedding(1, 6)
-        # self.rgb_params = torch.nn.Embedding(2, 6)
+        self.params = nn.Embedding(1, 6)
+
+
+class TransformPose(nn.Module):
+
+    def __init__(self):
+        super().__init__()
+        self.params = nn.Embedding(1, 6)
+
 
 class Model(nerf.Model):
     def __init__(self, poses_se3, poses_ts):
@@ -22,9 +29,11 @@ class Model(nerf.Model):
     def build_network(self, args):
         self.graph = Graph(args, D=8, W=256, input_ch=63, input_ch_views=27, output_ch=4, skips=[4], use_viewdirs=True)
 
-        self.graph.se3 = SE3(self.poses_se3.shape[0], args.trajectory_seg_num)
+        self.graph.rgb_pose = CameraPose()
+        self.graph.transform = TransformPose()
 
-        self.graph.se3.params.weight.data = torch.nn.Parameter(self.poses_se3)
+        self.graph.rgb_pose.params.weight.data = torch.nn.Parameter(torch.rand(1, 6) * 0.01)
+        self.graph.transform.params.weight.data = torch.nn.Parameter(torch.rand(1, 6) * 0.001)
 
         return self.graph
 
@@ -34,19 +43,22 @@ class Model(nerf.Model):
             grad_vars += list(self.graph.nerf_fine.parameters())
         self.optim = torch.optim.Adam(params=grad_vars, lr=args.lrate, betas=(0.9, 0.999))  # nerf 的 gradient
 
-        grad_vars_se3 = list(self.graph.se3.parameters())
-        self.optim_se3 = torch.optim.Adam(params=grad_vars_se3, lr=args.lrate)  # se3 的 gradient
+        grad_vars_pose = list(self.graph.rgb_pose.parameters())
+        self.optim_pose = torch.optim.Adam(params=grad_vars_pose, lr=args.lrate)  # se3 的 gradient
 
-        return self.optim, self.optim_se3
+        grad_vars_transform = list(self.graph.transform.parameters())
+        self.optim_transform = torch.optim.Adam(params=grad_vars_transform, lr=args.lrate)  # se3 的 gradient
+
+        return self.optim, self.optim_pose, self.optim_transform
 
 
 class Graph(nerf.Graph):
     def __init__(self, args, D=8, W=256, input_ch=63, input_ch_views=27, output_ch=4, skips=[4], use_viewdirs=True):
         super().__init__(args, D, W, input_ch, input_ch_views, output_ch, skips,
-                         use_viewdirs)  # 继承 nerf 中的 Graph    等价于 nerf.Graph(.......)   继承了父类所有属性，相当于重新构造了一个类
+                         use_viewdirs)
         self.pose_eye = torch.eye(3, 4)
 
-    def get_pose(self, i, args, events_ts, poses_ts, trajectory_seg_num):  # pose_nums ：随机选择的 poses 对应的行
+    def get_pose(self, i, args, events_ts, poses_ts, trajectory_seg_num):
 
         Dicho_up = poses_ts[:-1][:, np.newaxis].repeat(events_ts.shape[0], axis=1) - events_ts[np.newaxis, :].repeat(
             poses_ts.shape[0] - 1, axis=0)
@@ -58,8 +70,13 @@ class Graph(nerf.Graph):
         low_bound = bound[0]
         up_bound = bound[0] + 1
 
-        se3_start = self.se3.params.weight[low_bound, :]
-        se3_end = self.se3.params.weight[up_bound, :]
+        # start pose
+        se3_start = self.transform.params.weight.reshape(1, 1, 6)
+        # end pose
+        SE3_from = spline.se3_to_SE3(self.rgb_pose.params.weight.reshape(1, 1, 6))
+        SE3_trans = spline.se3_to_SE3(self.transform.params.weight.reshape(1, 1, 6))
+        SE3_end = SE3_trans @ SE3_from
+        se3_end = spline.SE3_to_se3(SE3_end)
 
         period = torch.tensor((poses_ts[up_bound] - poses_ts[low_bound])).float()
         t_tau = torch.tensor((events_ts - poses_ts[low_bound])).float()
@@ -69,11 +86,15 @@ class Graph(nerf.Graph):
         return spline_poses
 
     def get_pose_rgb(self, args):
-        se3_start = self.se3.params.weight[0, :].reshape(1, 1, 6)
-        se3_end = self.se3.params.weight[1, :].reshape(1, 1, 6)
-        pose_nums = torch.arange(args.deblur_images).reshape(1, -1).repeat(se3_start.shape[0], 1)
+        # start pose
+        se3_start = torch.zeros(1, 1, 6)
+        # end pose
+        se3_end = self.rgb_pose.params.weight.reshape(1, 1, 6)
 
+        # spline
+        pose_nums = torch.arange(args.deblur_images).reshape(1, -1).repeat(se3_start.shape[0], 1)
         spline_poses = spline.SplineN_linear(se3_start, se3_end, pose_nums, args.deblur_images)
+
         return spline_poses
 
     def get_pose_render(self):
