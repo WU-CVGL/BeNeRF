@@ -1,6 +1,5 @@
-from metrics import compute_img_metric
 import run_nerf_helpers
-from diff_img import *
+from dataprocess.diff_img import *
 import os
 
 imgs_render_dir = './logs/Synthetic-Datasets/Living-Room-1000Hz/test_poses_mid/img_test_010000'

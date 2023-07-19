@@ -269,33 +269,23 @@ class Graph(nn.Module):
 
             ray_idx = pixels_y * W + pixels_x
 
-            spline_poses = self.get_pose(i, args, events_ts, poses_ts, args.trajectory_seg_num)
+            spline_poses = self.get_pose(i, args, events_ts, poses_ts)
             spline_rgb_poses = self.get_pose_rgb(args)
             spline_poses = torch.cat((spline_poses, spline_rgb_poses))
 
             ret = self.render(i, spline_poses, ray_idx.reshape(-1, 1).squeeze(), H, W, K, args, ray_idx_tv=None,
                               training=True)
 
-            # if args.rgb_loss:
-            #     spline_rgb_poses = self.get_pose_rgb(args)
-            #     spline_rgb_poses = spline_rgb_poses[:, None, :, :].repeat([1, ray_idx.shape[0], 1, 1]).reshape(-1, 3, 4)
-            #     ray_idx_rgb = ray_idx.repeat(args.deblur_images)
-            #     ret_rgb = self.render(i, spline_rgb_poses, ray_idx_rgb.reshape(-1, 1).squeeze(), H, W, K, args,
-            #                           ray_idx_tv=None, training=True)
-            # else:
-            #     ret_rgb = None
-            #     ray_idx_rgb = None
-
             if i % args.i_video == 0 and i > 0:
-                # test_poses = self.get_pose(i, args, poses_ts[:-1]+1e-5, poses_ts, args.trajectory_seg_num)
-                test_ts = np.arange(5) / 5 * (poses_ts[1] - poses_ts[0]) + poses_ts[0]
-                spline_poses_test = self.get_pose(i, args, test_ts, poses_ts, args.trajectory_seg_num)
+                spline_poses_test = spline_rgb_poses
                 return ret, ray_idx, spline_poses_test, events_accu
 
             elif i % args.i_img == 0 and i > 0:
-                # test_poses = self.get_pose(i, args, poses_ts[:-1]+1e-5, poses_ts, args.trajectory_seg_num)
-                test_ts = np.arange(5) / 5 * (poses_ts[1] - poses_ts[0]) + poses_ts[0]
-                spline_poses_test = self.get_pose(i, args, test_ts, poses_ts, args.trajectory_seg_num)
+                shape0 = spline_rgb_poses.shape[0]
+                if shape0 % 2 == 1:
+                    spline_poses_test = spline_rgb_poses
+                else:
+                    spline_poses_test = self.get_pose_rgb(args, args.deblur_images + 1)
                 return ret, ray_idx, spline_poses_test, events_accu
 
             else:
@@ -303,7 +293,7 @@ class Graph(nn.Module):
 
         else:
             pose_nums = torch.randperm(int(H // 10))[:5]
-            spline_poses = self.get_pose(i, args, events_ts, poses_ts, args.trajectory_seg_num)
+            spline_poses = self.get_pose(i, args, events_ts, poses_ts)
             # torch.manual_seed(0)
             ray_idx = torch.randperm(H * W)[:args.N_rand // args.deblur_images]
             return spline_poses, ray_idx
@@ -313,8 +303,7 @@ class Graph(nn.Module):
 
         # step3: 将pose和ray_idx送入render y
 
-    def get_pose(self, i, args, events_ts, poses_ts,
-                 trajectory_seg_num):
+    def get_pose(self, i, args, events_ts, poses_ts):
         return i
 
     def get_pose_render(self):

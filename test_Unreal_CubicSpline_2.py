@@ -112,7 +112,7 @@ def train(args):
     print('camera intrinsic parameters: ', K, ' !!!')
 
     # Create log dir and copy the config file
-    basedir = args.basedir
+    basedir = os.path.join(os.getcwd(), "logs", args.expname)
     expname = args.expname
     test_metric_file = os.path.join(basedir, expname, 'test_metrics.txt')
     os.makedirs(os.path.join(basedir, expname), exist_ok=True)

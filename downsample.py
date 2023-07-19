@@ -1,6 +1,6 @@
 import numpy as np
 import os
-import imageio
+from imageio.v3 import imread, imwrite
 
 to8b = lambda x: x.astype(np.uint8)
 
@@ -17,9 +17,6 @@ def downsample(imgdir, factor, folder):
     imgfiles = [os.path.join(imgdir_1, f) for f in sorted(os.listdir(imgdir_1)) if
                 f.endswith('JPG') or f.endswith('jpg') or f.endswith('png') or f.endswith('bmp')]
 
-    def imread(f):
-        return imageio.v3.imread(f)
-
     imgs = [imread(f)[..., :3] for f in imgfiles]
     imgs = np.stack(imgs, 0)
     sh = imgs.shape
@@ -35,4 +32,4 @@ def downsample(imgdir, factor, folder):
         if savedir is not None:
             rgb8 = to8b(new_imgs[i])
             filename = os.path.join(savedir, '{:03d}.png'.format(i))
-            imageio.imwrite(filename, rgb8)
+            imwrite(filename, rgb8)

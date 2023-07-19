@@ -8,15 +8,10 @@ def config_parser():
     parser.add_argument("--device", type=int, default=0,
                         help='cuda id to use')
     # others
-    parser.add_argument("--seq_num", type=int,
-                        help='...to be')
-
     parser.add_argument('--config', is_config_file=True, default='./configs/testconfig.txt',
                         help='config file path')
     parser.add_argument("--expname", type=str,
                         help='experiment name')
-    parser.add_argument("--basedir", type=str, default='./logs/',
-                        help='where to store ckpts and logs')
     parser.add_argument("--datadir", type=str, default='./data/llff/fern',
                         help='input data directory')
 
@@ -43,16 +38,16 @@ def config_parser():
     parser.add_argument("--lrate", type=float, default=5e-4,
                         help='learning rate of NeRF')
     parser.add_argument("--pose_lrate", type=float, default=1e-3,
-                        help='learning rate of SE3 network')
-    parser.add_argument("--transform_lrate", type=float, default=1e-4,
-                        help='learning rate of SE3 network')
+                        help='learning rate of rgb camera pose')
+    parser.add_argument("--transform_lrate", type=float, default=1e-6,
+                        help='learning rate of the transform between event camera and rgb camera')
 
     parser.add_argument("--decay_rate", type=float, default=0.1,
                         help='learning rate decay of NeRF')
     parser.add_argument("--decay_rate_pose", type=float, default=0.01,
-                        help='learning rate decay of SE network')
+                        help='learning rate decay of rgb camera pose')
     parser.add_argument("--decay_rate_transform", type=float, default=0.01,
-                        help='learning rate decay of SE network')
+                        help='learning rate decay of the transform between event camera and rgb camera')
 
     parser.add_argument("--lrate_decay", type=int, default=200,
                         help='exponential learning rate decay (in 1000 steps)')
@@ -111,18 +106,11 @@ def config_parser():
     parser.add_argument("--shape", type=str, default='greek',
                         help='options : armchair / cube / greek / vase')
 
-    ## blender flags
-    parser.add_argument("--white_bkgd", action='store_true',
-                        help='set to render synthetic data on a white bkgd (always use for dvoxels)')
-    parser.add_argument("--half_res", action='store_true',
-                        help='load blender synthetic data at 400x400 instead of 800x800')
-
     ## llff flags
     parser.add_argument("--factor", type=int, default=8,
                         help='downsample factor for LLFF images')
     parser.add_argument("--focal", type=float, default=548.409,
                         help='focal length of images')
-
     parser.add_argument("--no_ndc", action='store_true',
                         help='do not use normalized device coordinates (set for non-forward facing scenes)')
     parser.add_argument("--lindisp", action='store_true',
@@ -180,10 +168,6 @@ def config_parser():
                         help='barf start')
 
     # 分段
-    parser.add_argument("--trajectory_seg_num", type=int, default=5,
-                        help='the number of segmentation chose to optimize per image')
-    parser.add_argument("--only_optimize_SE3", action='store_true',
-                        help='only load NeRF parameter')
     parser.add_argument("--two_phase", action='store_true',
                         help='if use two-phase optimization')
     parser.add_argument("--optimize_se3", action='store_true',

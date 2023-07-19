@@ -40,13 +40,13 @@ class Model(nerf.Model):
         grad_vars = list(self.graph.nerf.parameters())
         if args.N_importance > 0:
             grad_vars += list(self.graph.nerf_fine.parameters())
-        self.optim = torch.optim.Adam(params=grad_vars, lr=args.lrate, betas=(0.9, 0.999))  # nerf 的 gradient
+        self.optim = torch.optim.Adam(params=grad_vars, lr=args.lrate, betas=(0.9, 0.999))
 
         grad_vars_pose = list(self.graph.rgb_pose.parameters())
-        self.optim_pose = torch.optim.Adam(params=grad_vars_pose, lr=args.lrate)  # se3 的 gradient
+        self.optim_pose = torch.optim.Adam(params=grad_vars_pose, lr=args.pose_lrate)
 
         grad_vars_transform = list(self.graph.transform.parameters())
-        self.optim_transform = torch.optim.Adam(params=grad_vars_transform, lr=args.lrate)  # se3 的 gradient
+        self.optim_transform = torch.optim.Adam(params=grad_vars_transform, lr=args.transform_lrate)
 
         return self.optim, self.optim_pose, self.optim_transform
 
@@ -57,7 +57,7 @@ class Graph(nerf.Graph):
                          use_viewdirs)
         self.pose_eye = torch.eye(3, 4)
 
-    def get_pose(self, i, args, events_ts, poses_ts, trajectory_seg_num):
+    def get_pose(self, i, args, events_ts, poses_ts):
         Dicho_up = poses_ts[:-1][:, np.newaxis].repeat(events_ts.shape[0], axis=1) - events_ts[np.newaxis, :].repeat(
             poses_ts.shape[0] - 1, axis=0)
         Dicho_low = poses_ts[1:][:, np.newaxis].repeat(events_ts.shape[0], axis=1) - events_ts[np.newaxis, :].repeat(
@@ -86,15 +86,19 @@ class Graph(nerf.Graph):
 
         return spline_poses
 
-    def get_pose_rgb(self, args):
+    def get_pose_rgb(self, args, seg_num=None):
         # start pose
         se3_start = torch.zeros(1, 1, 6)
         # end pose
         se3_end = self.rgb_pose.params.weight.reshape(1, 1, 6)
 
         # spline
-        pose_nums = torch.arange(args.deblur_images).reshape(1, -1).repeat(se3_start.shape[0], 1)
-        spline_poses = spline.SplineN_linear(se3_start, se3_end, pose_nums, args.deblur_images)
+        if seg_num is None:
+            pose_nums = torch.arange(args.deblur_images).reshape(1, -1).repeat(se3_start.shape[0], 1)
+            spline_poses = spline.SplineN_linear(se3_start, se3_end, pose_nums, args.deblur_images)
+        else:
+            pose_nums = torch.arange(seg_num).reshape(1, -1).repeat(se3_start.shape[0], 1)
+            spline_poses = spline.SplineN_linear(se3_start, se3_end, pose_nums, seg_num)
 
         return spline_poses
 

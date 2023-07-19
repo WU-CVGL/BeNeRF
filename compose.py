@@ -1,7 +1,7 @@
 import torch
 
 
-class Pose():
+class Pose:
     """
     A class of operations on camera poses (PyTorch tensors with shape [...,3,4])
     each [3,4] camera pose takes the form of [R|t]
@@ -52,6 +52,3 @@ class Pose():
 
         pose_new = self(R=R_new, t=t_new)
         return pose_new
-
-
-pose = Pose()

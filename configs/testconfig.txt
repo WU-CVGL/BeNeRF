@@ -1,8 +1,12 @@
-expname = Living-Room-1000Hz-fixing-window-optimize-pose
-basedir = ./logs/Living-Room-1000Hz-Test
+expname = testconfig
 datadir = ./data/Living-Room-1000Hz
 dataset_type = llff
 viewer = wandb
+
+i_img = 1000
+i_video = 500000
+i_weights = 10000
+max_iter = 200000
 
 threshold = 0.1
 rgb_loss = True
@@ -46,21 +50,14 @@ tv_loss_lambda = 0.001
 
 n_tvloss = 0
 
-i_img = 5000
-i_video = 500000
-i_weights = 10000
-max_iter = 200000
-
 # training parameters
 lrate = 5e-4
 pose_lrate = 1e-3
 decay_rate = 0.1
 decay_rate_pose = 0.01
 
-only_optimize_SE3 = False
 optimize_se3 = True
 optimize_nerf = True
-trajectory_seg_num = 1
 
 deblur_images = 6
 event_coefficient = 0.2

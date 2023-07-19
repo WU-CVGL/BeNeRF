@@ -5,10 +5,10 @@ import torch
 from imageio.v3 import imread, imwrite
 from tqdm import tqdm
 
+from utils import imgutils
+
 # Misc
 mse2psnr = lambda x: -10. * torch.log(x) / torch.log(torch.Tensor([10.]))  # logab = logcb / logca
-to8b = lambda x: (255 * np.clip(x, 0, 1)).astype(np.uint8)
-to8b_tensor = lambda x: (255 * torch.clip(x, 0, 1)).type(torch.int)
 
 
 def load_imgs(path):
@@ -143,24 +143,24 @@ def render_image_test(i, graph, render_poses, H, W, K, args, dir=None, need_dept
     img_dir = os.path.join(args.basedir, args.expname, dir, 'img_test_{:06d}'.format(i))
     os.makedirs(img_dir, exist_ok=True)
     imgs = []
+    depth = []
 
     for j, pose in enumerate(tqdm(render_poses)):
         # print(i, time.time() - t)
         # t = time.time()
         pose = pose[None, :3, :4]
         ret = graph.render_video(i, pose[:3, :4], H, W, K, args)
-        imgs.append(ret['rgb_map'])
         rgbs = ret['rgb_map'].cpu().numpy()
-        rgb8 = to8b(rgbs)
+        rgb8 = imgutils.to8bit(rgbs)
         imwrite(os.path.join(img_dir, dir[11:] + '_{:03d}.png'.format(j)), rgb8)
-        # imageio.imwrite(os.path.join(img_dir, 'rgb_{:03d}.png'.format(j)), rgb8)
+        imgs.append(rgb8)
         if need_depth:
             depths = ret['disp_map'].cpu().numpy()
             depths_ = depths / np.max(depths)
-            depth8 = to8b(depths_)
+            depth8 = imgutils.to8bit(depths_)
             imwrite(os.path.join(img_dir, 'depth_{:03d}.png'.format(j)), depth8)
-    imgs = torch.stack(imgs, 0)
-    return imgs
+            depth.append(depth8)
+    return imgs, depth
 
 
 def compute_poses_idx(img_idx, args):

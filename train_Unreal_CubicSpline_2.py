@@ -12,7 +12,7 @@ from loss import imgloss
 from spline import se3_to_SE3_N, SE3_to_se3_N
 from load_llff import regenerate_pose, load_llff_data
 from nerf import *
-from run_nerf_helpers import render_video_test, to8b, init_nerf, mse2psnr, render_image_test
+from run_nerf_helpers import render_video_test, init_nerf, mse2psnr, render_image_test
 from utils import imgutils
 from utils.mathutils import safelog
 
@@ -37,7 +37,7 @@ def train(args):
                                                                                   bd_factor=.75, spherify=args.spherify,
                                                                                   focal=args.focal)
 
-        poses = poses.repeat(args.trajectory_seg_num, 1, 1)
+        poses = poses.repeat(1, 1, 1)
 
         hwf = poses[0, :3, -1]
 
@@ -49,7 +49,7 @@ def train(args):
 
         i_train = torch.arange(2)
 
-        i_train = (i_train.reshape(-1, 1) + i_train.shape[0] * torch.arange(args.trajectory_seg_num)).reshape(-1)
+        i_train = (i_train.reshape(-1, 1) + i_train.shape[0] * torch.arange(1)).reshape(-1)
         # poses_start_se3 = SE3_to_se3_N(poses_start[:, :3, :4])[i_train]    # pose 转换为 旋转角速度+运动速度
         poses_se3 = SE3_to_se3_N(poses[:, :3, :4])[i_train]
 
@@ -81,7 +81,9 @@ def train(args):
     print('camera intrinsic parameters: ', K, ' !!!')
 
     # Create log dir and copy the config file
-    basedir = args.basedir
+
+    basedir = os.path.join(os.getcwd(), "logs")
+    args.__setattr__("basedir", basedir)
     expname = args.expname
     test_metric_file = os.path.join(basedir, expname, 'test_metrics.txt')
     os.makedirs(os.path.join(basedir, expname), exist_ok=True)
@@ -95,12 +97,6 @@ def train(args):
         with open(f, 'w') as file:
             file.write(open(args.config, 'r').read())
 
-    ### fixme !!! test nerf.py
-    '''
-    model = Model()
-    graph = model.build_network(args)  # nerf, nerf_fine, forward
-    optimizer = model.setup_optimizer(args)
-    '''
     if args.load_weights:
         low, high = 0.0001, 0.001
         rand = (high - low) * torch.rand(poses_se3.shape[0], 6) + low
@@ -176,10 +172,8 @@ def train(args):
         elif i % args.i_img == 0 and i > 0:
             ret, ray_idx, test_poses, events_accu = graph.forward(i, poses_ts, threshold, events,
                                                                   H, W, K, args)
-
         else:
-            ret, ray_idx, events_accu = graph.forward(i, poses_ts, threshold, events, H, W, K,
-                                                      args)
+            ret, ray_idx, events_accu = graph.forward(i, poses_ts, threshold, events, H, W, K, args)
 
         pixels_num = ray_idx.shape[0]
 
@@ -198,17 +192,14 @@ def train(args):
         optimizer.zero_grad()
 
         img_loss = mse_loss(safelog(rgb2gray(ret_gray2['rgb_map'])) - safelog(rgb2gray(ret_gray1['rgb_map'])), target_s)
-        psnr = mse2psnr(img_loss)
         img_loss *= args.event_coefficient
         logger.write("train_event_loss_fine", img_loss.item())
 
         # Event loss
         if 'rgb0' in ret:
             img_loss0 = mse_loss(safelog(rgb2gray(ret_gray2['rgb0'])) - safelog(rgb2gray(ret_gray1['rgb0'])), target_s)
-            psnr0 = mse2psnr(img_loss0)
             img_loss0 *= args.event_coefficient
             logger.write("train_event_loss_coarse", img_loss0.item())
-
 
         event_loss = img_loss0 + img_loss
 
@@ -261,6 +252,7 @@ def train(args):
             rgb_loss_coarse = torch.tensor(0)
 
         logger.write("train_loss", loss.item())
+
         # backwawrd
         loss.backward()
 
@@ -277,16 +269,19 @@ def train(args):
         decay_rate = args.decay_rate
         decay_steps = args.lrate_decay * 1000
         new_lrate = args.lrate * (decay_rate ** (global_step / decay_steps))
+        logger.write("lr_nerf", new_lrate)
         for param_group in optimizer.param_groups:
             param_group['lr'] = new_lrate
 
         decay_rate_pose = args.decay_rate_pose
         new_lrate_pose = args.pose_lrate * (decay_rate_pose ** (global_step / decay_steps))
+        logger.write("lr_pose", new_lrate_pose)
         for param_group in optimizer_pose.param_groups:
             param_group['lr'] = new_lrate_pose
 
         decay_rate_transform = args.decay_rate_transform
         new_lrate_trans = args.transform_lrate * (decay_rate_transform ** (global_step / decay_steps))
+        logger.write("lr_trans", new_lrate_trans)
         for param_group in optimizer_trans.param_groups:
             param_group['lr'] = new_lrate_trans
         ###############################
@@ -296,12 +291,6 @@ def train(args):
                 f"[TRAIN] Iter: {i} Loss: {loss.item()}, event_loss: {event_loss.item()}, rgb_loss: {rgb_loss.item()}, "
                 f"event_fine_loss: {img_loss.item()}, event_coarse_loss: {img_loss0.item()}, "
                 f"rgb_loss_fine: {rgb_loss_fine.item()}, rgb_loss_coarse: {rgb_loss_coarse.item()}")
-
-        if i < 20:
-            print(
-                f"[TRAIN] Iter: {i} Loss: {loss.item()}, event_loss: {event_loss.item()}, rgb_loss: {rgb_loss.item()}\n"
-                f"event_fine_loss: {img_loss.item()}, event_coarse_loss: {img_loss0.item()}, \n"
-                f"rgb_loss_fine: {rgb_loss_fine.item()}, rgb_loss_coarse: {rgb_loss_coarse.item()}\n")
 
         if i % args.i_weights == 0 and i > 0:
             path = os.path.join(basedir, expname, '{:06d}.tar'.format(i))
@@ -319,9 +308,14 @@ def train(args):
                 # imgs_render = render_image_test(i, graph, poses[0][:, :4].reshape(1, 3, 4), H, W, K, args,
                 #                                 dir='test_poses_mid',
                 #                                 need_depth=False)
-                imgs_render = render_image_test(i, graph, test_poses, H, W, K, args,
-                                                dir='test_poses_mid',
-                                                need_depth=False)
+                imgs, depth = render_image_test(i, graph, test_poses, H, W, K, args,
+                                                dir='test', need_depth=False)
+                if len(imgs) > 0:
+                    logger.write_img("test_img_mid", imgs[len(imgs) // 2])
+                    logger.write_imgs("test_img_all", imgs)
+                if len(depth) > 0:
+                    logger.write_img("test_depth_mid", depth[len(depth) // 2])
+                    logger.write_imgs("test_depth_all", depth)
 
         if i % args.i_video == 0 and i > 0:
             bds = np.array([1 / 0.75, 150 / 0.75])
@@ -338,8 +332,8 @@ def train(args):
                 rgbs, disps = render_video_test(i, graph, render_poses, H, W, K, args)
             print('Done, saving', rgbs.shape, disps.shape)
             moviebase = os.path.join(basedir, expname, '{}_spiral_{:06d}_'.format(expname, i))
-            imageio.mimwrite(moviebase + 'rgb.mp4', to8b(rgbs), fps=30, quality=8)
-            imageio.mimwrite(moviebase + 'disp.mp4', to8b(disps / np.max(disps)), fps=30, quality=8)
+            imageio.mimwrite(moviebase + 'rgb.mp4', imgutils.to8bit(rgbs), fps=30, quality=8)
+            imageio.mimwrite(moviebase + 'disp.mp4', imgutils.to8bit(disps / np.max(disps)), fps=30, quality=8)
 
         logger.update_buffer()
         global_step += 1

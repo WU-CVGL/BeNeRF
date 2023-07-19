@@ -7,10 +7,8 @@ import time
 import airsim
 import cv2
 import matplotlib.pyplot as plt
-import numpy as np
-import pandas as pd
 
-from event_simulator import *
+from dataprocess.event_simulator import *
 
 parser = argparse.ArgumentParser(description="Simulate event data from AirSim")
 parser.add_argument("--debug", action="store_true")
