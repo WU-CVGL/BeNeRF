@@ -7,12 +7,12 @@ from tqdm import trange, tqdm
 
 import optimize_pose_CubicSpline_2
 from config import config_parser
+from load_llff import regenerate_pose, load_llff_data
 from logger.wandb_logger import WandbLogger
 from loss import imgloss
-from spline import se3_to_SE3_N, SE3_to_se3_N
-from load_llff import regenerate_pose, load_llff_data
 from nerf import *
-from run_nerf_helpers import render_video_test, init_nerf, mse2psnr, render_image_test
+from run_nerf_helpers import render_video_test, init_nerf, render_image_test
+from spline import se3_to_SE3_N, SE3_to_se3_N
 from utils import imgutils
 from utils.mathutils import safelog
 
@@ -301,6 +301,7 @@ def train(args):
                 'optimizer_pose': optimizer_pose.state_dict(),
                 'optimizer_trans': optimizer_trans.state_dict(),
             }, path)
+            logger.write_checkpoint(path, expname)
             print('Saved checkpoints at', path)
 
         if i % args.i_img == 0 and i > 0:

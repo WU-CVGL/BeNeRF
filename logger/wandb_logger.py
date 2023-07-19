@@ -4,7 +4,7 @@ import wandb
 class WandbLogger:
 
     def __init__(self, args) -> None:
-        wandb.init(project="event-bad-nerf", config=args, name=args.expname)
+        self.run = wandb.init(project="event-bad-nerf", config=args, name=args.expname)
         self.buffer = dict()
 
     def write(self, label: str, value) -> None:
@@ -19,7 +19,9 @@ class WandbLogger:
         self.buffer[label] = wandbimgs
 
     def update_buffer(self):
-        wandb.log(self.buffer)
+        self.run.log(self.buffer)
 
-    def write_checkpoint(self, model):
-        wandb.log_artifact(model)
+    def write_checkpoint(self, path, expname):
+        artifact = wandb.Artifact(name=f'checkpoint_{expname}', type="model")
+        artifact.add_file(path)
+        self.run.log_artifact(artifact)
