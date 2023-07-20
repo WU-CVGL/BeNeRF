@@ -28,7 +28,7 @@ def train(args):
     K = None
 
     if args.dataset_type == 'llff':
-        events, images, poses_ts = load_llff_data(args.datadir, args.threshold, factor=args.factor)
+        events, images, poses_ts = load_llff_data(args.datadir, factor=args.factor)
         print('Loaded data', images.shape, args.datadir)
     else:
         print('Unknown dataset type', args.dataset_type, 'exiting')

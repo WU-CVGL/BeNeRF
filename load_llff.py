@@ -61,7 +61,7 @@ def _minify(basedir, factors=[], resolutions=[]):  # basedir: ./data/nerf_llff_d
         print('Done')
 
 
-def _load_data(basedir, threshold, factor=None, width=None, height=None):
+def _load_data(basedir, factor=None, width=None, height=None):
     poses_ts = np.loadtxt(os.path.join(basedir, 'poses_ts.txt'))
 
     img0 = [os.path.join(basedir, 'images', f) for f in sorted(os.listdir(os.path.join(basedir, 'images'))) \
@@ -220,8 +220,8 @@ def spherify_poses(poses, bds):
     return poses_reset, new_poses, bds
 
 
-def load_llff_data(basedir, threshold, factor=1, idx=0):
-    imgs, events, poses_ts = _load_data(basedir, threshold, factor=factor)
+def load_llff_data(basedir, factor=1, idx=0):
+    imgs, events, poses_ts = _load_data(basedir, factor=factor)
     print('Loaded', basedir)
 
     imgs = np.moveaxis(imgs, -1, 0).astype(np.float32)

@@ -11,7 +11,6 @@ i_video = 500000
 i_weights = 10000
 max_iter = 200000
 
-threshold = 0.1
 rgb_loss = True
 
 single_channel = False
