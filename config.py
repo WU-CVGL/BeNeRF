@@ -106,19 +106,15 @@ def config_parser():
     parser.add_argument("--shape", type=str, default='greek',
                         help='options : armchair / cube / greek / vase')
 
+    # idx
+    parser.add_argument("--idx", type=int, default=0,
+                        help='idx in the dataset to deblur')
+
     ## llff flags
     parser.add_argument("--factor", type=int, default=8,
                         help='downsample factor for LLFF images')
     parser.add_argument("--focal", type=float, default=548.409,
                         help='focal length of images')
-    parser.add_argument("--no_ndc", action='store_true',
-                        help='do not use normalized device coordinates (set for non-forward facing scenes)')
-    parser.add_argument("--lindisp", action='store_true',
-                        help='sampling linearly in disparity rather than depth')
-    parser.add_argument("--spherify", action='store_true',
-                        help='set for spherical 360 scenes')
-    parser.add_argument("--llffhold", type=int, default=8,
-                        help='will take every 1/N images as LLFF test set, paper uses 8')
 
     # logging/saving options
     parser.add_argument("--i_print", type=int, default=100,
@@ -176,8 +172,6 @@ def config_parser():
                         help='whether to optimize NeRF network')
     parser.add_argument("--optimize_trans", action='store_true',
                         help='whether to optimize NeRF network')
-    parser.add_argument("--load_state", type=str, default=None,
-                        help='Load which npy file')
 
     # event parameter
     parser.add_argument("--threshold", type=float, default=0.1,

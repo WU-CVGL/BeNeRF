@@ -1,18 +1,16 @@
 import os
 import random
 
-import imageio
 import torch.nn
 from tqdm import trange, tqdm
 
 import optimize_pose_CubicSpline_2
 from config import config_parser
-from load_llff import regenerate_pose, load_llff_data
+from load_llff import load_llff_data
 from logger.wandb_logger import WandbLogger
 from loss import imgloss
 from nerf import *
-from run_nerf_helpers import render_video_test, init_nerf, render_image_test
-from spline import se3_to_SE3_N, SE3_to_se3_N
+from run_nerf_helpers import init_nerf, render_image_test
 from utils import imgutils
 from utils.mathutils import safelog
 
@@ -22,7 +20,6 @@ def train(args):
 
     # Load data images are groundtruth
     logger = WandbLogger(args)
-    load_state = args.load_state
 
     # transforms
     mse_loss = imgloss.MSELoss()
@@ -31,44 +28,14 @@ def train(args):
     K = None
 
     if args.dataset_type == 'llff':
-        events, images, poses, bds_start, render_poses, poses_ts = load_llff_data(args.datadir, args.threshold,
-                                                                                  pose_state=load_state,
-                                                                                  factor=args.factor, recenter=True,
-                                                                                  bd_factor=.75, spherify=args.spherify,
-                                                                                  focal=args.focal)
-
-        poses = poses.repeat(1, 1, 1)
-
-        hwf = poses[0, :3, -1]
-
-        # split train/val/test
-        i_test = torch.tensor([poses.shape[0], poses.shape[0] + 1, poses.shape[0] + 2]).long()
-        i_val = i_test
-        # i_train = torch.Tensor([i for i in torch.arange(int(images.shape[0])) if
-        #                         (i not in i_test and i not in i_val)]).long()
-
-        i_train = torch.arange(2)
-
-        i_train = (i_train.reshape(-1, 1) + i_train.shape[0] * torch.arange(1)).reshape(-1)
-        # poses_start_se3 = SE3_to_se3_N(poses_start[:, :3, :4])[i_train]    # pose 转换为 旋转角速度+运动速度
-        poses_se3 = SE3_to_se3_N(poses[:, :3, :4])[i_train]
-
-        print('Loaded data', images.shape, render_poses.shape, hwf, args.datadir)
-
-        print('DEFINING BOUNDS')
-        if args.no_ndc:
-            near = torch.min(bds_start) * .9
-            far = torch.max(bds_start) * 1.
-        else:
-            near = 0.
-            far = 1.
-        print('NEAR FAR', near, far)
+        events, images, poses_ts = load_llff_data(args.datadir, args.threshold, factor=args.factor)
+        print('Loaded data', images.shape, args.datadir)
     else:
         print('Unknown dataset type', args.dataset_type, 'exiting')
         return
 
     # Cast intrinsics to right types
-    H, W, focal = hwf
+    H, W, focal = images[0].shape[0], images[0].shape[1], args.focal
     H, W = int(H), int(W)
 
     if K is None:
@@ -81,11 +48,9 @@ def train(args):
     print('camera intrinsic parameters: ', K, ' !!!')
 
     # Create log dir and copy the config file
-
     basedir = os.path.join(os.getcwd(), "logs")
     args.__setattr__("basedir", basedir)
     expname = args.expname
-    test_metric_file = os.path.join(basedir, expname, 'test_metrics.txt')
     os.makedirs(os.path.join(basedir, expname), exist_ok=True)
     f = os.path.join(basedir, expname, 'args.txt')
     with open(f, 'w') as file:
@@ -97,57 +62,32 @@ def train(args):
         with open(f, 'w') as file:
             file.write(open(args.config, 'r').read())
 
+    # init model
     if args.load_weights:
-        low, high = 0.0001, 0.001
-        rand = (high - low) * torch.rand(poses_se3.shape[0], 6) + low
-        poses_se3 = poses_se3 + rand
-
-        model = optimize_pose_CubicSpline_2.Model(poses_se3, poses_ts)  # 22和25
+        model = optimize_pose_CubicSpline_2.Model()
         graph = model.build_network(args)
         optimizer, optimizer_pose, optimizer_trans = model.setup_optimizer(args)
-        path = os.path.join(basedir, expname, '{:06d}.tar'.format(args.weight_iter))  # here
+        path = os.path.join(basedir, expname, '{:06d}.tar'.format(args.weight_iter))
         graph_ckpt = torch.load(path)
 
-        if args.only_optimize_SE3:
-            # path_ = os.path.join(basedir, expname, '{:06d}.tar'.format(180000))  # here
-            # graph_ckpt_ = torch.load(path_)
-
-            # only load nerf and nerf_fine network
-            delete_key = []
-            for key, value in graph_ckpt['graph'].items():
-                if key[:4] == 'se3.':
-                    delete_key.append(key)
-
-            pretrained_dict = {k: v for k, v in graph_ckpt['graph'].items() if k not in delete_key}
-            print('only load nerf and nerf_fine network!!!!!')
-            graph.load_state_dict(pretrained_dict, strict=False)
+        graph.load_state_dict(graph_ckpt['graph'])
+        optimizer.load_state_dict(graph_ckpt['optimizer'])
+        optimizer_pose.load_state_dict(graph_ckpt['optimizer_pose'])
+        optimizer_trans.load_state_dict(graph_ckpt['optimizer_trans'])
+        if args.two_phase:
             global_step = 1
         else:
-            graph.load_state_dict(graph_ckpt['graph'])
-            optimizer.load_state_dict(graph_ckpt['optimizer'])
-            optimizer_pose.load_state_dict(graph_ckpt['optimizer_pose'])
-            optimizer_trans.load_state_dict(graph_ckpt['optimizer_trans'])
-            if args.two_phase:
-                global_step = 1
-            else:
-                global_step = graph_ckpt['global_step']
+            global_step = graph_ckpt['global_step']
 
         print('Model Load Done!')
     else:
-        if args.optimize_se3:
-            low, high = 0.0001, 0.001
-            rand = (high - low) * torch.rand(poses_se3.shape[0], 6) + low
-            poses_se3 = poses_se3 + rand
-        model = optimize_pose_CubicSpline_2.Model(poses_se3, poses_ts)
+        model = optimize_pose_CubicSpline_2.Model()
         graph = model.build_network(args)  # nerf, nerf_fine, forward
         optimizer, optimizer_pose, optimizer_trans = model.setup_optimizer(args)
         print('Not Load Model!')
 
-    N_iters = args.max_iter + 1
     print('Begin')
-    print('TRAIN views are', i_train)
-    print('TEST views are', i_test)
-    print('VAL views are', i_val)
+    N_iters = args.max_iter + 1
 
     start = 0
     if not args.load_weights:
@@ -155,10 +95,6 @@ def train(args):
     global_step_ = global_step
     threshold = N_iters + 101
 
-    # show image
-    num = images.shape[0]
-
-    print('Number is {} !!!'.format(num))
     for i in trange(start, N_iters):
         i = i + global_step_
         if i == 0:
@@ -318,23 +254,23 @@ def train(args):
                     logger.write_img("test_depth_mid", depth[len(depth) // 2])
                     logger.write_imgs("test_depth_all", depth)
 
-        if i % args.i_video == 0 and i > 0:
-            bds = np.array([1 / 0.75, 150 / 0.75])
-            optimized_se3 = graph.rgb_pose.end.weight.data
-            optimized_pose = se3_to_SE3_N(optimized_se3)
-            optimized_pose = torch.cat(
-                [optimized_pose, torch.tensor([H, W, focal]).reshape([1, 3, 1]).repeat(optimized_pose.shape[0], 1, 1)],
-                -1)
-            optimized_pose = optimized_pose.cpu().numpy()
-            render_poses = regenerate_pose(optimized_pose, bds, recenter=True, bd_factor=.75, spherify=False,
-                                           path_zflat=False)
-            # Turn on testing mode
-            with torch.no_grad():  # here render_video有点问题
-                rgbs, disps = render_video_test(i, graph, render_poses, H, W, K, args)
-            print('Done, saving', rgbs.shape, disps.shape)
-            moviebase = os.path.join(basedir, expname, '{}_spiral_{:06d}_'.format(expname, i))
-            imageio.mimwrite(moviebase + 'rgb.mp4', imgutils.to8bit(rgbs), fps=30, quality=8)
-            imageio.mimwrite(moviebase + 'disp.mp4', imgutils.to8bit(disps / np.max(disps)), fps=30, quality=8)
+        # if i % args.i_video == 0 and i > 0:
+        #     bds = np.array([1 / 0.75, 150 / 0.75])
+        #     optimized_se3 = graph.rgb_pose.end.weight.data
+        #     optimized_pose = se3_to_SE3_N(optimized_se3)
+        #     optimized_pose = torch.cat(
+        #         [optimized_pose, torch.tensor([H, W, focal]).reshape([1, 3, 1]).repeat(optimized_pose.shape[0], 1, 1)],
+        #         -1)
+        #     optimized_pose = optimized_pose.cpu().numpy()
+        #     render_poses = regenerate_pose(optimized_pose, bds, recenter=True, bd_factor=.75, spherify=False,
+        #                                    path_zflat=False)
+        #     # Turn on testing mode
+        #     with torch.no_grad():  # here render_video有点问题
+        #         rgbs, disps = render_video_test(i, graph, render_poses, H, W, K, args)
+        #     print('Done, saving', rgbs.shape, disps.shape)
+        #     moviebase = os.path.join(basedir, expname, '{}_spiral_{:06d}_'.format(expname, i))
+        #     imageio.mimwrite(moviebase + 'rgb.mp4', imgutils.to8bit(rgbs), fps=30, quality=8)
+        #     imageio.mimwrite(moviebase + 'disp.mp4', imgutils.to8bit(disps / np.max(disps)), fps=30, quality=8)
 
         logger.update_buffer()
         global_step += 1

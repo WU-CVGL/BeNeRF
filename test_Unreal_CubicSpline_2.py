@@ -133,49 +133,25 @@ def train(args):
     optimizer = model.setup_optimizer(args)
     '''
     if args.load_weights:
-        # low, high = 0.0001, 0.001
-        # rand = (high - low) * torch.rand(poses_se3.shape[0], 6) + low
-        # poses_se3 = poses_se3 + rand
-
         model = test_optimize_pose_CubicSpline_2.Model(poses_se3, poses_ts)  # 22和25
         graph = model.build_network(args)
         optimizer, optimizer_se3 = model.setup_optimizer(args)
         path = os.path.join(basedir, expname, '{:06d}.tar'.format(args.weight_iter))  # here
         graph_ckpt = torch.load(path)
 
-        if args.only_optimize_SE3:
-            # path_ = os.path.join(basedir, expname, '{:06d}.tar'.format(180000))  # here
-            # graph_ckpt_ = torch.load(path_)
-
-            # only load nerf and nerf_fine network
-            delete_key = []
-            for key, value in graph_ckpt['graph'].items():
-                if key[:4] == 'se3.':
-                    delete_key.append(key)
-
-            pretrained_dict = {k: v for k, v in graph_ckpt['graph'].items() if k not in delete_key}
-            print('only load nerf and nerf_fine network!!!!!')
-            graph.load_state_dict(pretrained_dict, strict=False)
-
-            update_se3 = torch.concatenate([graph_ckpt['graph']['se3.end.weight'],
-                                            graph_ckpt['graph']['se3.end.weight'][-1].unsqueeze(0).repeat(
-                                                [test_num, 1])])
-            graph.rgb_pose.end.weight.data = torch.nn.Parameter(update_se3)
+        graph.load_state_dict(graph_ckpt['graph'])
+        optimizer.load_state_dict(graph_ckpt['optimizer'])
+        optimizer_se3.load_state_dict(graph_ckpt['optimizer_se3'])
+        if args.two_phase:
             global_step = 1
         else:
-            graph.load_state_dict(graph_ckpt['graph'])
-            optimizer.load_state_dict(graph_ckpt['optimizer'])
-            optimizer_se3.load_state_dict(graph_ckpt['optimizer_se3'])
-            if args.two_phase:
-                global_step = 1
-            else:
-                global_step = graph_ckpt['global_step']
+            global_step = graph_ckpt['global_step']
 
         print('Model Load Done!')
     else:
         low, high = 0.0001, 0.001
         rand = (high - low) * torch.rand(poses_se3.shape[0], 6) + low
-        if optimize_se3:  # 只有当需要优化 se3 时才证明目前load 的pose不够精准，否则加上 random noise 会使得性能下降一点点
+        if optimize_se3:
             poses_se3 = poses_se3 + rand
         model = test_optimize_pose_CubicSpline_2.Model(poses_se3, poses_ts)
         graph = model.build_network(args)  # nerf, nerf_fine, forward

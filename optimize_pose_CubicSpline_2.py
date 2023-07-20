@@ -13,17 +13,14 @@ class CameraPose(nn.Module):
 
 
 class TransformPose(nn.Module):
-
     def __init__(self):
         super().__init__()
         self.params = nn.Embedding(1, 6)
 
 
 class Model(nerf.Model):
-    def __init__(self, poses_se3, poses_ts):
+    def __init__(self):
         super().__init__()
-        self.poses_se3 = poses_se3
-        self.poses_ts = poses_ts
 
     def build_network(self, args):
         self.graph = Graph(args, D=8, W=256, input_ch=63, input_ch_views=27, output_ch=4, skips=[4], use_viewdirs=True)
