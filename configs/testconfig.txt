@@ -1,6 +1,6 @@
 expname = testconfig
-datadir = ./data/Living-Room-1000Hz
-dataset_type = llff
+datadir = ./data/office_zigzag
+dataset_type = uzh
 idx = 0
 viewer = wandb
 

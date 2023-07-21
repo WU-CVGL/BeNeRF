@@ -7,16 +7,19 @@ from imageio.v3 import imread, imwrite
 
 from spline import *
 
-
-BASE_DIR: str = os.path.expanduser("D:\lmy-event\Event-Datasets\Living_Room_1000Hz")
-IMAGE_DIR: str = os.path.join(BASE_DIR, "camera", "temp")
+BASE_DIR: str = os.path.expanduser("C:\\Users\\User\\PycharmProjects\\EventBADNeRF\\data\\office_zigzag")
+IMAGE_DIR: str = os.path.expanduser("C:\\Users\\User\\PycharmProjects\\EventBADNeRF\\data\\office_zigzag\\images")
 INTRINSICS: str = os.path.join(BASE_DIR, "camera", "intrinsics.txt")
 EXTRINSICS: str = os.path.join(BASE_DIR, "camera", "extrinsics.txt")
-OUTPUT_DIR: str = os.path.join(BASE_DIR, "images")
-TEST_DIR: str = os.path.join(BASE_DIR, "test_images")
+OUTPUT_DIR: str = os.path.join(BASE_DIR,
+                               "C:\\Users\\User\\PycharmProjects\\EventBADNeRF\\data\\office_zigzag\\images_blur")
+TEST_DIR: str = os.path.join(BASE_DIR,
+                             "C:\\Users\\User\\PycharmProjects\\EventBADNeRF\\data\\office_zigzag\\images_test")
 GROUNDTRUTH_POSE: str = os.path.join(BASE_DIR, "groundtruth.txt")
 BLUR_NUM: int = 51
 DATASET_NAME = 'Living_Room_1000Hz'
+
+type = "esim"
 
 
 def Spline_GT(start_pose, end_pose, poses_number, H):
@@ -204,46 +207,68 @@ def main():
     image_files = [os.path.join(IMAGE_DIR, f) for f in os.listdir(IMAGE_DIR)]
     image_files = [f for f in image_files if f.lower().endswith(("jpg", "jpeg", "png"))]
     image_files = [f for f in sorted(image_files)]
-    gt_poses = np.loadtxt(GROUNDTRUTH_POSE)
-    intrinsics = read_intrinsics(INTRINSICS)
-    extrinsics = read_extrinsics(EXTRINSICS)
 
-    print("-> Generating poses")
+    if False:
+        gt_poses = np.loadtxt(GROUNDTRUTH_POSE)
+        print("-> Generating poses")
+        intrinsics = read_intrinsics(INTRINSICS)
+        extrinsics = read_extrinsics(EXTRINSICS)
+        h, w, f = intrinsics[0].height, intrinsics[0].width, intrinsics[0].params[0],
+        hwf = np.array([h, w, f]).reshape(3, 1)
 
-    h, w, f = intrinsics[0].height, intrinsics[0].width, intrinsics[0].params[0],
-    hwf = np.array([h, w, f]).reshape(3, 1)
+        start_id = np.arange(gt_poses.shape[0] // BLUR_NUM) * BLUR_NUM
+        end_id = np.arange(gt_poses.shape[0] // BLUR_NUM) * BLUR_NUM + BLUR_NUM - 1
+        mid_id = np.arange(gt_poses.shape[0] // BLUR_NUM) * BLUR_NUM + BLUR_NUM // 2
+        bound_id = np.arange(gt_poses.shape[0] // BLUR_NUM + 1) * BLUR_NUM
 
-    start_id = np.arange(gt_poses.shape[0] // BLUR_NUM) * BLUR_NUM
-    end_id = np.arange(gt_poses.shape[0] // BLUR_NUM) * BLUR_NUM + BLUR_NUM - 1
-    mid_id = np.arange(gt_poses.shape[0] // BLUR_NUM) * BLUR_NUM + BLUR_NUM // 2
-    bound_id = np.arange(gt_poses.shape[0] // BLUR_NUM + 1) * BLUR_NUM
+        R_c2b, T_c2b = extrinsics[0].qvec2rotmat(), extrinsics[0].tvec.reshape(3, 1)
+        bottom = np.array([0, 0, 0, 1]).reshape([1, 4])
+        m_c2b = np.concatenate([np.concatenate([R_c2b, T_c2b], 1), bottom], 0)
 
-    R_c2b, T_c2b = extrinsics[0].qvec2rotmat(), extrinsics[0].tvec.reshape(3, 1)
-    bottom = np.array([0, 0, 0, 1]).reshape([1, 4])
-    m_c2b = np.concatenate([np.concatenate([R_c2b, T_c2b], 1), bottom], 0)
+        near, far = cal_bounds(BASE_DIR)
 
-    near, far = cal_bounds(BASE_DIR)
+        poses_GT_bound = poses_2_mat(gt_poses, m_c2b, near, far, hwf, bottom)
 
-    poses_GT_bound = poses_2_mat(gt_poses, m_c2b, near, far, hwf, bottom)
+        pose_start = poses_GT_bound[start_id]
+        pose_end = poses_GT_bound[end_id]
+        pose_mid = poses_GT_bound[mid_id]
+        pose_bound = poses_GT_bound[bound_id]
 
-    pose_start = poses_GT_bound[start_id]
-    pose_end = poses_GT_bound[end_id]
-    pose_mid = poses_GT_bound[mid_id]
-    pose_bound = poses_GT_bound[bound_id]
+        pose_ts = gt_poses[bound_id, 0]
 
-    pose_ts = gt_poses[bound_id, 0]
+        np.save(os.path.join(BASE_DIR, "pose_bound_start.npy"), pose_start)
+        np.save(os.path.join(BASE_DIR, "pose_bound_end.npy"), pose_end)
+        np.save(os.path.join(BASE_DIR, "pose_bound_mid.npy"), pose_mid)
+        np.save(os.path.join(BASE_DIR, "pose_bounds.npy"), pose_bound)
+        np.save(os.path.join(BASE_DIR, "pose_ts.npy"), pose_ts)
 
-    np.save(os.path.join(BASE_DIR, "pose_bound_start.npy"), pose_start)
-    np.save(os.path.join(BASE_DIR, "pose_bound_end.npy"), pose_end)
-    np.save(os.path.join(BASE_DIR, "pose_bound_mid.npy"), pose_mid)
-    np.save(os.path.join(BASE_DIR, "pose_bounds.npy"), pose_bound)
-    np.save(os.path.join(BASE_DIR, "pose_ts.npy"), pose_ts)
+    if type == "davis":
+        print("Loading davis timestamps")
+        img_ts = np.loadtxt(os.path.join(BASE_DIR, "images.txt"), usecols=0)
+        ts = []
+        for idx in range(len(image_files)):
+            if (idx + 1) % BLUR_NUM == 0 or idx == 0:
+                ts.append(img_ts[idx])
+
+        ts = np.stack(ts)
+        np.savetxt(os.path.join(BASE_DIR, "poses_ts.txt"), ts)
+        print("Saved timestamps")
+
+    elif type == "esim":
+        print("Loading esim timestamps")
+        
+        print("Saved timestamps")
+    else:
+        print("Undefined dataset")
+        return
+
 
     print("-> Blurring images")
-
+    print(f"BLUR_NUM: {BLUR_NUM}")
     img = 0
     res = 0
     amount = 0
+    idx_blur = []
     for idx in range(len(image_files)):
         img += imread(image_files[idx]).astype(np.float32)
         if (idx + 1) % BLUR_NUM == 0:
@@ -252,12 +277,21 @@ def main():
             imwrite(os.path.join(OUTPUT_DIR, "{:0>3d}.jpg".format(amount)), img)
             img = 0
             amount += 1
-        if idx % BLUR_NUM // 2 == 0 and idx + BLUR_NUM // 2 > len(image_files):
-            imwrite(os.path.join(TEST_DIR, "{:0>3d}.jpg".format(amount)), imread(image_files[idx]))
+            idx_blur.append(idx)
+
         res = (idx + 1) % BLUR_NUM
 
+    amount_sharp = 0
+    idx_sharp = []
+    for idx in range(len(image_files)):
+        if idx % BLUR_NUM == BLUR_NUM // 2 and (idx + BLUR_NUM // 2 < len(image_files)):
+            imwrite(os.path.join(TEST_DIR, "{:0>3d}.jpg".format(amount_sharp)), imread(image_files[idx]))
+            idx_sharp.append(idx)
+            amount_sharp += 1
+
     print(f"Redundant images files: {res}")
-    print(f"Blurred images files: {amount}")
+    print(f"Blur images files: {amount} bounds {idx_blur}")
+    print(f"Shap images files: {amount_sharp} in {idx_sharp}")
 
 
 if __name__ == '__main__':

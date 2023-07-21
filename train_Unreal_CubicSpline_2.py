@@ -7,6 +7,7 @@ from tqdm import trange, tqdm
 import optimize_pose_CubicSpline_2
 from config import config_parser
 from load_llff import load_llff_data
+from load_davis import load_davis_data
 from logger.wandb_logger import WandbLogger
 from loss import imgloss
 from nerf import *
@@ -28,8 +29,17 @@ def train(args):
     K = None
 
     if args.dataset_type == 'llff':
+        print("Use llff data")
         events, images, poses_ts = load_llff_data(args.datadir, factor=args.factor)
-        print('Loaded data', images.shape, args.datadir)
+        print('Loaded llff data', images.shape, args.datadir)
+    elif args.dataset_type == 'davis':
+        print("Use davis data")
+        events, images, poses_ts = load_davis_data(args.datadir, factor=args.factor)
+        print('Loaded davis data', images.shape, args.datadir)
+    elif args.dataset_type == "esim":
+        pass
+    elif args.dataset_type == "eds":
+        pass
     else:
         print('Unknown dataset type', args.dataset_type, 'exiting')
         return

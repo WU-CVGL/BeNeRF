@@ -57,7 +57,7 @@ def _minify(basedir, factors=[], resolutions=[]):  # basedir: ./data/nerf_llff_d
         print('Done')
 
 
-def _load_data(basedir, factor=None, width=None, height=None):
+def _load_data(basedir, factor=None):
     poses_ts = np.loadtxt(os.path.join(basedir, 'poses_ts.txt'))
 
     imgdir = os.path.join(basedir, 'images_blur')
@@ -68,7 +68,7 @@ def _load_data(basedir, factor=None, width=None, height=None):
     imgfiles = [os.path.join(imgdir, f) for f in sorted(os.listdir(imgdir)) if
                 f.endswith('JPG') or f.endswith('jpg') or f.endswith('png')]
 
-    imgs = [imread(f)[..., :3] / 255. for f in imgfiles]
+    imgs = [imread(f) / 255. for f in imgfiles]
     imgs = np.stack(imgs, -1)
 
     events = np.loadtxt(os.path.join(basedir, 'events.txt'))
@@ -77,18 +77,20 @@ def _load_data(basedir, factor=None, width=None, height=None):
     return imgs, events, poses_ts
 
 
-def load_uzh_data(basedir, threshold, factor=1, idx=0):
-    imgs, events, poses_ts = _load_data(basedir, threshold, factor=factor)
+def load_davis_data(basedir, factor=1, idx=0):
+    imgs, events, poses_ts = _load_data(basedir, factor=factor)
     print('Loaded', basedir)
 
     imgs = np.moveaxis(imgs, -1, 0).astype(np.float32)
+    imgs = np.expand_dims(imgs, -1)
+    imgs = np.expand_dims(imgs[idx], 0)
     imgs = torch.Tensor(imgs)
 
     poses_ts = poses_ts[idx:idx + 2]
-    events = np.array([event for event in events if poses_ts[0] <= event[2] <= poses_ts[1]])
+    events = np.array([event for event in events if poses_ts[0] <= event[0] <= poses_ts[1]])
 
     # create dictionary
-    events = {'x': events[:, 0].astype(int), 'y': events[:, 1].astype(int), 'ts': events[:, 2], 'pol': events[:, 3],
+    events = {'x': events[:, 1].astype(int), 'y': events[:, 2].astype(int), 'ts': events[:, 0], 'pol': events[:, 3],
               'num': events.shape[0]}
 
     return events, imgs, poses_ts

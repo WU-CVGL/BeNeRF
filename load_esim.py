@@ -220,7 +220,7 @@ def spherify_poses(poses, bds):
     return poses_reset, new_poses, bds
 
 
-def load_llff_data(basedir, factor=1, idx=0):
+def load_esim_data(basedir, factor=1, idx=0):
     imgs, events, poses_ts = _load_data(basedir, factor=factor)
     print('Loaded', basedir)
 
