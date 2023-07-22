@@ -20,6 +20,7 @@ class WandbLogger:
 
     def update_buffer(self):
         self.run.log(self.buffer)
+        self.buffer = dict()
 
     def write_checkpoint(self, path, expname):
         artifact = wandb.Artifact(name=f'checkpoint_{expname}', type="model")
