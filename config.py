@@ -16,8 +16,6 @@ def config_parser():
                         help='input data directory')
 
     # training options
-    parser.add_argument("--N_iters", type=int, default=250000,
-                        help='the number of sharp images one blur image corresponds to')
     parser.add_argument("--deblur_images", type=int, default=7,
                         help='the number of sharp images one blur image corresponds to')
     parser.add_argument("--pixels", type=int, default=320,
@@ -118,7 +116,7 @@ def config_parser():
 
     # logging/saving options
     parser.add_argument("--i_print", type=int, default=100,
-                        help='frequency of console printout and metric loggin')
+                        help='frequency of console printout and metric logging')
     parser.add_argument("--i_img", type=int, default=25000,
                         help='frequency of tensorboard image logging')
     parser.add_argument("--i_weights", type=int, default=10000,

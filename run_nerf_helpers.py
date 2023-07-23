@@ -151,7 +151,7 @@ def render_image_test(i, graph, render_poses, H, W, K, args, dir=None, need_dept
         rgbs = ret['rgb_map'].cpu().numpy()
         rgb8 = imgutils.to8bit(rgbs)
         imwrite(os.path.join(img_dir, dir[11:] + '_{:03d}.png'.format(j)), rgb8,
-                mode="L" if args.channels == 3 else "RGB")
+                mode="L" if args.channels == 1 else "RGB")
         imgs.append(rgb8)
         if need_depth:
             depths = ret['disp_map'].cpu().numpy()

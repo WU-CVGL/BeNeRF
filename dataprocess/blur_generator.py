@@ -7,19 +7,19 @@ from imageio.v3 import imread, imwrite
 
 from spline import *
 
-BASE_DIR: str = os.path.expanduser("C:\\Users\\User\\PycharmProjects\\EventBADNeRF\\data\\office_zigzag")
-IMAGE_DIR: str = os.path.expanduser("C:\\Users\\User\\PycharmProjects\\EventBADNeRF\\data\\office_zigzag\\images")
+BASE_DIR: str = os.path.expanduser("/Users/pianwan/Desktop/LivingRoom_1000Hz/Living_Room_1000Hz")
+IMAGE_DIR: str = os.path.expanduser("/Users/pianwan/Desktop/LivingRoom_1000Hz/Living_Room_1000Hz/camera/temp")
 INTRINSICS: str = os.path.join(BASE_DIR, "camera", "intrinsics.txt")
 EXTRINSICS: str = os.path.join(BASE_DIR, "camera", "extrinsics.txt")
 OUTPUT_DIR: str = os.path.join(BASE_DIR,
-                               "C:\\Users\\User\\PycharmProjects\\EventBADNeRF\\data\\office_zigzag\\images_blur")
+                               "/Users/pianwan/Desktop/LivingRoom_1000Hz/Living_Room_1000Hz/images_blur")
 TEST_DIR: str = os.path.join(BASE_DIR,
-                             "C:\\Users\\User\\PycharmProjects\\EventBADNeRF\\data\\office_zigzag\\images_test")
+                             "/Users/pianwan/Desktop/LivingRoom_1000Hz/Living_Room_1000Hz/images_test")
 GROUNDTRUTH_POSE: str = os.path.join(BASE_DIR, "groundtruth.txt")
 BLUR_NUM: int = 51
 DATASET_NAME = 'Living_Room_1000Hz'
 
-type = "esim"
+type = "llff"
 
 
 def Spline_GT(start_pose, end_pose, poses_number, H):
@@ -241,8 +241,14 @@ def main():
         np.save(os.path.join(BASE_DIR, "pose_bound_mid.npy"), pose_mid)
         np.save(os.path.join(BASE_DIR, "pose_bounds.npy"), pose_bound)
         np.save(os.path.join(BASE_DIR, "pose_ts.npy"), pose_ts)
-
-    if type == "davis":
+    if type == "llff":
+        print("Loading llff timestamps")
+        img_ts = np.loadtxt(os.path.join(BASE_DIR, "groundtruth.txt"))
+        img_ts = img_ts[:, 0]
+        img_ts = [img_ts[i] for i in range(img_ts.shape[0]) if i % BLUR_NUM == 0]
+        img_ts = np.stack(img_ts)
+        np.savetxt(os.path.join(BASE_DIR, "poses_ts.txt"), img_ts, fmt='%.4f')
+    elif type == "davis":
         print("Loading davis timestamps")
         img_ts = np.loadtxt(os.path.join(BASE_DIR, "images.txt"), usecols=0)
         ts = []
@@ -256,12 +262,10 @@ def main():
 
     elif type == "esim":
         print("Loading esim timestamps")
-        
+
         print("Saved timestamps")
     else:
         print("Undefined dataset")
-        return
-
 
     print("-> Blurring images")
     print(f"BLUR_NUM: {BLUR_NUM}")

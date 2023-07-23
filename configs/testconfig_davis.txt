@@ -1,24 +1,24 @@
-expname = testconfig-spline-1
-datadir = ./data/Living-Room-1000Hz
-dataset_type = llff
+expname = office-zigzag-spline-1
+datadir = ./data/office_spiral
+dataset_type = davis
 idx = 0
 viewer = wandb
 
 focal = 548.409
 
 i_print = 100
-i_img = 5000
+i_img = 50
 i_video = 500000
 i_weights = 20000
 max_iter = 200000
 
 rgb_loss = True
 
-channels = 3
+channels = 1
 
 N_pix_no_event = 256
 N_pix_event = 768
-chunk_percent = 0.01
+chunk_percent = 0.025
 chunk_interval = 5
 
 sliding_Win = False

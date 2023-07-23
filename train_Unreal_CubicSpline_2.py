@@ -14,11 +14,10 @@ from nerf import *
 from run_nerf_helpers import init_nerf, render_image_test
 from utils import imgutils
 from utils.mathutils import safelog
+from metrics import compute_img_metric
 
 
 def train(args):
-    print('args.barf: ', args.barf, 'args.barf_start_end: ', args.barf_start, args.barf_end)
-
     # Load data images are groundtruth
     logger = WandbLogger(args)
 
@@ -30,12 +29,12 @@ def train(args):
 
     if args.dataset_type == 'llff':
         print("Use llff data")
-        events, images, poses_ts = load_llff_data(args.datadir, factor=args.factor)
-        print('Loaded llff data', images.shape, args.datadir)
+        events, images, imgtests, poses_ts = load_llff_data(args.datadir, factor=args.factor, idx=args.idx)
+        print('Loaded llff data', images.shape, args.datadir, args.idx)
     elif args.dataset_type == 'davis':
         print("Use davis data")
-        events, images, poses_ts = load_davis_data(args.datadir, factor=args.factor)
-        print('Loaded davis data', images.shape, args.datadir)
+        events, images, imgtests, poses_ts = load_davis_data(args.datadir, factor=args.factor, idx=args.idx)
+        print('Loaded davis data', images.shape, args.datadir, args.idx)
     elif args.dataset_type == "esim":
         pass
     elif args.dataset_type == "eds":
@@ -136,14 +135,19 @@ def train(args):
         optimizer_pose.zero_grad()
         optimizer_trans.zero_grad()
         optimizer.zero_grad()
-
-        img_loss = mse_loss(safelog(rgb2gray(ret_gray2['rgb_map'])) - safelog(rgb2gray(ret_gray1['rgb_map'])), target_s)
+        if args.channels == 3:
+            img_loss = mse_loss(safelog(rgb2gray(ret_gray2['rgb_map'])) - safelog(rgb2gray(ret_gray1['rgb_map'])), target_s)
+        else:
+            img_loss = mse_loss(safelog(ret_gray2['rgb_map']) - safelog(ret_gray1['rgb_map']), target_s)
         img_loss *= args.event_coefficient
         logger.write("train_event_loss_fine", img_loss.item())
 
         # Event loss
         if 'rgb0' in ret:
-            img_loss0 = mse_loss(safelog(rgb2gray(ret_gray2['rgb0'])) - safelog(rgb2gray(ret_gray1['rgb0'])), target_s)
+            if args.channels == 3:
+                img_loss0 = mse_loss(safelog(rgb2gray(ret_gray2['rgb0'])) - safelog(rgb2gray(ret_gray1['rgb0'])), target_s)
+            else:
+                img_loss0 = mse_loss(safelog(ret_gray2['rgb0']) - safelog(ret_gray1['rgb0']), target_s)
             img_loss0 *= args.event_coefficient
             logger.write("train_event_loss_coarse", img_loss0.item())
 
@@ -153,9 +157,9 @@ def train(args):
 
         # RGB loss
         if args.rgb_loss:
-            target_s = images[0].reshape(-1, H * W, 3)
+            target_s = images[0].reshape(-1, H * W, args.channels)
             target_s = target_s[:, ray_idx]
-            target_s = target_s.reshape(-1, 3)
+            target_s = target_s.reshape(-1, args.channels)
             interval = target_s.shape[0]
             rgb_ = 0
             extras_ = 0
@@ -175,11 +179,11 @@ def train(args):
                         extras_ = 0
 
             rgb_blur = torch.stack(rgb_list, 0)
-            rgb_blur = rgb_blur.reshape(-1, 3)
+            rgb_blur = rgb_blur.reshape(-1, args.channels)
 
             if 'rgb0' in ret:
                 extras_blur = torch.stack(extras_list, 0)
-                extras_blur = extras_blur.reshape(-1, 3)
+                extras_blur = extras_blur.reshape(-1, args.channels)
 
             rgb_loss_fine = mse_loss(rgb_blur, target_s)
             rgb_loss_fine *= args.rgb_coefficient
@@ -232,12 +236,14 @@ def train(args):
             param_group['lr'] = new_lrate_trans
         ###############################
 
+        # print result in console
         if i % args.i_print == 0:
             tqdm.write(
                 f"[TRAIN] Iter: {i} Loss: {loss.item()}, event_loss: {event_loss.item()}, rgb_loss: {rgb_loss.item()}, "
                 f"event_fine_loss: {img_loss.item()}, event_coarse_loss: {img_loss0.item()}, "
                 f"rgb_loss_fine: {rgb_loss_fine.item()}, rgb_loss_coarse: {rgb_loss_coarse.item()}")
 
+        # save checkpoint
         if i % args.i_weights == 0 and i > 0:
             path = os.path.join(basedir, expname, '{:06d}.tar'.format(i))
             torch.save({
@@ -247,9 +253,11 @@ def train(args):
                 'optimizer_pose': optimizer_pose.state_dict(),
                 'optimizer_trans': optimizer_trans.state_dict(),
             }, path)
+            # save to logger
             logger.write_checkpoint(path, expname)
             print('Saved checkpoints at', path)
 
+        # test
         if i % args.i_img == 0 and i > 0:
             with torch.no_grad():
                 # imgs_render = render_image_test(i, graph, poses[0][:, :4].reshape(1, 3, 4), H, W, K, args,
@@ -260,6 +268,17 @@ def train(args):
                 if len(imgs) > 0:
                     logger.write_img("test_img_mid", imgs[len(imgs) // 2])
                     logger.write_imgs("test_img_all", imgs)
+                    img_mid = imgs[len(imgs) // 2] / 255.
+                    img_mid = torch.unsqueeze(torch.tensor(img_mid, dtype=torch.float32), dim=0)
+                    test_mid_mse = compute_img_metric(img_mid, imgtests, metric="mse")
+                    test_mid_psnr = compute_img_metric(img_mid, imgtests, metric="psnr")
+                    test_mid_ssim = compute_img_metric(img_mid, imgtests, metric="ssim")
+                    test_mid_lpips = compute_img_metric(img_mid, imgtests, metric="lpips")
+
+                    logger.write("test_mid_mse", test_mid_mse)
+                    logger.write("test_mid_psnr", test_mid_psnr)
+                    logger.write("test_mid_ssim", test_mid_ssim)
+                    logger.write("test_mid_lpips", test_mid_lpips)
                 if len(depth) > 0:
                     logger.write_img("test_depth_mid", depth[len(depth) // 2])
                     logger.write_imgs("test_depth_all", depth)
@@ -294,12 +313,14 @@ if __name__ == '__main__':
     random.seed(0)
 
     # load config
+    print("Loading config")
     parser = config_parser()
     args = parser.parse_args()
 
     # setup device
+    print(f"Use device: {args.device}")
     os.environ["CUDA_VISIBLE_DEVICES"] = str(args.device)
 
     # train
-    print('Cubic Spline 2!!!\n')
+    print("Start training...")
     train(args=args)

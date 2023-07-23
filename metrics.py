@@ -50,7 +50,7 @@ def compute_img_metric(im1t: torch.Tensor, im2t: torch.Tensor,
     im1t = im1t.detach().cpu()
     im2t = im2t.detach().cpu()
 
-    if im1t.shape[-1] == 3:
+    if im1t.shape[-1] == 3 or im1t.shape[-1] == 1:
         im1t = im1t.permute(0, 3, 1, 2)
         im2t = im2t.permute(0, 3, 1, 2)
 
@@ -77,9 +77,7 @@ def compute_img_metric(im1t: torch.Tensor, im2t: torch.Tensor,
                 pixelnum = mask[i, ..., 0].sum()
                 value = value - 10 * np.log10(hei * wid / pixelnum)
         elif metric in ["ssim"]:
-            value, ssimmap = photometric["ssim"](
-                im1[i], im2[i], multichannel=True, full=True
-            )
+            value, ssimmap = photometric["ssim"](im1[i], im2[i], multichannel=True, full=True, channel_axis=1)
             if mask is not None:
                 value = (ssimmap * mask[i]).sum() / mask[i].sum()
         elif metric in ["lpips"]:
@@ -90,4 +88,6 @@ def compute_img_metric(im1t: torch.Tensor, im2t: torch.Tensor,
             raise NotImplementedError
         values.append(value)
 
+    if metric == "lpips":
+        return (sum(values) / len(values)).item()
     return sum(values) / len(values)

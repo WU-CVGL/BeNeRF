@@ -93,7 +93,6 @@ class Model:
         self.optim = torch.optim.Adam(params=grad_vars, lr=args.lrate, betas=(0.9, 0.999))
 
         return self.optim
-        # here: 这里还没有更新，每次都要更新学习率
 
 
 class NeRF(nn.Module):
@@ -118,10 +117,8 @@ class NeRF(nn.Module):
         if use_viewdirs:
             self.feature_linear = nn.Linear(W, W)
             self.alpha_linear = nn.Linear(W, 1)
-            # self.rgb_linear = nn.Linear(W // 2, 3)
             self.rgb_linear = nn.Linear(W // 2, channels)
         else:
-            # self.output_linear = nn.Linear(W, output_ch)
             self.output_linear = nn.Linear(W, channels + 1)
 
     # positional encoding和nerf的mlp
@@ -133,7 +130,6 @@ class NeRF(nn.Module):
         embeddirs_fn = None
         if args.use_viewdirs:
             embeddirs_fn, input_ch_views = get_embedder(args, args.multires_views, args.i_embed)
-        # 这里还没有优化parameter
         # forward positional encoding
         pts_flat = torch.reshape(pts, [-1, pts.shape[-1]])  # [N_rands x 64, 3] (pose_num * rays_num)
         embedded = embed_fn(pts_flat)  # [N_rands x 64, 63] if barf: [..., 60]
