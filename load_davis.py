@@ -87,6 +87,17 @@ def _load_data(basedir, factor=None):
     print('Loaded image data', imgs.shape)
     return imgs, imgtests, events, poses_ts
 
+
+def load_camera(basedir):
+    camera = np.loadtxt(os.path.join(basedir, "calib.txt")).astype(np.float32)
+    camera = {
+        "fx": camera[0],
+        "fy": camera[1],
+        "cx": camera[2],
+        "cy": camera[3],
+    }
+    return camera
+
 def load_davis_data(basedir, factor=1, idx=0):
     imgs, imgtests, events, poses_ts = _load_data(basedir, factor=factor)
     print('Loaded', basedir)
@@ -108,4 +119,7 @@ def load_davis_data(basedir, factor=1, idx=0):
     events = {'x': events[:, 1].astype(int), 'y': events[:, 2].astype(int), 'ts': events[:, 0], 'pol': events[:, 3],
               'num': events.shape[0]}
 
-    return events, imgs, imgtests, poses_ts
+    # load camera
+    camera = load_camera(basedir)
+
+    return events, imgs, imgtests, poses_ts, camera

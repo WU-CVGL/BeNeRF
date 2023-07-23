@@ -6,6 +6,7 @@ import cv2
 from imageio.v3 import imread, imwrite
 
 from spline import *
+from utils.imgutils import rgb2gray
 
 BASE_DIR: str = os.path.expanduser("/Users/pianwan/Desktop/LivingRoom_1000Hz/Living_Room_1000Hz")
 IMAGE_DIR: str = os.path.expanduser("/Users/pianwan/Desktop/LivingRoom_1000Hz/Living_Room_1000Hz/camera/temp")
@@ -18,6 +19,7 @@ TEST_DIR: str = os.path.join(BASE_DIR,
 GROUNDTRUTH_POSE: str = os.path.join(BASE_DIR, "groundtruth.txt")
 BLUR_NUM: int = 51
 DATASET_NAME = 'Living_Room_1000Hz'
+GRAY = True
 
 type = "llff"
 
@@ -278,7 +280,8 @@ def main():
         if (idx + 1) % BLUR_NUM == 0:
             img /= np.array(BLUR_NUM).astype(np.float32)
             img = img.round().astype(np.uint8)
-            imwrite(os.path.join(OUTPUT_DIR, "{:0>3d}.jpg".format(amount)), img)
+            imwrite(os.path.join(OUTPUT_DIR, "{:0>3d}.png".format(amount)),
+                    rgb2gray(img) if GRAY else img, mode="L" if GRAY else "RGB")
             img = 0
             amount += 1
             idx_blur.append(idx)
@@ -289,7 +292,9 @@ def main():
     idx_sharp = []
     for idx in range(len(image_files)):
         if idx % BLUR_NUM == BLUR_NUM // 2 and (idx + BLUR_NUM // 2 < len(image_files)):
-            imwrite(os.path.join(TEST_DIR, "{:0>3d}.jpg".format(amount_sharp)), imread(image_files[idx]))
+            imwrite(os.path.join(TEST_DIR, "{:0>3d}.png".format(amount_sharp)),
+                    rgb2gray(imread(image_files[idx])) if GRAY else imread(image_files[idx]),
+                    mode="L" if GRAY else "RGB")
             idx_sharp.append(idx)
             amount_sharp += 1
 

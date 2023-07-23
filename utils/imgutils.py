@@ -17,3 +17,10 @@ class RGB2Gray:
 
 def to8bit(x) -> np.ndarray:
     return (255 * np.clip(x, 0, 1)).astype(np.uint8)
+
+
+def rgb2gray(x) -> np.ndarray:
+    weight = np.array((0.299, 0.587, 0.114))
+    x = np.sum(x * weight, axis=-1)
+    x = x.astype(np.uint8)
+    return x

@@ -9,8 +9,8 @@ focal = 548.409
 i_print = 100
 i_img = 50
 i_video = 500000
-i_weights = 20000
-max_iter = 200000
+i_weights = 10000
+max_iter = 100000
 
 rgb_loss = True
 
