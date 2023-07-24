@@ -79,7 +79,7 @@ class Graph(nerf.Graph):
         period = torch.tensor((poses_ts[up_bound] - poses_ts[low_bound])).float()
         t_tau = torch.tensor((events_ts - poses_ts[low_bound])).float()
 
-        spline_poses = spline.SplineEvent(se3_start, se3_end, t_tau, period, args.delay_time)
+        spline_poses = spline.SplineEvent(se3_start, se3_end, t_tau, period)
 
         return spline_poses
 
