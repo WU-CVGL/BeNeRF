@@ -1,0 +1,67 @@
+expname = testconfig-livingroom_gray-18
+datadir = ./data/livingroom_gray
+dataset_type = llff
+idx = 18
+viewer = wandb
+
+focal = 548.409
+
+i_print = 100
+i_img = 5000
+i_video = 500000
+i_weights = 10000
+max_iter = 100000
+
+rgb_loss = True
+
+channels = 1
+
+N_pix_no_event = 256
+N_pix_event = 768
+chunk_percent = 0.03
+chunk_interval = 5
+
+sliding_Win = False
+
+factor = 1
+
+barf = False
+barf_start = 0.1
+barf_end = 0.5
+
+delay_time = 0
+
+N_samples = 64
+N_importance = 64
+
+use_viewdirs = True
+raw_noise_std = 0
+
+load_weights = False
+weight_iter = 10000
+
+tv_loss = False
+tv_width_nerf = 20
+tv_loss_rgb = True
+tv_loss_gray = True
+
+tv_loss_lambda = 0.001
+
+n_tvloss = 0
+
+# training parameters
+lrate = 5e-4
+pose_lrate = 5e-4
+decay_rate = 0.1
+decay_rate_pose = 0.01
+
+optimize_se3 = True
+optimize_nerf = True
+
+deblur_images = 6
+event_coefficient = 0.2
+rgb_coefficient = 1.0
+
+optimize_trans = False
+transform_lrate = 1e-6
+decay_rate_transform = 0.01
