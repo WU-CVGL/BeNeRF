@@ -7,6 +7,7 @@ def config_parser():
     # device
     parser.add_argument("--device", type=int, default=0,
                         help='cuda id to use')
+
     # others
     parser.add_argument('--config', is_config_file=True, default='./configs/testconfig.txt',
                         help='config file path')
@@ -131,8 +132,6 @@ def config_parser():
                         help='weight_iter')
     parser.add_argument("--max_iter", type=int, default=200000,
                         help='max_iter')
-    parser.add_argument("--render_rolling_shutter", action='store_true',
-                        help='')
 
     # barf: up & down
     parser.add_argument("--barf", action='store_true',
@@ -142,18 +141,13 @@ def config_parser():
     parser.add_argument("--barf_end", type=float, default=0.9,
                         help='barf start')
 
-    parser.add_argument("--delay_time", type=float, default=1,
-                        help='interval between two frames')
-
     # tv loss
     parser.add_argument("--tv_loss", action='store_true',
                         help='TV loss')
     parser.add_argument("--tv_width_nerf", type=int, default=15,
                         help='tv')
-
     parser.add_argument("--tv_loss_rgb", action='store_true',
                         help='tv_rgb')
-
     parser.add_argument("--tv_loss_gray", action='store_true',
                         help='tv_gray')
     parser.add_argument("--tv_loss_lambda", type=float, default=0.001,
@@ -164,20 +158,20 @@ def config_parser():
     # 分段
     parser.add_argument("--two_phase", action='store_true',
                         help='if use two-phase optimization')
+
+    # optimize
     parser.add_argument("--optimize_se3", action='store_true',
                         help='whether to optimize SE3 network')
     parser.add_argument("--optimize_nerf", action='store_true',
                         help='whether to optimize NeRF network')
     parser.add_argument("--optimize_trans", action='store_true',
-                        help='whether to optimize NeRF network')
+                        help='whether to optimize transformation matrix')
 
     # event parameter
     parser.add_argument("--threshold", type=float, default=0.1,
                         help='threshold set for events spiking')
     parser.add_argument("--rgb_loss", action='store_true',
                         help='')
-    parser.add_argument("--single_channel", action='store_true',
-                        help='use color event or gray event')
     parser.add_argument("--channels", type=int, default=3,
                         help='whether to use 3-channel or single-channel images')
     parser.add_argument("--N_pix_no_event", type=int, default=1024,
@@ -186,19 +180,27 @@ def config_parser():
                         help='number of sampled rays where with events spiking')
     parser.add_argument("--N_pix_rgb", type=int, default=1024,
                         help='number of sampled rays for computation of image loss function')
-    parser.add_argument("--chunk_percent", type=float, default=1.0,
-                        help='the percentage of key events used for optimization')
-    parser.add_argument("--chunk_interval", type=int, default=5,
-                        help='select one chunk after several chunks')
+
+    # window
+    parser.add_argument("--window_percent", type=float, default=0.1,
+                        help='the percentage of the window')
+    parser.add_argument("--window_desc", type=bool, default=False,
+                        help='the percentage of the window end')
+    parser.add_argument("--window_percent_end", type=float, default=0.05,
+                        help='the percentage of the window end (when window_dec enabled)')
+    parser.add_argument("--window_desc_end", type=float, default=0.6,
+                        help='when iter reach window_desc_end * max_iter, it will maintain window_percent_end')
 
     parser.add_argument("--sliding_Win", action='store_true',
-                        help='whether to use fixing windows or sliding window')
+                        help='whether to use fixed windows or sliding window')
 
+    # coefficient for loss
     parser.add_argument("--event_coefficient", type=float, default=1.0,
                         help='coefficient for event loss')
     parser.add_argument("--rgb_coefficient", type=float, default=1.0,
                         help='coefficient for rgb loss')
 
+    # viewer
     parser.add_argument("--viewer", type=str, default="wandb",
-                        help='coefficient for rgb loss')
+                        help='the viewer to use (wandb)')
     return parser

@@ -1,5 +1,5 @@
-expname = testconfig-livingroom_gray-18
-datadir = ./data/livingroom_gray
+expname = testconfig-barf-18
+datadir = ./data/Living-Room-1000Hz
 dataset_type = llff
 idx = 18
 viewer = wandb
@@ -15,7 +15,7 @@ max_iter = 100000
 
 rgb_loss = True
 
-channels = 1
+channels = 3
 
 N_pix_no_event = 256
 N_pix_event = 768
@@ -26,7 +26,7 @@ window_percent_end = 0.025
 window_desc_end = 0.6
 sliding_Win = False
 
-barf = False
+barf = True
 barf_start = 0.1
 barf_end = 0.5
 
@@ -50,7 +50,7 @@ n_tvloss = 0
 
 # training parameters
 lrate = 5e-4
-pose_lrate = 5e-4
+pose_lrate = 1e-3
 decay_rate = 0.1
 decay_rate_pose = 0.01
 

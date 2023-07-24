@@ -221,10 +221,15 @@ class Graph(nn.Module):
             self.nerf_fine = NeRF(D, W, input_ch, input_ch_views, output_ch, skips, use_viewdirs, args.channels)
 
     def forward(self, i, poses_ts, threshold, events, H, W, K, args):
-        # step1: get pose: deblur的poses y
-        ### here spline_poses = self.get_pose(poses, args)  # get pose可以写到spline里
         if i <= threshold:
-            N_window = round(events['num'] * args.chunk_percent)
+            if args.window_desc:
+                # linear desc
+                i_end = args.max_iter * args.window_desc_end
+                percent = args.window_percent - (args.window_percent - args.window_percent_end) * (
+                        i / i_end) if i < i_end else args.window_percent_end
+                N_window = round(events['num'] * percent)
+            else:
+                N_window = round(events['num'] * args.window_percent)
             N_pix_no_event = args.N_pix_no_event
             N_pix_event = args.N_pix_event
 
@@ -293,11 +298,6 @@ class Graph(nn.Module):
             # torch.manual_seed(0)
             ray_idx = torch.randperm(H * W)[:args.N_rand // args.deblur_images]
             return spline_poses, ray_idx
-
-        # step2: get ray_idx y
-        # ray_idx = torch.randperm(H * W)[:args.N_rand // poses.shape[0]]
-
-        # step3: 将pose和ray_idx送入render y
 
     def get_pose(self, i, args, events_ts, poses_ts):
         return i
