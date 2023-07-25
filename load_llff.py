@@ -115,8 +115,6 @@ def _load_data(basedir, factor=None, width=None, height=None, load_pose=False, g
         imgtests = [imread(f)[..., :3] / 255. for f in imgtests]
     imgtests = np.stack(imgtests, -1)
 
-    events = np.load(os.path.join(basedir, 'events', 'events_data.npy'))
-
     if load_pose:
         poses_arr = np.load(os.path.join(basedir, 'poses_bounds.npy'))
         poses = poses_arr[:, :-2].reshape([-1, 3, 5]).transpose([1, 2, 0])  # 3x5xN
@@ -127,8 +125,8 @@ def _load_data(basedir, factor=None, width=None, height=None, load_pose=False, g
 
     print('Loaded image data', imgs.shape)
     if load_pose:
-        return imgs, imgtests, events, poses_ts, poses
-    return imgs, imgtests, events, poses_ts
+        return imgs, imgtests, poses_ts, poses
+    return imgs, imgtests, poses_ts
 
 
 def normalize(x):
@@ -244,11 +242,11 @@ def spherify_poses(poses, bds):
     return poses_reset, new_poses, bds
 
 
-def load_llff_data(basedir, factor=1, idx=0, gray=False, load_pose=False):
+def load_llff_data(basedir, factor=1, idx=0, deblur_dataset=50, gray=False, load_pose=False):
     if load_pose:
-        imgs, imgtests, events, poses_ts, poses = _load_data(basedir, factor=factor, load_pose=load_pose, gray=gray)
+        imgs, imgtests, poses_ts, poses = _load_data(basedir, factor=factor, load_pose=load_pose, gray=gray)
     else:
-        imgs, imgtests, events, poses_ts = _load_data(basedir, factor=factor, load_pose=load_pose, gray=gray)
+        imgs, imgtests, poses_ts = _load_data(basedir, factor=factor, load_pose=load_pose, gray=gray)
 
     print('Loaded', basedir)
 
@@ -265,12 +263,24 @@ def load_llff_data(basedir, factor=1, idx=0, gray=False, load_pose=False):
     imgtests = torch.Tensor(imgtests)
 
     poses_ts = poses_ts[idx:idx + 2]
-    events = np.array([event for event in events if poses_ts[0] <= event[2] <= poses_ts[1]])
+
+    eventdir = os.path.join(basedir, "events")
+    eventfiles = [os.path.join(eventdir, f) for f in sorted(os.listdir(eventdir)) if
+                  f.endswith('npy') and f.startswith(('0', '1', '2', '3', '4', '5', '6', '7', '8', '9'))]
+    eventfiles = eventfiles[deblur_dataset * idx: deblur_dataset * (idx + 1)]
+
+    event_list = [np.load(e) for e in eventfiles]
+    events = np.concatenate(event_list)
+    events = events[events[:, 2].argsort()]
+    # events = np.array([event for event in events if poses_ts[0] <= event[2] <= poses_ts[1]])
 
     # create dictionary
     events = {'x': events[:, 0].astype(int), 'y': events[:, 1].astype(int), 'ts': events[:, 2], 'pol': events[:, 3],
               'num': events.shape[0]}
     if load_pose:
+        # recenter
+        poses = recenter_poses(poses)
+        # select pose
         poses = poses[idx: idx + 2]
         return events, imgs, imgtests, poses_ts, poses
 

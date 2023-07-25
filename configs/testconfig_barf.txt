@@ -1,9 +1,9 @@
 expname = testconfig-barf-18
-datadir = ./data/Living-Room-1000Hz
+datadir = ./data/livingroom_gray
 dataset_type = llff
 idx = 18
 viewer = wandb
-fix_pose = False
+fix_pose = True
 
 focal = 548.409
 factor = 1
@@ -16,13 +16,13 @@ max_iter = 50000
 
 rgb_loss = True
 
-channels = 3
+channels = 1
 
 N_pix_no_event = 512
 N_pix_event = 1536
 N_pix_rgb = 5120
 
-window_percent = 0.05
+window_percent = 0.1
 window_desc = False
 window_percent_end = 0.025
 window_desc_end = 0.6
@@ -59,7 +59,7 @@ decay_rate_pose = 0.01
 optimize_se3 = True
 optimize_nerf = True
 
-deblur_images = 15
+deblur_images = 9
 event_coefficient = 0.2
 rgb_coefficient = 1.0
 
