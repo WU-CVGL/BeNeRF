@@ -19,6 +19,7 @@ channels = 1
 
 N_pix_no_event = 256
 N_pix_event = 768
+N_pix_rgb = 4096
 
 window_percent = 0.1
 window_desc = False
