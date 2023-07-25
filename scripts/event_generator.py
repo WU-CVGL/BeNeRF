@@ -217,27 +217,27 @@ def Gray_Event_Simulate(imgfiles, W):
 
         eve_gene_sorted = eve_gene[eve_gene[:,2].argsort(), :]
 
-        event_file_name = os.path.join(eventdir, '{:03d}.txt'.format(i))
+        event_file_name = os.path.join(eventdir, '{:06d}.txt'.format(i))
 
         # with open(event_file_name, "ab") as f:    # 
         with open(event_file_name, "wb") as f:
             np.savetxt(f, eve_gene_sorted, delimiter=" ", fmt='%.8f')
 
-        event_file_name = os.path.join(eventdir, '{:03d}.npy'.format(i))
+        event_file_name = os.path.join(eventdir, '{:06d}.npy'.format(i))
         np.save(event_file_name, eve_gene_sorted)
     """"""
     
 
-    events = np.zeros([0, 4])
-    
-    for i in range(length):
-        event_file_name = os.path.join(eventdir, '{:03d}.npy'.format(i))
-        Eve = np.load(event_file_name)
-        events = np.concatenate([events, Eve], 0)
-    
-    events_sorted = events[events[:,2].argsort(), :]
-    np.save(os.path.join(eventdir, 'gray_events_data.npy'), events_sorted)
-    
+    # events = np.zeros([0, 4])
+    #
+    # for i in range(length):
+    #     event_file_name = os.path.join(eventdir, '{:06d}.npy'.format(i))
+    #     Eve = np.load(event_file_name)
+    #     events = np.concatenate([events, Eve], 0)
+    #
+    # events_sorted = events[events[:,2].argsort(), :]
+    # np.save(os.path.join(eventdir, 'gray_events_data.npy'), events_sorted)
+    #
     # for i in range(NUM_I_RGB):
     #     events = np.zeros([0, 4])
     #     for j in range(INTERVAL):
