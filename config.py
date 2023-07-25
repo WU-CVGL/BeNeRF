@@ -203,4 +203,7 @@ def config_parser():
     # viewer
     parser.add_argument("--viewer", type=str, default="wandb",
                         help='the viewer to use (wandb)')
+
+    parser.add_argument("--fix_pose", type=bool, default=True,
+                        help='the viewer to use (wandb)')
     return parser

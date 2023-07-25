@@ -29,7 +29,7 @@ def train(args):
 
     if args.dataset_type == 'llff':
         print("Use llff data")
-        events, images, imgtests, poses_ts = load_llff_data(args.datadir, factor=args.factor, idx=args.idx)
+        events, images, imgtests, poses_ts, poses = load_llff_data(args.datadir, factor=args.factor, idx=args.idx, gray=True, load_pose=True)
         print('Loaded llff data', images.shape, args.datadir, args.idx)
     elif args.dataset_type == 'davis':
         print("Use davis data")
@@ -91,7 +91,7 @@ def train(args):
         print('Model Load Done!')
     else:
         model = optimize_pose_CubicSpline_2.Model()
-        graph = model.build_network(args)  # nerf, nerf_fine, forward
+        graph = model.build_network(args, poses)  # nerf, nerf_fine, forward
         optimizer, optimizer_pose, optimizer_trans = model.setup_optimizer(args)
         print('Not Load Model!')
 
@@ -209,7 +209,7 @@ def train(args):
         # step
         if args.optimize_nerf:
             optimizer.step()
-        if args.optimize_se3:
+        if args.optimize_se3 and not args.fix_pose:
             optimizer_pose.step()
         if args.optimize_trans:
             optimizer_trans.step()

@@ -1,7 +1,7 @@
 expname = testconfig-spline-1
 datadir = ./data/Living-Room-1000Hz
 dataset_type = llff
-idx = 0
+idx = 18
 viewer = wandb
 
 focal = 548.409
@@ -11,7 +11,7 @@ i_print = 100
 i_img = 5000
 i_video = 500000
 i_weights = 10000
-max_iter = 100000
+max_iter = 50000
 
 rgb_loss = True
 
