@@ -22,7 +22,7 @@ class Model(nerf.Model):
     def __init__(self):
         super().__init__()
 
-    def build_network(self, args, poses):
+    def build_network(self, args, poses=None):
         self.graph = Graph(args, D=8, W=256, input_ch=63, input_ch_views=27, output_ch=4, skips=[4], use_viewdirs=True)
 
         if args.fix_pose:

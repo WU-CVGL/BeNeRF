@@ -3,6 +3,7 @@ datadir = ./data/Living-Room-1000Hz
 dataset_type = llff
 idx = 18
 viewer = wandb
+fix_pose = False
 
 focal = 548.409
 factor = 1
@@ -11,23 +12,23 @@ i_print = 100
 i_img = 5000
 i_video = 500000
 i_weights = 10000
-max_iter = 100000
+max_iter = 50000
 
 rgb_loss = True
 
 channels = 3
 
-N_pix_no_event = 256
-N_pix_event = 768
-N_pix_rgb = 4096
+N_pix_no_event = 512
+N_pix_event = 1536
+N_pix_rgb = 5120
 
-window_percent = 0.03
+window_percent = 0.05
 window_desc = False
 window_percent_end = 0.025
 window_desc_end = 0.6
 sliding_Win = False
 
-barf = True
+barf = False
 barf_start = 0.1
 barf_end = 0.5
 
@@ -58,7 +59,7 @@ decay_rate_pose = 0.01
 optimize_se3 = True
 optimize_nerf = True
 
-deblur_images = 6
+deblur_images = 15
 event_coefficient = 0.2
 rgb_coefficient = 1.0
 

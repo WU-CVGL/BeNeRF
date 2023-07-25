@@ -26,10 +26,14 @@ def train(args):
     rgb2gray = imgutils.RGB2Gray()
 
     K = None
+    poses = None
 
     if args.dataset_type == 'llff':
         print("Use llff data")
-        events, images, imgtests, poses_ts, poses = load_llff_data(args.datadir, factor=args.factor, idx=args.idx, gray=True, load_pose=True)
+        if args.fix_pose:
+            events, images, imgtests, poses_ts, poses = load_llff_data(args.datadir, factor=args.factor, idx=args.idx, gray=args.channels == 1, load_pose=True)
+        else:
+            events, images, imgtests, poses_ts = load_llff_data(args.datadir, factor=args.factor, idx=args.idx, gray=args.channels == 1, load_pose=False)
         print('Loaded llff data', images.shape, args.datadir, args.idx)
     elif args.dataset_type == 'davis':
         print("Use davis data")
@@ -91,7 +95,7 @@ def train(args):
         print('Model Load Done!')
     else:
         model = optimize_pose_CubicSpline_2.Model()
-        graph = model.build_network(args, poses)  # nerf, nerf_fine, forward
+        graph = model.build_network(args, poses=poses)  # nerf, nerf_fine, forward
         optimizer, optimizer_pose, optimizer_trans = model.setup_optimizer(args)
         print('Not Load Model!')
 
