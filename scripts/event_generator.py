@@ -273,7 +273,7 @@ if __name__=='__main__':
     for i in range(NUM_I_RGB):
         RGB_dir = imgfiles[img_id]
         I_Gray = cv2.imread(RGB_dir, cv2.IMREAD_GRAYSCALE)
-        dir = os.path.join(savedir_Gray, '{:03d}.png'.format(i))
+        dir = os.path.join(savedir_Gray, '{:06d}.png'.format(i))
         imageio.imwrite(dir, I_Gray)
 
         temp = []
@@ -284,7 +284,7 @@ if __name__=='__main__':
         temp = np.stack(temp).astype(np.float32)
         temp = temp.mean(axis=0)
         temp = temp.astype(np.uint8)
-        dir = os.path.join(savedir_blur_Gray, '{:03d}.png'.format(i))
+        dir = os.path.join(savedir_blur_Gray, '{:06d}.png'.format(i))
         imageio.imwrite(dir, temp)
 
         img_id += INTERVAL
@@ -295,7 +295,7 @@ if __name__=='__main__':
     for i in range(NUM_I_RGB):
         RGB_dir = imgfiles[img_id]
         I_RGB = imageio.v3.imread(RGB_dir)
-        dir = os.path.join(savedir_RGB, '{:03d}.png'.format(i))
+        dir = os.path.join(savedir_RGB, '{:06d}.png'.format(i))
         imageio.imwrite(dir, I_RGB)
 
         temp = []
@@ -306,7 +306,7 @@ if __name__=='__main__':
         temp = np.stack(temp).astype(np.float32)
         temp = temp.mean(axis=0)
         temp = temp.astype(np.uint8)
-        dir = os.path.join(savedir_blur_RGB, '{:03d}.png'.format(i))
+        dir = os.path.join(savedir_blur_RGB, '{:06d}.png'.format(i))
         imageio.imwrite(dir, temp)
 
         img_id += INTERVAL
