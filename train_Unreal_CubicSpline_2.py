@@ -26,10 +26,14 @@ def train(args):
     rgb2gray = imgutils.RGB2Gray()
 
     K = None
+    poses = None
 
     if args.dataset_type == 'llff':
         print("Use llff data")
-        events, images, imgtests, poses_ts = load_llff_data(args.datadir, factor=args.factor, idx=args.idx)
+        if args.fix_pose:
+            events, images, imgtests, poses_ts, poses = load_llff_data(args.datadir, factor=args.factor, idx=args.idx, gray=args.channels == 1, load_pose=True)
+        else:
+            events, images, imgtests, poses_ts = load_llff_data(args.datadir, factor=args.factor, idx=args.idx, gray=args.channels == 1, load_pose=False)
         print('Loaded llff data', images.shape, args.datadir, args.idx)
     elif args.dataset_type == 'davis':
         print("Use davis data")
@@ -91,7 +95,7 @@ def train(args):
         print('Model Load Done!')
     else:
         model = optimize_pose_CubicSpline_2.Model()
-        graph = model.build_network(args)  # nerf, nerf_fine, forward
+        graph = model.build_network(args, poses=poses)  # nerf, nerf_fine, forward
         optimizer, optimizer_pose, optimizer_trans = model.setup_optimizer(args)
         print('Not Load Model!')
 
@@ -111,25 +115,25 @@ def train(args):
             init_nerf(graph.nerf_fine)
 
         if i % args.i_video == 0 and i > 0:
-            ret, ray_idx, test_poses, events_accu = graph.forward(i, poses_ts, threshold, events,
+            ret_event, ret_rgb, ray_idx_event, ray_idx_rgb, test_poses, events_accu = graph.forward(i, poses_ts, threshold, events,
                                                                   H, W, K, args)
 
         elif i % args.i_img == 0 and i > 0:
-            ret, ray_idx, test_poses, events_accu = graph.forward(i, poses_ts, threshold, events,
+            ret_event, ret_rgb, ray_idx_event, ray_idx_rgb, test_poses, events_accu = graph.forward(i, poses_ts, threshold, events,
                                                                   H, W, K, args)
         else:
-            ret, ray_idx, events_accu = graph.forward(i, poses_ts, threshold, events, H, W, K, args)
+            ret_event, ret_rgb, ray_idx_event, ray_idx_rgb, events_accu = graph.forward(i, poses_ts, threshold, events, H, W, K, args)
 
-        pixels_num = ray_idx.shape[0]
+        pixels_num = ray_idx_event.shape[0]
 
-        ret_gray1 = {'rgb_map': ret['rgb_map'][:pixels_num],
-                     'rgb0': ret['rgb0'][:pixels_num]}
-        ret_gray2 = {'rgb_map': ret['rgb_map'][pixels_num:pixels_num * 2],
-                     'rgb0': ret['rgb0'][pixels_num:pixels_num * 2]}
-        ret_rgb = {'rgb_map': ret['rgb_map'][pixels_num * 2:],
-                   'rgb0': ret['rgb0'][pixels_num * 2:]}
+        ret_gray1 = {'rgb_map': ret_event['rgb_map'][:pixels_num],
+                     'rgb0': ret_event['rgb0'][:pixels_num]}
+        ret_gray2 = {'rgb_map': ret_event['rgb_map'][pixels_num:],
+                     'rgb0': ret_event['rgb0'][pixels_num:]}
+        ret_rgb = {'rgb_map': ret_rgb['rgb_map'],
+                   'rgb0': ret_rgb['rgb0']}
 
-        target_s = events_accu.reshape(-1, 1)[ray_idx]
+        target_s = events_accu.reshape(-1, 1)[ray_idx_event]
 
         # backward
         optimizer_pose.zero_grad()
@@ -143,7 +147,7 @@ def train(args):
         logger.write("train_event_loss_fine", img_loss.item())
 
         # Event loss
-        if 'rgb0' in ret:
+        if 'rgb0' in ret_event:
             if args.channels == 3:
                 img_loss0 = mse_loss(safelog(rgb2gray(ret_gray2['rgb0'])) - safelog(rgb2gray(ret_gray1['rgb0'])), target_s)
             else:
@@ -158,7 +162,7 @@ def train(args):
         # RGB loss
         if args.rgb_loss:
             target_s = images[0].reshape(-1, H * W, args.channels)
-            target_s = target_s[:, ray_idx]
+            target_s = target_s[:, ray_idx_rgb]
             target_s = target_s.reshape(-1, args.channels)
             interval = target_s.shape[0]
             rgb_ = 0
@@ -181,7 +185,7 @@ def train(args):
             rgb_blur = torch.stack(rgb_list, 0)
             rgb_blur = rgb_blur.reshape(-1, args.channels)
 
-            if 'rgb0' in ret:
+            if 'rgb0' in ret_rgb:
                 extras_blur = torch.stack(extras_list, 0)
                 extras_blur = extras_blur.reshape(-1, args.channels)
 
@@ -189,7 +193,7 @@ def train(args):
             rgb_loss_fine *= args.rgb_coefficient
             logger.write("train_rgb_loss_fine", rgb_loss_fine.item())
 
-            if 'rgb0' in ret:
+            if 'rgb0' in ret_rgb:
                 rgb_loss_coarse = mse_loss(extras_blur, target_s)
                 rgb_loss_coarse *= args.rgb_coefficient
                 logger.write("train_rgb_loss_coarse", rgb_loss_coarse.item())
@@ -209,7 +213,7 @@ def train(args):
         # step
         if args.optimize_nerf:
             optimizer.step()
-        if args.optimize_se3:
+        if args.optimize_se3 and not args.fix_pose:
             optimizer_pose.step()
         if args.optimize_trans:
             optimizer_trans.step()

@@ -131,8 +131,8 @@ class NeRF(nn.Module):
         if args.use_viewdirs:
             embeddirs_fn, input_ch_views = get_embedder(args, args.multires_views, args.i_embed)
         # forward positional encoding
-        pts_flat = torch.reshape(pts, [-1, pts.shape[-1]])  # [N_rands x 64, 3] (pose_num * rays_num)
-        embedded = embed_fn(pts_flat)  # [N_rands x 64, 63] if barf: [..., 60]
+        pts_flat = torch.reshape(pts, [-1, pts.shape[-1]])
+        embedded = embed_fn(pts_flat)
 
         if args.barf:
             embedded = barf(barf_i, embedded, input_ch, args)
@@ -142,11 +142,11 @@ class NeRF(nn.Module):
             # embedded_dirs:[1024x64, 27]
             input_dirs = viewdirs[:, None].expand(pts.shape)
             input_dirs_flat = torch.reshape(input_dirs, [-1, input_dirs.shape[-1]])
-            embedded_dirs = embeddirs_fn(input_dirs_flat)  # [N_rands x 64, 27] if barf: [..., 24]
+            embedded_dirs = embeddirs_fn(input_dirs_flat)
             if args.barf:
                 embedded_dirs = barf(barf_i, embedded_dirs, input_ch_views, args)
                 embedded_dirs = torch.cat([input_dirs_flat, embedded_dirs], -1)  # [..., 27]
-            embedded = torch.cat([embedded, embedded_dirs], -1)  # 这里的embedded是要送入nerf的
+            embedded = torch.cat([embedded, embedded_dirs], -1)
 
         # step2: 将positional encoding后的编码送入到nerf的mlp
         input_pts, input_views = torch.split(embedded, [self.input_ch, self.input_ch_views], dim=-1)
@@ -268,18 +268,24 @@ class Graph(nn.Module):
             pixels_y = torch.concatenate([pixels_event[0][event_pixel_id], pixels_no_event[0][bg_pixels_id]], 0)
             pixels_x = torch.concatenate([pixels_event[1][event_pixel_id], pixels_no_event[1][bg_pixels_id]], 0)
 
-            ray_idx = pixels_y * W + pixels_x
+            ray_idx_event = pixels_y * W + pixels_x
 
             spline_poses = self.get_pose(i, args, events_ts, poses_ts)
             spline_rgb_poses = self.get_pose_rgb(args)
-            spline_poses = torch.cat((spline_poses, spline_rgb_poses))
 
-            ret = self.render(i, spline_poses, ray_idx.reshape(-1, 1).squeeze(), H, W, K, args, ray_idx_tv=None,
+            # render event
+            ret_event = self.render(i, spline_poses, ray_idx_event.reshape(-1, 1).squeeze(), H, W, K, args, ray_idx_tv=None,
                               training=True)
+
+            # render rgb
+            ray_idx_rgb = torch.randperm(H * W)[:args.N_pix_rgb // args.deblur_images]
+            ret_rgb = self.render(i, spline_rgb_poses, ray_idx_rgb.reshape(-1, 1).squeeze(), H, W, K, args, ray_idx_tv=None,
+                              training=True)
+
 
             if i % args.i_video == 0 and i > 0:
                 spline_poses_test = spline_rgb_poses
-                return ret, ray_idx, spline_poses_test, events_accu
+                return ret_event, ret_rgb, ray_idx_event, ray_idx_rgb, spline_poses_test, events_accu
 
             elif i % args.i_img == 0 and i > 0:
                 shape0 = spline_rgb_poses.shape[0]
@@ -287,16 +293,16 @@ class Graph(nn.Module):
                     spline_poses_test = spline_rgb_poses
                 else:
                     spline_poses_test = self.get_pose_rgb(args, args.deblur_images + 1)
-                return ret, ray_idx, spline_poses_test, events_accu
+                return ret_event, ret_rgb, ray_idx_event, ray_idx_rgb, spline_poses_test, events_accu
 
             else:
-                return ret, ray_idx, events_accu
+                return ret_event, ret_rgb, ray_idx_event, ray_idx_rgb, events_accu
 
         else:
             pose_nums = torch.randperm(int(H // 10))[:5]
             spline_poses = self.get_pose(i, args, events_ts, poses_ts)
             # torch.manual_seed(0)
-            ray_idx = torch.randperm(H * W)[:args.N_rand // args.deblur_images]
+            ray_idx = torch.randperm(H * W)[:args.N_pix_rgb // args.deblur_images]
             return spline_poses, ray_idx
 
     def get_pose(self, i, args, events_ts, poses_ts):

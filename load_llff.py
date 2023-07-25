@@ -1,8 +1,10 @@
-import numpy as np
 import os
+
+import numpy as np
 import torch
-from downsample import downsample
 from imageio.v3 import imread
+
+from downsample import downsample
 
 
 ########## Slightly modified version of LLFF data loading code
@@ -22,7 +24,6 @@ def _minify(basedir, factors=[], resolutions=[]):  # basedir: ./data/nerf_llff_d
     if not needtoload:
         return
 
-    from shutil import copy
     from subprocess import check_output
 
     imgdir = os.path.join(basedir, 'images')
@@ -61,7 +62,7 @@ def _minify(basedir, factors=[], resolutions=[]):  # basedir: ./data/nerf_llff_d
         print('Done')
 
 
-def _load_data(basedir, factor=None, width=None, height=None):
+def _load_data(basedir, factor=None, width=None, height=None, load_pose=False, gray=False):
     poses_ts = np.loadtxt(os.path.join(basedir, 'poses_ts.txt'))
 
     img0 = [os.path.join(basedir, 'images', f) for f in sorted(os.listdir(os.path.join(basedir, 'images'))) \
@@ -102,16 +103,30 @@ def _load_data(basedir, factor=None, width=None, height=None):
     imgtests = [os.path.join(testdir, f) for f in sorted(os.listdir(testdir)) if
                 f.endswith('JPG') or f.endswith('jpg') or f.endswith('png')]
 
-    imgs = [imread(f)[..., :3] / 255. for f in imgfiles]
+    if gray:
+        imgs = [imread(f) / 255. for f in imgfiles]
+    else:
+        imgs = [imread(f)[..., :3] / 255. for f in imgfiles]
     imgs = np.stack(imgs, -1)
 
-    imgtests = [imread(f)[..., :3] / 255. for f in imgtests]
+    if gray:
+        imgtests = [imread(f) / 255. for f in imgtests]
+    else:
+        imgtests = [imread(f)[..., :3] / 255. for f in imgtests]
     imgtests = np.stack(imgtests, -1)
 
-    events = np.load(os.path.join(basedir, 'events', 'events_data.npy'))
+    if load_pose:
+        poses_arr = np.load(os.path.join(basedir, 'poses_bounds.npy'))
+        poses = poses_arr[:, :-2].reshape([-1, 3, 5]).transpose([1, 2, 0])  # 3x5xN
+        poses[:2, 4, :] = np.array(sh[:2]).reshape([2, 1])
+        poses = np.concatenate([poses[:, 1:2, :], -poses[:, 0:1, :], poses[:, 2:, :]], 1)  # 列的转换    -y x z : x y z
+        # poses: [3, 5, N]->[N, 3, 5] imgs: [HWCN]->[NHWC] bds: [2, N]->[N, 2]
+        poses = np.moveaxis(poses, -1, 0).astype(np.float32)
 
     print('Loaded image data', imgs.shape)
-    return imgs, imgtests, events, poses_ts
+    if load_pose:
+        return imgs, imgtests, poses_ts, poses
+    return imgs, imgtests, poses_ts
 
 
 def normalize(x):
@@ -227,24 +242,47 @@ def spherify_poses(poses, bds):
     return poses_reset, new_poses, bds
 
 
-def load_llff_data(basedir, factor=1, idx=0):
-    imgs, imgtests, events, poses_ts = _load_data(basedir, factor=factor)
+def load_llff_data(basedir, factor=1, idx=0, deblur_dataset=50, gray=False, load_pose=False):
+    if load_pose:
+        imgs, imgtests, poses_ts, poses = _load_data(basedir, factor=factor, load_pose=load_pose, gray=gray)
+    else:
+        imgs, imgtests, poses_ts = _load_data(basedir, factor=factor, load_pose=load_pose, gray=gray)
+
     print('Loaded', basedir)
 
     imgs = np.moveaxis(imgs, -1, 0).astype(np.float32)
+    if gray:
+        imgs = np.expand_dims(imgs, -1)
     imgs = np.expand_dims(imgs[idx], 0)
     imgs = torch.Tensor(imgs)
 
     imgtests = np.moveaxis(imgtests, -1, 0).astype(np.float32)
+    if gray:
+        imgtests = np.expand_dims(imgtests, -1)
     imgtests = np.expand_dims(imgtests[idx], 0)
     imgtests = torch.Tensor(imgtests)
 
     poses_ts = poses_ts[idx:idx + 2]
-    events = np.array([event for event in events if poses_ts[0] <= event[2] <= poses_ts[1]])
+
+    eventdir = os.path.join(basedir, "events")
+    eventfiles = [os.path.join(eventdir, f) for f in sorted(os.listdir(eventdir)) if
+                  f.endswith('npy') and f.startswith(('0', '1', '2', '3', '4', '5', '6', '7', '8', '9'))]
+    eventfiles = eventfiles[deblur_dataset * idx: deblur_dataset * (idx + 1)]
+
+    event_list = [np.load(e) for e in eventfiles]
+    events = np.concatenate(event_list)
+    events = events[events[:, 2].argsort()]
+    # events = np.array([event for event in events if poses_ts[0] <= event[2] <= poses_ts[1]])
 
     # create dictionary
     events = {'x': events[:, 0].astype(int), 'y': events[:, 1].astype(int), 'ts': events[:, 2], 'pol': events[:, 3],
               'num': events.shape[0]}
+    if load_pose:
+        # recenter
+        poses = recenter_poses(poses)
+        # select pose
+        poses = poses[idx: idx + 2]
+        return events, imgs, imgtests, poses_ts, poses
 
     return events, imgs, imgtests, poses_ts
 
