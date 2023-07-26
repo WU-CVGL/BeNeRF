@@ -233,10 +233,10 @@ class Graph(nn.Module):
             N_pix_no_event = args.N_pix_no_event
             N_pix_event = args.N_pix_event
 
-            if args.sliding_Win:
-                window_low_bound = np.random.randint(events['num'] - N_window)  # sliding window
+            if args.random_window:
+                window_low_bound = np.random.randint(events['num'] - N_window)
             else:
-                window_low_bound = np.random.randint(events['num'] - N_window) // N_window * N_window  # fixing window
+                window_low_bound = np.random.randint((events['num'] - N_window) // N_window) * N_window
 
             window_up_bound = int(window_low_bound + N_window)
             pol_window = events['pol'][window_low_bound:window_up_bound]
@@ -274,14 +274,15 @@ class Graph(nn.Module):
             spline_rgb_poses = self.get_pose_rgb(args)
 
             # render event
-            ret_event = self.render(i, spline_poses, ray_idx_event.reshape(-1, 1).squeeze(), H, W, K, args, ray_idx_tv=None,
-                              training=True)
+            ret_event = self.render(i, spline_poses, ray_idx_event.reshape(-1, 1).squeeze(), H, W, K, args,
+                                    ray_idx_tv=None,
+                                    training=True)
 
             # render rgb
             ray_idx_rgb = torch.randperm(H * W)[:args.N_pix_rgb // args.deblur_images]
-            ret_rgb = self.render(i, spline_rgb_poses, ray_idx_rgb.reshape(-1, 1).squeeze(), H, W, K, args, ray_idx_tv=None,
-                              training=True)
-
+            ret_rgb = self.render(i, spline_rgb_poses, ray_idx_rgb.reshape(-1, 1).squeeze(), H, W, K, args,
+                                  ray_idx_tv=None,
+                                  training=True)
 
             if i % args.i_video == 0 and i > 0:
                 spline_poses_test = spline_rgb_poses

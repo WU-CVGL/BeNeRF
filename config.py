@@ -11,6 +11,8 @@ def config_parser():
     # others
     parser.add_argument('--config', is_config_file=True, default='./configs/testconfig.txt',
                         help='config file path')
+    parser.add_argument("--project", type=str, default="event-bad-nerf",
+                        help='the viewer to use (wandb)')
     parser.add_argument("--expname", type=str,
                         help='experiment name')
     parser.add_argument("--datadir", type=str, default='./data/llff/fern',
@@ -190,8 +192,7 @@ def config_parser():
                         help='the percentage of the window end (when window_dec enabled)')
     parser.add_argument("--window_desc_end", type=float, default=0.6,
                         help='when iter reach window_desc_end * max_iter, it will maintain window_percent_end')
-
-    parser.add_argument("--sliding_Win", action='store_true',
+    parser.add_argument("--random_window", action='store_true',
                         help='whether to use fixed windows or sliding window')
 
     # coefficient for loss

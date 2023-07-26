@@ -1,9 +1,10 @@
+project = event-bad-nerf
 expname = testconfig-barf-18
 datadir = ./data/livingroom_gray
 dataset_type = llff
-idx = 18
+idx = 13
 viewer = wandb
-fix_pose = False
+fix_pose = True
 
 focal = 548.409
 factor = 1
@@ -24,9 +25,9 @@ N_pix_rgb = 5120
 
 window_desc = False
 window_percent = 0.1
-window_percent_end = 0.025
-window_desc_end = 0.6
-sliding_Win = False
+window_percent_end = 0.05
+window_desc_end = 0.8
+random_window = False
 
 barf = False
 barf_start = 0.1

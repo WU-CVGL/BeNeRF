@@ -4,7 +4,7 @@ import wandb
 class WandbLogger:
 
     def __init__(self, args) -> None:
-        self.run = wandb.init(project="event-bad-nerf", config=args, name=args.expname)
+        self.run = wandb.init(project=args.project, config=args, name=args.expname)
         self.buffer = dict()
 
     def write(self, label: str, value) -> None:
