@@ -3,7 +3,7 @@ datadir = ./data/livingroom_gray
 dataset_type = llff
 idx = 18
 viewer = wandb
-fix_pose = True
+fix_pose = False
 
 focal = 548.409
 factor = 1
@@ -22,8 +22,8 @@ N_pix_no_event = 512
 N_pix_event = 1536
 N_pix_rgb = 5120
 
-window_percent = 0.1
 window_desc = False
+window_percent = 0.1
 window_percent_end = 0.025
 window_desc_end = 0.6
 sliding_Win = False

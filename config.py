@@ -184,8 +184,8 @@ def config_parser():
     # window
     parser.add_argument("--window_percent", type=float, default=0.1,
                         help='the percentage of the window')
-    parser.add_argument("--window_desc", type=bool, default=False,
-                        help='the percentage of the window end')
+    parser.add_argument("--window_desc", action='store_true',
+                        help='turn on windows desc/not')
     parser.add_argument("--window_percent_end", type=float, default=0.05,
                         help='the percentage of the window end (when window_dec enabled)')
     parser.add_argument("--window_desc_end", type=float, default=0.6,
@@ -204,6 +204,6 @@ def config_parser():
     parser.add_argument("--viewer", type=str, default="wandb",
                         help='the viewer to use (wandb)')
 
-    parser.add_argument("--fix_pose", type=bool, default=True,
+    parser.add_argument("--fix_pose", action='store_true',
                         help='the viewer to use (wandb)')
     return parser
