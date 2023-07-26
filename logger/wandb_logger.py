@@ -10,12 +10,14 @@ class WandbLogger:
     def write(self, label: str, value) -> None:
         self.buffer[label] = value
 
-    def write_img(self, label: str, img, caption=None) -> None:
-        img = wandb.Image(img, caption=caption)
+    def write_img(self, label: str, img) -> None:
+        img = wandb.Image(img, caption="mid")
         self.buffer[label] = img
 
-    def write_imgs(self, label: str, imgs, caption=None) -> None:
-        wandbimgs = [wandb.Image(img, caption=caption) for img in imgs]
+    def write_imgs(self, label: str, imgs) -> None:
+        wandbimgs = []
+        for i, img in enumerate(imgs):
+            wandbimgs.append(wandb.Image(img, caption=str(i)))
         self.buffer[label] = wandbimgs
 
     def update_buffer(self):
