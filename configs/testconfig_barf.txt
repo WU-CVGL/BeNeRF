@@ -1,8 +1,8 @@
 project = event-bad-nerf
-expname = testconfig-barf-18
+expname = 18-normal
 datadir = ./data/livingroom_gray
 dataset_type = llff
-idx = 13
+idx = 18
 viewer = wandb
 fix_pose = True
 
@@ -10,12 +10,13 @@ focal = 548.409
 factor = 1
 
 i_print = 100
-i_img = 5000
+i_img = 2500
 i_video = 500000
 i_weights = 10000
 max_iter = 50000
 
 rgb_loss = True
+rgb_blur_loss = False
 
 channels = 1
 
@@ -63,6 +64,7 @@ optimize_nerf = True
 deblur_images = 9
 event_coefficient = 0.2
 rgb_coefficient = 1.0
+rgb_blur_coefficient = 0.3
 
 optimize_trans = False
 transform_lrate = 1e-6

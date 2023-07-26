@@ -157,6 +157,8 @@ def train(args):
 
         event_loss = img_loss0 + img_loss
 
+        logger.write("train_event_loss", event_loss.item())
+
         loss = event_loss
 
         # RGB loss
@@ -167,12 +169,25 @@ def train(args):
             interval = target_s.shape[0]
             rgb_ = 0
             extras_ = 0
+            blur_loss, extras_blur_loss = 0, 0
             rgb_list = []
             extras_list = []
             for j in range(0, args.deblur_images):
-                rgb_ += ret_rgb['rgb_map'][j * interval:(j + 1) * interval]
+                ray_rgb = ret_rgb['rgb_map'][j * interval:(j + 1) * interval]
+                rgb_ += ray_rgb
+
+                # loss for blur image
+                if args.rgb_blur_loss:
+                    blur_loss += mse_loss(ray_rgb, target_s)
+
                 if 'rgb0' in ret_rgb:
-                    extras_ += ret_rgb['rgb0'][j * interval:(j + 1) * interval]
+                    ray_extras = ret_rgb['rgb0'][j * interval:(j + 1) * interval]
+                    extras_ += ray_extras
+
+                    # loss for blur image
+                    if args.rgb_blur_loss:
+                        extras_blur_loss += mse_loss(ray_extras, target_s)
+
                 if (j + 1) % args.deblur_images == 0:
                     rgb_ = rgb_ / args.deblur_images
                     rgb_list.append(rgb_)
@@ -189,6 +204,8 @@ def train(args):
                 extras_blur = torch.stack(extras_list, 0)
                 extras_blur = extras_blur.reshape(-1, args.channels)
 
+
+            # rgb loss
             rgb_loss_fine = mse_loss(rgb_blur, target_s)
             rgb_loss_fine *= args.rgb_coefficient
             logger.write("train_rgb_loss_fine", rgb_loss_fine.item())
@@ -199,7 +216,18 @@ def train(args):
                 logger.write("train_rgb_loss_coarse", rgb_loss_coarse.item())
 
             rgb_loss = rgb_loss_fine + rgb_loss_coarse
+            logger.write("train_rgb_loss", rgb_loss)
             loss += rgb_loss
+
+            # loss for blur image
+            if args.rgb_blur_loss:
+                blur_loss *= args.rgb_blur_coefficient
+                extras_blur_loss *= args.rgb_blur_coefficient
+                logger.write("train_rgb_blur_loss_fine", blur_loss.item())
+                logger.write("train_rgb_blur_loss_coarse", extras_blur_loss.item())
+                rgb_blur_loss = blur_loss + extras_blur_loss
+                logger.write("train_rgb_blur_loss", rgb_blur_loss.item())
+                loss += rgb_blur_loss
         else:
             rgb_loss = torch.tensor(0)
             rgb_loss_fine = torch.tensor(0)

@@ -174,6 +174,8 @@ def config_parser():
                         help='threshold set for events spiking')
     parser.add_argument("--rgb_loss", action='store_true',
                         help='')
+    parser.add_argument("--rgb_blur_loss", action='store_true',
+                        help='')
     parser.add_argument("--channels", type=int, default=3,
                         help='whether to use 3-channel or single-channel images')
     parser.add_argument("--N_pix_no_event", type=int, default=1024,
@@ -199,6 +201,8 @@ def config_parser():
     parser.add_argument("--event_coefficient", type=float, default=1.0,
                         help='coefficient for event loss')
     parser.add_argument("--rgb_coefficient", type=float, default=1.0,
+                        help='coefficient for rgb loss')
+    parser.add_argument("--rgb_blur_coefficient", type=float, default=0.5,
                         help='coefficient for rgb loss')
 
     # viewer
