@@ -31,9 +31,13 @@ def train(args):
     if args.dataset_type == 'llff':
         print("Use llff data")
         if args.fix_pose:
-            events, images, imgtests, poses_ts, poses = load_llff_data(args.datadir, factor=args.factor, idx=args.idx, gray=args.channels == 1, load_pose=True)
+            events, images, imgtests, poses_ts, poses = load_llff_data(args.datadir, factor=args.factor, idx=args.idx,
+                                                                       gray=args.channels == 1, load_pose=True,
+                                                                       deblur_dataset=args.dataset_event_split)
         else:
-            events, images, imgtests, poses_ts = load_llff_data(args.datadir, factor=args.factor, idx=args.idx, gray=args.channels == 1, load_pose=False)
+            events, images, imgtests, poses_ts = load_llff_data(args.datadir, factor=args.factor, idx=args.idx,
+                                                                gray=args.channels == 1, load_pose=False,
+                                                                deblur_dataset=args.dataset_event_split)
         print('Loaded llff data', images.shape, args.datadir, args.idx)
     elif args.dataset_type == 'davis':
         print("Use davis data")
@@ -115,14 +119,17 @@ def train(args):
             init_nerf(graph.nerf_fine)
 
         if i % args.i_video == 0 and i > 0:
-            ret_event, ret_rgb, ray_idx_event, ray_idx_rgb, test_poses, events_accu = graph.forward(i, poses_ts, threshold, events,
-                                                                  H, W, K, args)
+            ret_event, ret_rgb, ray_idx_event, ray_idx_rgb, test_poses, events_accu = graph.forward(i, poses_ts,
+                                                                                                    threshold, events,
+                                                                                                    H, W, K, args)
 
         elif i % args.i_img == 0 and i > 0:
-            ret_event, ret_rgb, ray_idx_event, ray_idx_rgb, test_poses, events_accu = graph.forward(i, poses_ts, threshold, events,
-                                                                  H, W, K, args)
+            ret_event, ret_rgb, ray_idx_event, ray_idx_rgb, test_poses, events_accu = graph.forward(i, poses_ts,
+                                                                                                    threshold, events,
+                                                                                                    H, W, K, args)
         else:
-            ret_event, ret_rgb, ray_idx_event, ray_idx_rgb, events_accu = graph.forward(i, poses_ts, threshold, events, H, W, K, args)
+            ret_event, ret_rgb, ray_idx_event, ray_idx_rgb, events_accu = graph.forward(i, poses_ts, threshold, events,
+                                                                                        H, W, K, args)
 
         pixels_num = ray_idx_event.shape[0]
 
@@ -140,7 +147,8 @@ def train(args):
         optimizer_trans.zero_grad()
         optimizer.zero_grad()
         if args.channels == 3:
-            img_loss = mse_loss(safelog(rgb2gray(ret_gray2['rgb_map'])) - safelog(rgb2gray(ret_gray1['rgb_map'])), target_s)
+            img_loss = mse_loss(safelog(rgb2gray(ret_gray2['rgb_map'])) - safelog(rgb2gray(ret_gray1['rgb_map'])),
+                                target_s)
         else:
             img_loss = mse_loss(safelog(ret_gray2['rgb_map']) - safelog(ret_gray1['rgb_map']), target_s)
         img_loss *= args.event_coefficient
@@ -149,7 +157,8 @@ def train(args):
         # Event loss
         if 'rgb0' in ret_event:
             if args.channels == 3:
-                img_loss0 = mse_loss(safelog(rgb2gray(ret_gray2['rgb0'])) - safelog(rgb2gray(ret_gray1['rgb0'])), target_s)
+                img_loss0 = mse_loss(safelog(rgb2gray(ret_gray2['rgb0'])) - safelog(rgb2gray(ret_gray1['rgb0'])),
+                                     target_s)
             else:
                 img_loss0 = mse_loss(safelog(ret_gray2['rgb0']) - safelog(ret_gray1['rgb0']), target_s)
             img_loss0 *= args.event_coefficient
@@ -203,7 +212,6 @@ def train(args):
             if 'rgb0' in ret_rgb:
                 extras_blur = torch.stack(extras_list, 0)
                 extras_blur = extras_blur.reshape(-1, args.channels)
-
 
             # rgb loss
             rgb_loss_fine = mse_loss(rgb_blur, target_s)

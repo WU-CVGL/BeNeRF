@@ -116,6 +116,8 @@ def config_parser():
                         help='downsample factor for LLFF images')
     parser.add_argument("--focal", type=float, default=548.409,
                         help='focal length of images')
+    parser.add_argument("--dataset_event_split", type=int, default=500,
+                        help='tv')
 
     # logging/saving options
     parser.add_argument("--i_print", type=int, default=100,
