@@ -13,8 +13,8 @@ import numba
     event_sim_config.use_log_image = true;
     event_sim_config.log_eps = 0.001;
 """
-NUM_I_RGB = 200
-INTERVAL = 50
+NUM_I_RGB = 30
+INTERVAL = 500
 threshold = 0.1
 log_eps = 1e-3
 length = NUM_I_RGB * INTERVAL
@@ -24,7 +24,7 @@ START = 0
 
 data_type = 'train'
 
-basedir = '../Event-Datasets/Living_Room_1000Hz'
+basedir = 'D:\\dataset\\WhiteRoom'
 imgdir = os.path.join(basedir, 'camera/temp')
 savedir_RGB = os.path.join(basedir, data_type + '_RGB')
 savedir_Gray = os.path.join(basedir, data_type + '_Gray')
@@ -208,7 +208,7 @@ def Gray_Event_Simulate(imgfiles, W):
 
             spike_time[pixel_id] = spike_time_temp[-1,0]    # save the latest time spiking event
         
-        last_time = spike_time
+        last_time = current_time
         # save the image after generate the event, and this image will be the next base image, cuz the asyn- trigger
         img_base = (img_pre + log_eps) * np.exp(spike_nums * threshold) - log_eps
         # img_base = img_next

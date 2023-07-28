@@ -1,6 +1,9 @@
+from numba.np.ufunc import parallel
 import numpy as np
 from types import SimpleNamespace
 from numba import njit, prange, set_num_threads
+
+# https://github.com/microsoft/airsim/blob/main/PythonClient/eventcamera_sim/event_simulator.py
 
 EVENT_TYPE = np.dtype(
     [("timestamp", "f8"), ("x", "u2"), ("y", "u2"), ("polarity", "b")], align=True
@@ -21,22 +24,21 @@ CONFIG = SimpleNamespace(
 
 @njit(parallel=True)
 def esim(
-        x_end,  # current_image.size,
-        current_image,
-        previous_image,
-        delta_time,
-        crossings,  # previous_image
-        last_time,
-        output_events,
-        spikes,
-        refractory_period_ns,
-        max_events_per_frame,
-        n_pix_row,  # W
+    x_end,
+    current_image,
+    previous_image,
+    delta_time,
+    crossings,
+    last_time,
+    output_events,
+    spikes,
+    refractory_period_ns,
+    max_events_per_frame,
+    n_pix_row,
 ):
     count = 0
-    max_spikes = int(
-        delta_time / (refractory_period_ns * 1e-3))  # int(delta_time)   # define minimal time interval of event spiking
-    for x in prange(x_end):  # numba parallel processing
+    max_spikes = int(delta_time / (refractory_period_ns * 1e-3))
+    for x in prange(x_end):
         itdt = np.log(current_image[x])
         it = np.log(previous_image[x])
         deltaL = itdt - it
@@ -46,37 +48,34 @@ def esim(
 
         pol = np.sign(deltaL)
 
-        cross_update = pol * TOL  # threshold
-        crossings[x] = np.log(crossings[x]) + cross_update  # np.log(previous_image) + pol * TOL
+        cross_update = pol * TOL
+        crossings[x] = np.log(crossings[x]) + cross_update
 
         lb = crossings[x] - it
         ub = crossings[x] - itdt
 
-        pos_check = lb > 0 and (pol == 1) and ub < 0  # verify whether polarity is positive
-        neg_check = lb < 0 and (pol == -1) and ub > 0  # verify whether polarity is negative
+        pos_check = lb > 0 and (pol == 1) and ub < 0
+        neg_check = lb < 0 and (pol == -1) and ub > 0
 
-        # lb = 0: pos_check + neg_check = -2 --> no event
-        # ub = 0: pos_check + neg_check = -2 --> pol * TOL + np.log(previous_image[x]) = np.log(current_image[x]) / exactly one event triggered
-
-        spike_nums = (itdt - crossings[x]) / TOL  # verify how many times evnet is spiked ？？？
-        cross_check = pos_check + neg_check  # True + False = 1
+        spike_nums = (itdt - crossings[x]) / TOL
+        cross_check = pos_check + neg_check
         spike_nums = np.abs(int(spike_nums * cross_check))
 
         crossings[x] = itdt - cross_update
         if spike_nums > 0:
-            spikes[x] = pol  # events map
+            spikes[x] = pol
 
         spike_nums = max_spikes if spike_nums > max_spikes else spike_nums
 
         current_time = last_time
-        for i in range(spike_nums):  # trigger spike_nums events
+        for i in range(spike_nums):
             output_events[count].x = x % n_pix_row
             output_events[count].y = x // n_pix_row
             output_events[count].timestamp = np.round(current_time * 1e-6, 6)
             output_events[count].polarity = 1 if pol > 0 else -1
 
             count += 1
-            current_time += (delta_time) / spike_nums  #
+            current_time += (delta_time) / spike_nums
 
             if count == max_events_per_frame:
                 return count
@@ -134,7 +133,7 @@ class EventSimulator:
         self.output_events = np.zeros(
             (self.config.max_events_per_frame), dtype=EVENT_TYPE
         )
-        self.spikes = np.zeros((self.npix))  # H * W
+        self.spikes = np.zeros((self.npix))
 
         self.crossings = self.last_image.copy()
         self.event_count = esim(
@@ -151,10 +150,10 @@ class EventSimulator:
             self.W,
         )
 
-        np.copyto(self.last_image, self.current_image)  # copy current_image to last_image
+        np.copyto(self.last_image, self.current_image)
         self.last_time = new_time
 
         result = self.output_events[: self.event_count]
-        result.sort(order=["timestamp"], axis=0)  # sort event according to "timestamp"
+        result.sort(order=["timestamp"], axis=0)
 
         return self.spikes, result

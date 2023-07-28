@@ -138,7 +138,7 @@ def poses_2_mat(groundtruth_data, m_c2b, near, far):
     for i in range(0, poses.shape[2]):
 
         # near, far = depth_data[i][0], depth_data[i][1]
-        if dataset_name == 'blue_room':
+        if dataset_name == 'BlueRoom':
             near, far = 0.5, 121.51878159270797
 
         poses_bounds.append(np.concatenate([poses[..., i].ravel(), np.array([near, far])], 0))
@@ -181,13 +181,13 @@ def cal_bounds(basedir):
 if __name__ == '__main__':
     print('Start')
 
-    NUM_I_RGB = 200
-    INTERVAL = 50
+    NUM_I_RGB = 30
+    INTERVAL = 500
 
     length = NUM_I_RGB * INTERVAL + 1
 
-    dataset_name = 'Living_Room_1000Hz'
-    basedir = os.path.join('../Event-Datasets', dataset_name)
+    dataset_name = 'WhiteRoom'
+    basedir = os.path.join('D:\\dataset\\', dataset_name)
 
     revert = False
 

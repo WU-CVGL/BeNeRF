@@ -1,10 +1,11 @@
-project = event-bad-nerf
-expname = 18-normal
+project = eb-nerf-livingroom_gray
+expname = 9-normal
 datadir = ./data/livingroom_gray
 dataset_type = llff
-idx = 18
+idx = 9
+dataset_event_split = 500
 viewer = wandb
-fix_pose = True
+fix_pose = False
 
 focal = 548.409
 factor = 1
