@@ -265,14 +265,18 @@ def load_llff_data(basedir, factor=1, idx=0, deblur_dataset=50, gray=False, load
     poses_ts = poses_ts[idx:idx + 2]
 
     eventdir = os.path.join(basedir, "events")
-    eventfiles = [os.path.join(eventdir, f) for f in sorted(os.listdir(eventdir)) if
-                  f.endswith('npy') and f.startswith(('0', '1', '2', '3', '4', '5', '6', '7', '8', '9'))]
-    eventfiles = eventfiles[deblur_dataset * idx: deblur_dataset * (idx + 1)]
+    if os.path.exists(os.path.join(eventdir, "events.npy")):
+        events = np.load(os.path.join(eventdir, "events.npy"))
+        delta = (poses_ts[1] - poses_ts[0]) * 0.01
+        events = np.array([event for event in events if poses_ts[0] - delta <= event[2] <= poses_ts[1] + delta])
+    else:
+        eventfiles = [os.path.join(eventdir, f) for f in sorted(os.listdir(eventdir)) if
+                      f.endswith('npy') and f.startswith(('0', '1', '2', '3', '4', '5', '6', '7', '8', '9'))]
+        eventfiles = eventfiles[deblur_dataset * idx: deblur_dataset * (idx + 1)]
 
-    event_list = [np.load(e) for e in eventfiles]
-    events = np.concatenate(event_list)
-    events = events[events[:, 2].argsort()]
-    # events = np.array([event for event in events if poses_ts[0] <= event[2] <= poses_ts[1]])
+        event_list = [np.load(e) for e in eventfiles]
+        events = np.concatenate(event_list)
+        events = events[events[:, 2].argsort()]
 
     # create dictionary
     events = {'x': events[:, 0].astype(int), 'y': events[:, 1].astype(int), 'ts': events[:, 2], 'pol': events[:, 3],

@@ -1,10 +1,10 @@
 import os.path
-
+import numpy as np
 import esim_py
 
 contrast_threshold_pos = 0.1
 contrast_threshold_neg = 0.1
-refractory_period = 1e-9
+refractory_period = 0
 log_eps = 1e-3
 use_log = False
 
@@ -35,4 +35,5 @@ if __name__ == '__main__':
         list_of_timestamps  # list of timestamps in ascending order
     )
 
-    print(events_list_of_images)
+    np.save(os.path.join(outdir, "events.npy"), events_list_of_images)
+    print("Finished")

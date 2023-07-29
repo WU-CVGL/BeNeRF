@@ -1,6 +1,6 @@
 project = eb-nerf-livingroom_gray
 expname = 9-normal
-datadir = ./data/livingroom_gray
+datadir = ./data/livingroom_gray_new
 dataset_type = llff
 idx = 9
 dataset_event_split = 500
