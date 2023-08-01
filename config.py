@@ -198,6 +198,8 @@ def config_parser():
                         help='when iter reach window_desc_end * max_iter, it will maintain window_percent_end')
     parser.add_argument("--random_window", action='store_true',
                         help='whether to use fixed windows or sliding window')
+    parser.add_argument("--time_window", action='store_true',
+                        help='whether to use fixed windows or sliding window')
 
     # coefficient for loss
     parser.add_argument("--event_coefficient", type=float, default=1.0,

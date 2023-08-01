@@ -222,42 +222,42 @@ class Graph(nn.Module):
 
     def forward(self, i, poses_ts, threshold, events, H, W, K, args):
         if i <= threshold:
-            # if args.window_desc:
-            #     # linear desc
-            #     i_end = args.max_iter * args.window_desc_end
-            #     percent = args.window_percent - (args.window_percent - args.window_percent_end) * (
-            #             i / i_end) if i < i_end else args.window_percent_end
-            #     N_window = round(events['num'] * percent)
-            # else:
-            #     N_window = round(events['num'] * args.window_percent)
             N_pix_no_event = args.N_pix_no_event
             N_pix_event = args.N_pix_event
-            #
-            # if args.random_window:
-            #     window_low_bound = np.random.randint(events['num'] - N_window)
-            # else:
-            #     window_low_bound = np.random.randint((events['num'] - N_window) // N_window) * N_window
-            #
-            # window_up_bound = int(window_low_bound + N_window)
-            # pol_window = events['pol'][window_low_bound:window_up_bound]
-            # x_window = events['x'][window_low_bound:window_up_bound]
-            # y_window = events['y'][window_low_bound:window_up_bound]
-            # ts_window = events['ts'][window_low_bound:window_up_bound]
 
-            delta_t = poses_ts[1] - poses_ts[0]
-            window_t = delta_t * 0.1
-            low_t = np.random.rand(1) * (1 - 0.1) * delta_t + poses_ts[0]
-            upper_t = low_t + window_t
+            if args.time_window:
+                delta_t = poses_ts[1] - poses_ts[0]
+                window_t = delta_t * args.window_percent
+                low_t = np.random.rand(1) * (1 - args.window_percent) * delta_t + poses_ts[0]
+                upper_t = low_t + window_t
+                idx_a = low_t <= events["ts"]
+                idx_b = events["ts"] <= upper_t
+                idx = idx_a * idx_b
+                indices = np.where(idx)
+                pol_window = events['pol'][indices]
+                x_window = events['x'][indices]
+                y_window = events['y'][indices]
+                ts_window = events['ts'][indices]
+            else:
+                if args.window_desc:
+                    # linear desc
+                    i_end = args.max_iter * args.window_desc_end
+                    percent = args.window_percent - (args.window_percent - args.window_percent_end) * (
+                            i / i_end) if i < i_end else args.window_percent_end
+                    N_window = round(events['num'] * percent)
+                else:
+                    N_window = round(events['num'] * args.window_percent)
 
-            # events = dict(filter(lambda item: low_t <= item["ts"] <= upper_t, events.items()))
-            idx_a = low_t <= events["ts"]
-            idx_b = events["ts"] <= upper_t
-            idx = idx_a * idx_b
-            indices = np.where(idx)
-            pol_window = events['pol'][indices]
-            x_window = events['x'][indices]
-            y_window = events['y'][indices]
-            ts_window = events['ts'][indices]
+                if args.random_window:
+                    window_low_bound = np.random.randint(events['num'] - N_window)
+                else:
+                    window_low_bound = np.random.randint((events['num'] - N_window) // N_window) * N_window
+
+                window_up_bound = int(window_low_bound + N_window)
+                pol_window = events['pol'][window_low_bound:window_up_bound]
+                x_window = events['x'][window_low_bound:window_up_bound]
+                y_window = events['y'][window_low_bound:window_up_bound]
+                ts_window = events['ts'][window_low_bound:window_up_bound]
 
             def accumulate_events(xs, ys, ts, ps, resolution_level=1):
                 xy = torch.tensor(np.array((ys, xs)), dtype=torch.int64)
@@ -268,8 +268,10 @@ class Graph(nn.Module):
             events_accu = accumulate_events(x_window, y_window, ts_window, pol_window) * args.threshold
 
             # timestamps of event windows begin and end
-            # events_ts = ts_window[np.array([0, int(N_window) - 1])]
-            events_ts = np.stack((low_t, upper_t)).reshape(2)
+            if args.time_window:
+                events_ts = np.stack((low_t, upper_t)).reshape(2)
+            else:
+                events_ts = ts_window[np.array([0, int(N_window) - 1])]
 
             # pixels events spiking and not spiking
             pixels_event = torch.where(events_accu != 0)

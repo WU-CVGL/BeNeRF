@@ -10,9 +10,9 @@ from utils.imgutils import to8bit
 channels = 1
 
 if __name__ == '__main__':
-    img = os.path.expanduser("C:\\Users\\User\\Desktop\\TestMetrics\\SRN-Deblur\\img.png")
-    gt = os.path.expanduser("C:\\Users\\User\\Desktop\\TestMetrics\\SRN-Deblur\\gt.png")
-    out = os.path.expanduser("C:\\Users\\User\\Desktop\\TestMetrics\\SRN-Deblur\\out.png")
+    img = os.path.expanduser("C:\\Users\\User\\Desktop\\TestMetrics\\img.png")
+    gt = os.path.expanduser("C:\\Users\\User\\Desktop\\TestMetrics\\gt.png")
+    out = os.path.expanduser("C:\\Users\\User\\Desktop\\TestMetrics\\out.png")
 
     # read images
     if channels == 1:
@@ -36,4 +36,4 @@ if __name__ == '__main__':
 
     diff = np.abs(img - gt).squeeze()
 
-    imwrite(out, to8bit(diff), mode="L" if channels == 1 else "RGB")
+    imwrite(out, to8bit(diff * 10), mode="L" if channels == 1 else "RGB")
