@@ -267,7 +267,7 @@ def load_llff_data(basedir, factor=1, idx=0, deblur_dataset=50, gray=False, load
     eventdir = os.path.join(basedir, "events")
     if os.path.exists(os.path.join(eventdir, "events.npy")):
         events = np.load(os.path.join(eventdir, "events.npy"))
-        delta = (poses_ts[1] - poses_ts[0]) * 0.01
+        delta = (poses_ts[1] - poses_ts[0]) * 0.001
         events = np.array([event for event in events if poses_ts[0] - delta <= event[2] <= poses_ts[1] + delta])
     else:
         eventfiles = [os.path.join(eventdir, f) for f in sorted(os.listdir(eventdir)) if
