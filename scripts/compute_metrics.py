@@ -10,9 +10,20 @@ from utils.imgutils import to8bit
 channels = 1
 
 if __name__ == '__main__':
-    img = os.path.expanduser("C:\\Users\\User\\Desktop\\TestMetrics\\img.png")
-    gt = os.path.expanduser("C:\\Users\\User\\Desktop\\TestMetrics\\gt.png")
-    out = os.path.expanduser("C:\\Users\\User\\Desktop\\TestMetrics\\out.png")
+    img = os.path.expanduser("C:\\Users\\User\\Desktop\\TestMetrics\\EDI\\img.png")
+    gt = os.path.expanduser("C:\\Users\\User\\Desktop\\TestMetrics\\EDI\\gt.png")
+    out = os.path.expanduser("C:\\Users\\User\\Desktop\\TestMetrics\\EDI\\out.png")
+    txt = os.path.expanduser("C:\\Users\\User\\Desktop\\TestMetrics\\EDI\\out.txt")
+
+    # img = os.path.expanduser("C:\\Users\\User\\Desktop\\TestMetrics\\SRN-Deblur\\img.png")
+    # gt = os.path.expanduser("C:\\Users\\User\\Desktop\\TestMetrics\\SRN-Deblur\\gt.png")
+    # out = os.path.expanduser("C:\\Users\\User\\Desktop\\TestMetrics\\SRN-Deblur\\out.png")
+    # txt = os.path.expanduser("C:\\Users\\User\\Desktop\\TestMetrics\\SRN-Deblur\\out.txt")
+
+    # img = os.path.expanduser("C:\\Users\\User\\Desktop\\TestMetrics\\img.png")
+    # gt = os.path.expanduser("C:\\Users\\User\\Desktop\\TestMetrics\\gt.png")
+    # out = os.path.expanduser("C:\\Users\\User\\Desktop\\TestMetrics\\out.png")
+    # txt = os.path.expanduser("C:\\Users\\User\\Desktop\\TestMetrics\\out.txt")
 
     # read images
     if channels == 1:
@@ -36,4 +47,13 @@ if __name__ == '__main__':
 
     diff = np.abs(img - gt).squeeze()
 
-    imwrite(out, to8bit(diff * 10), mode="L" if channels == 1 else "RGB")
+    imwrite(out, to8bit(diff), mode="L" if channels == 1 else "RGB")
+
+    # write into txt
+    file = open(txt, "w")
+    file.write(f"PSNR: {test_mid_psnr}")
+    file.write(f"SSIM: {test_mid_ssim}")
+    file.write(f"LPIPS: {test_mid_lpips}")
+    file.close()
+
+    print("Finished")
