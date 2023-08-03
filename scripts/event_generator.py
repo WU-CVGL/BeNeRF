@@ -209,9 +209,9 @@ def Gray_Event_Simulate(imgfiles, W):
             spike_time[pixel_id] = spike_time_temp[-1,0]    # save the latest time spiking event
 
         # 1
-        # last_time = current_time
+        last_time = current_time
         # 2
-        last_time = spike_time
+        # last_time = spike_time
         # save the image after generate the event, and this image will be the next base image, cuz the asyn- trigger
         img_base = (img_pre + log_eps) * np.exp(spike_nums * threshold) - log_eps
         # img_base = img_next
