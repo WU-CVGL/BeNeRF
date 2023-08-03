@@ -14,7 +14,7 @@ i_print = 100
 i_img = 2500
 i_video = 500000
 i_weights = 10000
-max_iter = 100000
+max_iter = 50000
 
 rgb_loss = True
 rgb_blur_loss = False
@@ -64,7 +64,7 @@ optimize_se3 = True
 optimize_nerf = True
 
 deblur_images = 15
-event_coefficient = 0.05
+event_coefficient = 0.2
 rgb_coefficient = 1.0
 rgb_blur_coefficient = 0.3
 
