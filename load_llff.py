@@ -282,7 +282,7 @@ def load_llff_data(basedir, factor=1, idx=0, deblur_dataset=50, gray=False, load
     events = {'x': events[:, 0].astype(int), 'y': events[:, 1].astype(int), 'ts': events[:, 2], 'pol': events[:, 3],
               'num': events.shape[0]}
     if load_pose:
-        # recenter
+        # recenter todo
         poses = recenter_poses(poses)
         # select pose
         poses = poses[idx: idx + 2]

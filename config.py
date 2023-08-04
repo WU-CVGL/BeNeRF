@@ -215,4 +215,6 @@ def config_parser():
 
     parser.add_argument("--fix_pose", action='store_true',
                         help='the viewer to use (wandb)')
+    parser.add_argument("--fix_trans", action='store_true',
+                        help='the viewer to use (wandb)')
     return parser

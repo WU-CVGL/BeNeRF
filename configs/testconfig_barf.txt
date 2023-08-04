@@ -1,14 +1,27 @@
-project = eb-nerf-livingroom_gray
-expname = 9-normal
-datadir = ./data/livingroom_gray
+project = eb-nerf-livingroom_gray_trans
+expname = 9-rgb_event
+datadir = ./data/livingroom_0.5_0.5_0.5_0.003_0.003_0.003
 dataset_type = llff
 idx = 9
 dataset_event_split = 500
 viewer = wandb
-fix_pose = False
-
 focal = 548.409
 factor = 1
+
+# training parameters
+optimize_nerf = True
+lrate = 5e-4
+decay_rate = 0.1
+
+optimize_se3 = True
+fix_pose = True
+pose_lrate = 1e-3
+decay_rate_pose = 0.01
+
+optimize_trans = True
+fix_trans = False
+transform_lrate = 1e-4
+decay_rate_transform = 0.01
 
 i_print = 100
 i_img = 2500
@@ -49,25 +62,10 @@ tv_loss = False
 tv_width_nerf = 20
 tv_loss_rgb = True
 tv_loss_gray = True
-
 tv_loss_lambda = 0.001
-
 n_tvloss = 0
 
-# training parameters
-lrate = 5e-4
-pose_lrate = 1e-3
-decay_rate = 0.1
-decay_rate_pose = 0.01
-
-optimize_se3 = True
-optimize_nerf = True
-
-deblur_images = 15
+deblur_images = 9
 event_coefficient = 0.2
 rgb_coefficient = 1.0
 rgb_blur_coefficient = 0.3
-
-optimize_trans = False
-transform_lrate = 1e-6
-decay_rate_transform = 0.01

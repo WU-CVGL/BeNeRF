@@ -32,12 +32,6 @@ pose_composition = lambda p1, p2: np.concatenate((
 pose_to_R_t = lambda pose: (quaternion.as_rotation_matrix(np.quaternion(*pose[:4])), pose[4:])
 
 if __name__ == '__main__':
-    """
-        This file define R t which is original R and t,
-        and R_t and t_t which is the trans between rgb camera and event camera
-        
-        You can generate dataset from unreal engine wi
-    """
     R = np.array([0.976781, 0.013642, 0.203538, -0.065466])
     t = np.array([-153.531555, -33.654785, 151.457611]) * 0.01
 

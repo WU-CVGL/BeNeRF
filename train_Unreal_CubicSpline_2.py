@@ -62,6 +62,11 @@ def train(args):
             [0, 0, 1]
         ])
 
+    # load trans from rgb camera to event camera
+    trans = None
+    if args.fix_trans:
+        trans = np.load(os.path.join(args.datadir, "trans.npy"))
+
     print('camera intrinsic parameters: ', K, ' !!!')
 
     # Create log dir and copy the config file
@@ -99,7 +104,7 @@ def train(args):
         print('Model Load Done!')
     else:
         model = optimize_pose_CubicSpline_2.Model()
-        graph = model.build_network(args, poses=poses)  # nerf, nerf_fine, forward
+        graph = model.build_network(args, poses=poses, trans=trans)  # nerf, nerf_fine, forward
         optimizer, optimizer_pose, optimizer_trans = model.setup_optimizer(args)
         print('Not Load Model!')
 
@@ -251,7 +256,7 @@ def train(args):
             optimizer.step()
         if args.optimize_se3 and not args.fix_pose:
             optimizer_pose.step()
-        if args.optimize_trans:
+        if args.optimize_trans and not args.fix_trans:
             optimizer_trans.step()
 
         # NOTE: IMPORTANT!

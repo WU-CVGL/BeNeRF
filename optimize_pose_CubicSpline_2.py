@@ -22,7 +22,7 @@ class Model(nerf.Model):
     def __init__(self):
         super().__init__()
 
-    def build_network(self, args, poses=None):
+    def build_network(self, args, poses=None, trans=None):
         self.graph = Graph(args, D=8, W=256, input_ch=63, input_ch_views=27, output_ch=4, skips=[4], use_viewdirs=True)
 
         if args.fix_pose:
@@ -37,7 +37,11 @@ class Model(nerf.Model):
         else:
             self.graph.rgb_pose.params.weight.data = torch.nn.Parameter(torch.rand(1, 6) * 0.1)
 
-        self.graph.transform.params.weight.data = torch.nn.Parameter(torch.zeros(1, 6))
+        if args.fix_trans:
+            self.graph.transform.params.weight.data = torch.nn.Parameter(
+                torch.tensor(trans.reshape(1, 6).astype(np.float32)))
+        else:
+            self.graph.transform.params.weight.data = torch.nn.Parameter(torch.zeros(1, 6))
 
         return self.graph
 
@@ -85,7 +89,7 @@ class Graph(nerf.Graph):
             SE3_from = torch.cat((SE3_from, i_0), dim=0)
             SE3_trans = spline.se3_to_SE3(self.transform.params.weight.reshape(1, 1, 6)).squeeze()
             SE3_trans = torch.cat((SE3_trans, i_0), dim=0)
-            SE3_end = SE3_trans @ SE3_from
+            SE3_end = SE3_from @ SE3_trans
             se3_end = spline.SE3_to_se3(SE3_end[:3, :4].reshape(1, 3, 4))
 
         period = torch.tensor((poses_ts[up_bound] - poses_ts[low_bound])).float()
