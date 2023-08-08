@@ -13,12 +13,13 @@ optimize_nerf = True
 lrate = 5e-4
 decay_rate = 0.1
 
-optimize_se3 = True
+optimize_se3 = False
 fix_pose = True
 pose_lrate = 1e-3
 decay_rate_pose = 0.01
 
-optimize_trans = True
+optimize_event = False
+fix_event_pose = True
 fix_trans = False
 transform_lrate = 1e-4
 decay_rate_transform = 0.01

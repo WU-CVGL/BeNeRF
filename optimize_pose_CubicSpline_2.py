@@ -9,39 +9,58 @@ import spline
 class CameraPose(nn.Module):
     def __init__(self, pose_num):
         super().__init__()
-        self.params = nn.Embedding(1, 6)
+        self.params = nn.Embedding(pose_num, 6)
 
 
-class TransformPose(nn.Module):
-    def __init__(self):
+class EventPose(nn.Module):
+    def __init__(self, pose_num):
         super().__init__()
-        self.params = nn.Embedding(1, 6)
+        self.params = nn.Embedding(pose_num, 6)
 
 
 class Model(nerf.Model):
     def __init__(self):
         super().__init__()
 
-    def build_network(self, args, poses=None, trans=None):
+    def build_network(self, args, poses=None, event_poses=None):
         self.graph = Graph(args, D=8, W=256, input_ch=63, input_ch_views=27, output_ch=4, skips=[4], use_viewdirs=True)
 
+        # Init for RGB camera
         if args.fix_pose:
+            # If pose cannot be optimized
+            # start: se3_start (from .npy)
+            # end: se3_end (from .npy)
             self.graph.rgb_pose = CameraPose(2)
         else:
+            # If pose can be optimized
+            # start: Identity
+            # end: rgb_pose
             self.graph.rgb_pose = CameraPose(1)
-        self.graph.transform = TransformPose()
 
+        # Init for event camera
+        if args.fix_event_pose:
+            # If event cameras are fixed on start and end (from poses_bounds_events.npy)
+            self.graph.event = EventPose(2)
+        else:
+            # If event cameras can be optimized or load from a fix transform (trans.npy)
+            self.graph.event = EventPose(1)
+
+        # Parameter for RGB camera
         if args.fix_pose:
             se3_poses = spline.SE3_to_se3(torch.tensor(poses[..., :4]))
             self.graph.rgb_pose.params.weight.data = torch.nn.Parameter(se3_poses)
         else:
             self.graph.rgb_pose.params.weight.data = torch.nn.Parameter(torch.rand(1, 6) * 0.1)
 
-        if args.fix_trans:
-            self.graph.transform.params.weight.data = torch.nn.Parameter(
-                torch.tensor(trans.reshape(1, 6).astype(np.float32)))
+        # Parameter for event camera
+        if args.fix_event_pose:
+            se3_trans = spline.SE3_to_se3(torch.tensor(event_poses[..., :4]))
+            self.graph.event.params.weight.data = torch.nn.Parameter(se3_trans)
+        elif args.fix_trans:
+            self.graph.event.params.weight.data = torch.nn.Parameter(
+                torch.tensor(event_poses.reshape(1, 6).astype(np.float32)))
         else:
-            self.graph.transform.params.weight.data = torch.nn.Parameter(torch.zeros(1, 6))
+            self.graph.event.params.weight.data = torch.nn.Parameter(torch.zeros(1, 6))
 
         return self.graph
 
@@ -54,7 +73,7 @@ class Model(nerf.Model):
         grad_vars_pose = list(self.graph.rgb_pose.parameters())
         self.optim_pose = torch.optim.Adam(params=grad_vars_pose, lr=args.pose_lrate)
 
-        grad_vars_transform = list(self.graph.transform.parameters())
+        grad_vars_transform = list(self.graph.event.parameters())
         self.optim_transform = torch.optim.Adam(params=grad_vars_transform, lr=args.transform_lrate)
 
         return self.optim, self.optim_pose, self.optim_transform
@@ -77,10 +96,17 @@ class Graph(nerf.Graph):
         low_bound = bound[0]
         up_bound = bound[0] + 1
 
-        if args.fix_pose:
+        if args.fix_event_pose:
+            # If event poses are fixed,
+            # load from self.event
+            se3_start = self.event.params.weight[0].reshape(1, 1, 6)
+            se3_end = self.event.params.weight[1].reshape(1, 1, 6)
+        elif not args.optimize_event:
+            # If do not optimize trans, meaning rgb and event are overlapped
             se3_start = self.rgb_pose.params.weight[0].reshape(1, 1, 6)
             se3_end = self.rgb_pose.params.weight[1].reshape(1, 1, 6)
         else:
+            # Use a trans between rgb and events
             # start pose
             se3_start = self.transform.params.weight.reshape(1, 1, 6)
             # end pose

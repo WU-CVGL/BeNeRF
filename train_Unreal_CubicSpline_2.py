@@ -30,14 +30,10 @@ def train(args):
 
     if args.dataset_type == 'llff':
         print("Use llff data")
-        if args.fix_pose:
-            events, images, imgtests, poses_ts, poses = load_llff_data(args.datadir, factor=args.factor, idx=args.idx,
-                                                                       gray=args.channels == 1, load_pose=True,
-                                                                       deblur_dataset=args.dataset_event_split)
-        else:
-            events, images, imgtests, poses_ts = load_llff_data(args.datadir, factor=args.factor, idx=args.idx,
-                                                                gray=args.channels == 1, load_pose=False,
-                                                                deblur_dataset=args.dataset_event_split)
+        events, images, imgtests, poses_ts, poses, ev_poses = load_llff_data(args.datadir, factor=args.factor,
+                                                                             idx=args.idx,
+                                                                             gray=args.channels == 1, load_pose=True,
+                                                                             deblur_dataset=args.dataset_event_split)
         print('Loaded llff data', images.shape, args.datadir, args.idx)
     elif args.dataset_type == 'davis':
         print("Use davis data")
@@ -61,11 +57,6 @@ def train(args):
             [0, focal, 0.5 * H],
             [0, 0, 1]
         ])
-
-    # load trans from rgb camera to event camera
-    trans = None
-    if args.fix_trans:
-        trans = np.load(os.path.join(args.datadir, "trans.npy"))
 
     print('camera intrinsic parameters: ', K, ' !!!')
 
@@ -104,7 +95,7 @@ def train(args):
         print('Model Load Done!')
     else:
         model = optimize_pose_CubicSpline_2.Model()
-        graph = model.build_network(args, poses=poses, trans=trans)  # nerf, nerf_fine, forward
+        graph = model.build_network(args, poses=poses, event_poses=ev_poses)  # nerf, nerf_fine, forward
         optimizer, optimizer_pose, optimizer_trans = model.setup_optimizer(args)
         print('Not Load Model!')
 
@@ -254,9 +245,9 @@ def train(args):
         # step
         if args.optimize_nerf:
             optimizer.step()
-        if args.optimize_se3 and not args.fix_pose:
+        if args.optimize_se3:
             optimizer_pose.step()
-        if args.optimize_trans and not args.fix_trans:
+        if args.optimize_event:
             optimizer_trans.step()
 
         # NOTE: IMPORTANT!

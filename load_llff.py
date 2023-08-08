@@ -115,18 +115,23 @@ def _load_data(basedir, factor=None, width=None, height=None, load_pose=False, g
         imgtests = [imread(f)[..., :3] / 255. for f in imgtests]
     imgtests = np.stack(imgtests, -1)
 
-    if load_pose:
-        poses_arr = np.load(os.path.join(basedir, 'poses_bounds.npy'))
-        poses = poses_arr[:, :-2].reshape([-1, 3, 5]).transpose([1, 2, 0])  # 3x5xN
-        poses[:2, 4, :] = np.array(sh[:2]).reshape([2, 1])
-        poses = np.concatenate([poses[:, 1:2, :], -poses[:, 0:1, :], poses[:, 2:, :]], 1)  # 列的转换    -y x z : x y z
-        # poses: [3, 5, N]->[N, 3, 5] imgs: [HWCN]->[NHWC] bds: [2, N]->[N, 2]
-        poses = np.moveaxis(poses, -1, 0).astype(np.float32)
+    # load poses
+    poses_arr = np.load(os.path.join(basedir, 'poses_bounds.npy'))
+    poses = poses_arr[:, :-2].reshape([-1, 3, 5]).transpose([1, 2, 0])  # 3x5xN
+    poses[:2, 4, :] = np.array(sh[:2]).reshape([2, 1])
+    poses = np.concatenate([poses[:, 1:2, :], -poses[:, 0:1, :], poses[:, 2:, :]], 1)  # 列的转换    -y x z : x y z
+    # poses: [3, 5, N]->[N, 3, 5] imgs: [HWCN]->[NHWC] bds: [2, N]->[N, 2]
+    poses = np.moveaxis(poses, -1, 0).astype(np.float32)
 
+    ev_poses_arr = np.load(os.path.join(basedir, 'poses_bounds_events.npy'))
+    ev_poses = ev_poses_arr[:, :-2].reshape([-1, 3, 5]).transpose([1, 2, 0])
+    ev_poses[:2, 4, :] = np.array(sh[:2]).reshape([2, 1])
+    ev_poses = np.concatenate([ev_poses[:, 1:2, :], -ev_poses[:, 0:1, :], ev_poses[:, 2:, :]], 1)
+    ev_poses = np.moveaxis(ev_poses, -1, 0).astype(np.float32)
     print('Loaded image data', imgs.shape)
-    if load_pose:
-        return imgs, imgtests, poses_ts, poses
-    return imgs, imgtests, poses_ts
+
+    return imgs, imgtests, poses_ts, poses, ev_poses
+
 
 
 def normalize(x):
@@ -243,10 +248,7 @@ def spherify_poses(poses, bds):
 
 
 def load_llff_data(basedir, factor=1, idx=0, deblur_dataset=50, gray=False, load_pose=False):
-    if load_pose:
-        imgs, imgtests, poses_ts, poses = _load_data(basedir, factor=factor, load_pose=load_pose, gray=gray)
-    else:
-        imgs, imgtests, poses_ts = _load_data(basedir, factor=factor, load_pose=load_pose, gray=gray)
+    imgs, imgtests, poses_ts, poses, ev_poses = _load_data(basedir, factor=factor, load_pose=load_pose, gray=gray)
 
     print('Loaded', basedir)
 
@@ -282,11 +284,16 @@ def load_llff_data(basedir, factor=1, idx=0, deblur_dataset=50, gray=False, load
     events = {'x': events[:, 0].astype(int), 'y': events[:, 1].astype(int), 'ts': events[:, 2], 'pol': events[:, 3],
               'num': events.shape[0]}
     if load_pose:
-        # recenter todo
-        poses = recenter_poses(poses)
-        # select pose
-        poses = poses[idx: idx + 2]
-        return events, imgs, imgtests, poses_ts, poses
+        size_rgb = poses.shape[0]
+        # recenter for rgb
+        poses_all = np.concatenate((poses, ev_poses), axis=0)
+        poses_all = recenter_poses(poses_all)
+        poses = poses_all[idx: idx + 2]
+
+        # recenter for event
+        ev_poses = poses_all[size_rgb + idx: size_rgb + idx + 2]
+
+        return events, imgs, imgtests, poses_ts, poses, ev_poses
 
     return events, imgs, imgtests, poses_ts
 
