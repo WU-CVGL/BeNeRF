@@ -133,7 +133,6 @@ def _load_data(basedir, factor=None, width=None, height=None, load_pose=False, g
     return imgs, imgtests, poses_ts, poses, ev_poses
 
 
-
 def normalize(x):
     return x / np.linalg.norm(x)
 
@@ -284,14 +283,13 @@ def load_llff_data(basedir, factor=1, idx=0, deblur_dataset=50, gray=False, load
     events = {'x': events[:, 0].astype(int), 'y': events[:, 1].astype(int), 'ts': events[:, 2], 'pol': events[:, 3],
               'num': events.shape[0]}
     if load_pose:
-        size_rgb = poses.shape[0]
         # recenter for rgb
-        poses_all = np.concatenate((poses, ev_poses), axis=0)
+        poses_all = np.concatenate((poses[idx: idx + 2], ev_poses[idx: idx + 2]), axis=0)
         poses_all = recenter_poses(poses_all)
-        poses = poses_all[idx: idx + 2]
+        poses = poses_all[0:2]
 
         # recenter for event
-        ev_poses = poses_all[size_rgb + idx: size_rgb + idx + 2]
+        ev_poses = poses_all[2:4]
 
         return events, imgs, imgtests, poses_ts, poses, ev_poses
 
