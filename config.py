@@ -168,7 +168,7 @@ def config_parser():
                         help='whether to optimize SE3 network')
     parser.add_argument("--optimize_nerf", action='store_true',
                         help='whether to optimize NeRF network')
-    parser.add_argument("--optimize_trans", action='store_true',
+    parser.add_argument("--optimize_event", action='store_true',
                         help='whether to optimize transformation matrix')
 
     # event parameter
@@ -214,5 +214,9 @@ def config_parser():
                         help='the viewer to use (wandb)')
 
     parser.add_argument("--fix_pose", action='store_true',
+                        help='the viewer to use (wandb)')
+    parser.add_argument("--fix_event_pose", action='store_true',
+                        help='the viewer to use (wandb)')
+    parser.add_argument("--fix_trans", action='store_true',
                         help='the viewer to use (wandb)')
     return parser
