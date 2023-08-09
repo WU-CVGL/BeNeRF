@@ -30,32 +30,54 @@ class Model(nerf.Model):
             # If pose cannot be optimized
             # start: se3_start (from .npy)
             # end: se3_end (from .npy)
-            self.graph.rgb_pose = CameraPose(2)
+            if args.cubic_spline:
+                self.graph.rgb_pose = CameraPose(4)
+            else:
+                self.graph.rgb_pose = CameraPose(2)
         else:
             # If pose can be optimized
             # start: Identity
             # end: rgb_pose
-            self.graph.rgb_pose = CameraPose(1)
+            if args.cubic_spline:
+                self.graph.rgb_pose = CameraPose(3)
+            else:
+                self.graph.rgb_pose = CameraPose(1)
 
         # Init for event camera
         if args.fix_event_pose:
             # If event cameras are fixed on start and end (from poses_bounds_events.npy)
-            self.graph.event = EventPose(2)
+            if args.cubic_spline:
+                self.graph.event = EventPose(4)
+            else:
+                self.graph.event = EventPose(2)
         else:
             # If event cameras can be optimized or load from a fix transform (trans.npy)
-            self.graph.event = EventPose(1)
+            if args.cubic_spline:
+                self.graph.event = EventPose(3)
+            else:
+                self.graph.event = EventPose(1)
 
         # Parameter for RGB camera
         if args.fix_pose:
             se3_poses = spline.SE3_to_se3(torch.tensor(poses[..., :4]))
-            self.graph.rgb_pose.params.weight.data = torch.nn.Parameter(se3_poses)
+
+            if args.cubic_spline:
+                parm_rgb = torch.concatenate((se3_poses[0].repeat(2, 1), se3_poses[1].repeat(2, 1)))
+                self.graph.rgb_pose.params.weight.data = torch.nn.Parameter(parm_rgb)
+            else:
+                self.graph.rgb_pose.params.weight.data = torch.nn.Parameter(se3_poses)
         else:
             self.graph.rgb_pose.params.weight.data = torch.nn.Parameter(torch.rand(1, 6) * 0.1)
 
         # Parameter for event camera
         if args.fix_event_pose:
             se3_trans = spline.SE3_to_se3(torch.tensor(event_poses[..., :4]))
-            self.graph.event.params.weight.data = torch.nn.Parameter(se3_trans)
+
+            if args.cubic_spline:
+                parm_e = torch.concatenate((se3_trans[0].repeat(2, 1), se3_trans[1].repeat(2, 1)))
+                self.graph.event.params.weight.data = torch.nn.Parameter(parm_e)
+            else:
+                self.graph.event.params.weight.data = torch.nn.Parameter(se3_trans)
         elif args.fix_trans:
             self.graph.event.params.weight.data = torch.nn.Parameter(
                 torch.tensor(event_poses.reshape(1, 6).astype(np.float32)))
