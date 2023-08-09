@@ -1,6 +1,6 @@
 project = eb-nerf-livingroom_gray_trans
-expname = 9-rgb_event
-datadir = ./data/livingroom_0.5_0.5_0.5_0.003_0.003_0.003
+expname = 9-rgb_event_cubic
+datadir = /run/determined/workdir/data/livingroom_0.5_0.5_0.5_0.003_0.003_0.003
 dataset_type = llff
 idx = 9
 dataset_event_split = 500
@@ -14,12 +14,12 @@ optimize_nerf = True
 lrate = 5e-4
 decay_rate = 0.1
 
-optimize_se3 = False
+optimize_se3 = True
 fix_pose = True
 pose_lrate = 1e-3
 decay_rate_pose = 0.01
 
-optimize_event = False
+optimize_event = True
 fix_event_pose = True
 fix_trans = False
 transform_lrate = 1e-4
