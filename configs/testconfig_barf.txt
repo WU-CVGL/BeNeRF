@@ -66,7 +66,7 @@ tv_loss_gray = True
 tv_loss_lambda = 0.001
 n_tvloss = 0
 
-deblur_images = 9
-event_coefficient = 0.2
+deblur_images = 15
+event_coefficient = 0.1
 rgb_coefficient = 1.0
 rgb_blur_coefficient = 0.3
