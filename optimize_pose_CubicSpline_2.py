@@ -38,7 +38,7 @@ class Model(nerf.Model):
             parm_e = torch.concatenate(
                 (se3_trans[0].reshape(1, 6), se3_trans[0].reshape(1, 6) + torch.rand(1) * 0.01,
                  se3_trans[1].reshape(1, 6), se3_trans[1].reshape(1, 6) + torch.rand(1) * 0.01))
-            self.graph.event.params.weight.data = torch.nn.Parameter(parm_e + torch.rand(1) * 0.01)
+            self.graph.event.params.weight.data = torch.nn.Parameter(parm_e)
 
             return self.graph
 
