@@ -1,5 +1,6 @@
 import numpy as np
 import torch
+from imageio.v3 import imread
 from torch import Tensor
 
 
@@ -24,3 +25,7 @@ def rgb2gray(x) -> np.ndarray:
     x = np.sum(x * weight, axis=-1)
     x = x.astype(np.uint8)
     return x
+
+
+def load_image(img, gray) -> np.ndarray:
+    return imread(img) / 255. if gray else imread(img)[..., :3] / 255.

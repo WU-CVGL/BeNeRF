@@ -4,115 +4,27 @@ import numpy as np
 import torch
 from imageio.v3 import imread
 
-from downsample import downsample
-
-
-########## Slightly modified version of LLFF data loading code
-##########  see https://github.com/Fyusion/LLFF for original
-
-# downsample
-def _minify(basedir, factors=[], resolutions=[]):  # basedir: ./data/nerf_llff_data/fern
-    needtoload = False
-    for r in factors:  # factors?
-        imgdir = os.path.join(basedir, 'images_{}'.format(r))
-        if not os.path.exists(imgdir):
-            needtoload = True
-    for r in resolutions:  # resolutions?
-        imgdir = os.path.join(basedir, 'images_{}x{}'.format(r[1], r[0]))
-        if not os.path.exists(imgdir):
-            needtoload = True
-    if not needtoload:
-        return
-
-    from subprocess import check_output
-
-    imgdir = os.path.join(basedir, 'images')
-    imgs = [os.path.join(imgdir, f) for f in sorted(os.listdir(imgdir))]
-    imgs = [f for f in imgs if any([f.lower().endswith(ex) for ex in ['jpg', 'png', 'jpeg']])]
-    imgdir_orig = imgdir
-
-    wd = os.getcwd()
-
-    for r in factors + resolutions:
-        if isinstance(r, int):
-            name = 'images_{}'.format(r)
-            resizearg = '{}%'.format(100. / r)
-        else:
-            name = 'images_{}x{}'.format(r[1], r[0])
-            resizearg = '{}x{}'.format(r[1], r[0])
-        imgdir = os.path.join(basedir, name)
-        if os.path.exists(imgdir):
-            continue
-
-        print('Minifying', r, basedir)
-
-        os.makedirs(imgdir)
-        check_output('cp {}/* {}'.format(imgdir_orig, imgdir), shell=True)
-
-        ext = imgs[0].split('.')[-1]
-        args = ' '.join(['mogrify', '-resize', resizearg, '-format', 'png', '*.{}'.format(ext)])
-        print(args)
-        os.chdir(imgdir)
-        check_output(args, shell=True)
-        os.chdir(wd)
-
-        if ext != 'png':
-            check_output('rm {}/*.{}'.format(imgdir, ext), shell=True)
-            print('Removed duplicates')
-        print('Done')
+from utils import imgutils
 
 
 def _load_data(basedir, factor=None, width=None, height=None, load_pose=False, gray=False):
     poses_ts = np.loadtxt(os.path.join(basedir, 'poses_ts.txt'))
 
-    img0 = [os.path.join(basedir, 'images', f) for f in sorted(os.listdir(os.path.join(basedir, 'images'))) \
-            if f.endswith('JPG') or f.endswith('jpg') or f.endswith('png')][0]
+    # Load images
+    img0 = [os.path.join(basedir, 'images', f) for f in sorted(os.listdir(os.path.join(basedir, 'images')))
+            if f.lower().endswith(("jpg", "png"))][0]
     sh = imread(img0).shape
 
-    sfx = ''
-
-    if factor is not None:
-        sfx = '_{}'.format(factor)
-        if not os.path.exists(os.path.join(basedir, 'images' + sfx)):
-            downsample(basedir, factor, 'images')
-
-        _minify(basedir, factors=[factor])
-        factor = factor
-    elif height is not None:
-        factor = sh[0] / float(height)
-        width = int(sh[1] / factor)
-        _minify(basedir, resolutions=[[height, width]])
-        sfx = '_{}x{}'.format(width, height)
-    elif width is not None:
-        factor = sh[1] / float(width)
-        height = int(sh[0] / factor)
-        _minify(basedir, resolutions=[[height, width]])
-        sfx = '_{}x{}'.format(width, height)
-    else:
-        factor = 1
-
-    imgdir = os.path.join(basedir, 'images' + sfx)
+    imgdir = os.path.join(basedir, 'images')
     testdir = os.path.join(basedir, 'images' + "_test")
-    if not os.path.exists(imgdir):
-        print(imgdir, 'does not exist, returning')
-        return
 
-    imgfiles = [os.path.join(imgdir, f) for f in sorted(os.listdir(imgdir)) if
-                f.endswith('JPG') or f.endswith('jpg') or f.endswith('png')]
+    imgfiles = [os.path.join(imgdir, f) for f in sorted(os.listdir(imgdir)) if f.lower().endswith(("jpg", "png"))]
+    imgtests = [os.path.join(testdir, f) for f in sorted(os.listdir(testdir)) if f.lower().endswith(("jpg", "png"))]
 
-    imgtests = [os.path.join(testdir, f) for f in sorted(os.listdir(testdir)) if
-                f.endswith('JPG') or f.endswith('jpg') or f.endswith('png')]
-
-    if gray:
-        imgs = [imread(f) / 255. for f in imgfiles]
-    else:
-        imgs = [imread(f)[..., :3] / 255. for f in imgfiles]
+    imgs = [imgutils.load_image(f, gray) for f in imgfiles]
     imgs = np.stack(imgs, -1)
 
-    if gray:
-        imgtests = [imread(f) / 255. for f in imgtests]
-    else:
-        imgtests = [imread(f)[..., :3] / 255. for f in imgtests]
+    imgtests = [imgutils.load_image(f, gray) for f in imgtests]
     imgtests = np.stack(imgtests, -1)
 
     # load poses
