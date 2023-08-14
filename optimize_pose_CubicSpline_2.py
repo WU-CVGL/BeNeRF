@@ -25,6 +25,23 @@ class Model(nerf.Model):
     def build_network(self, args, poses=None, event_poses=None):
         self.graph = Graph(args, D=8, W=256, input_ch=63, input_ch_views=27, output_ch=4, skips=[4], use_viewdirs=True)
 
+        if args.cubic_spline:
+            self.graph.rgb_pose = CameraPose(4)
+            self.graph.event = EventPose(4)
+            se3_poses = spline.SE3_to_se3(torch.tensor(poses[..., :4]))
+            parm_rgb = torch.concatenate(
+                (se3_poses[0].reshape(1, 6), se3_poses[0].reshape(1, 6) + torch.rand(1) * 0.01,
+                 se3_poses[1].reshape(1, 6), se3_poses[1].reshape(1, 6) + torch.rand(1) * 0.01))
+            self.graph.rgb_pose.params.weight.data = torch.nn.Parameter(parm_rgb)
+
+            se3_trans = spline.SE3_to_se3(torch.tensor(event_poses[..., :4]))
+            parm_e = torch.concatenate(
+                (se3_trans[0].reshape(1, 6), se3_trans[0].reshape(1, 6) + torch.rand(1) * 0.01,
+                 se3_trans[1].reshape(1, 6), se3_trans[1].reshape(1, 6) + torch.rand(1) * 0.01))
+            self.graph.event.params.weight.data = torch.nn.Parameter(parm_e)
+
+            return self.graph
+
         # Init for RGB camera
         if args.fix_pose:
             # If pose cannot be optimized
@@ -96,6 +113,19 @@ class Graph(nerf.Graph):
         low_bound = bound[0]
         up_bound = bound[0] + 1
 
+        period = torch.tensor((poses_ts[up_bound] - poses_ts[low_bound])).float()
+        t_tau = torch.tensor((events_ts - poses_ts[low_bound])).float()
+
+        if args.cubic_spline:
+            pose0 = self.event.params.weight[0].reshape(1, 1, 6)
+            pose1 = self.event.params.weight[1].reshape(1, 1, 6)
+            pose2 = self.event.params.weight[2].reshape(1, 1, 6)
+            pose3 = self.event.params.weight[3].reshape(1, 1, 6)
+
+            spline_poses = spline.Spline4N_new(pose0, pose1, pose2, pose3, t_tau, period)
+
+            return spline_poses
+
         if args.fix_event_pose:
             # If event poses are fixed,
             # load from self.event
@@ -118,14 +148,27 @@ class Graph(nerf.Graph):
             SE3_end = SE3_from @ SE3_trans
             se3_end = spline.SE3_to_se3(SE3_end[:3, :4].reshape(1, 3, 4))
 
-        period = torch.tensor((poses_ts[up_bound] - poses_ts[low_bound])).float()
-        t_tau = torch.tensor((events_ts - poses_ts[low_bound])).float()
-
         spline_poses = spline.SplineEvent(se3_start, se3_end, t_tau, period)
 
         return spline_poses
 
     def get_pose_rgb(self, args, seg_num=None):
+        if args.cubic_spline:
+            pose0 = self.rgb_pose.params.weight[0].reshape(1, 1, 6)
+            pose1 = self.rgb_pose.params.weight[1].reshape(1, 1, 6)
+            pose2 = self.rgb_pose.params.weight[2].reshape(1, 1, 6)
+            pose3 = self.rgb_pose.params.weight[3].reshape(1, 1, 6)
+
+            # spline
+            if seg_num is None:
+                pose_nums = torch.arange(args.deblur_images).reshape(1, -1).repeat(pose0.shape[0], 1)
+                spline_poses = spline.Spline4N_Cubic(pose0, pose1, pose2, pose3, pose_nums, args.deblur_images)
+            else:
+                pose_nums = torch.arange(seg_num).reshape(1, -1).repeat(pose0.shape[0], 1)
+                spline_poses = spline.Spline4N_Cubic(pose0, pose1, pose2, pose3, pose_nums, seg_num)
+
+            return spline_poses
+
         if args.fix_pose:
             se3_start = self.rgb_pose.params.weight[0].reshape(1, 1, 6)
             se3_end = self.rgb_pose.params.weight[1].reshape(1, 1, 6)

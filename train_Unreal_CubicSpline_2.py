@@ -7,7 +7,6 @@ from tqdm import trange, tqdm
 import optimize_pose_CubicSpline_2
 from config import config_parser
 from load_llff import load_llff_data
-from load_davis import load_davis_data
 from logger.wandb_logger import WandbLogger
 from loss import imgloss
 from nerf import *
