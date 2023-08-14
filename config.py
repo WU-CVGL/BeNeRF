@@ -97,6 +97,10 @@ def config_parser():
     parser.add_argument("--precrop_frac", type=float,
                         default=.5, help='fraction of img taken for central crops')
 
+    # spline type
+    parser.add_argument("--cubic_spline", action='store_true',
+                        help='the viewer to use (wandb)')
+
     # dataset options
     parser.add_argument("--dataset_type", type=str, default='llff',
                         help='options: llff / blender / deepvoxels')
