@@ -27,12 +27,12 @@ def train(args):
     K = None
     poses = None
 
-    print("Use llff data")
+    print("Loading data")
     events, images, imgtests, poses_ts, poses, ev_poses = load_data(args.datadir, idx=args.idx,
                                                                     gray=args.channels == 1,
                                                                     load_pose=False,
                                                                     deblur_dataset=args.dataset_event_split)
-    print('Loaded llff data', images.shape, args.datadir, args.idx)
+    print(f"Loaded data {args.datadir} {args.idx} {images.shape}")
 
     # Cast intrinsics to right types
     H, W, focal = images[0].shape[0], images[0].shape[1], args.focal
@@ -45,7 +45,7 @@ def train(args):
             [0, 0, 1]
         ])
 
-    print('camera intrinsic parameters: ', K, ' !!!')
+    print(f"camera intrinsic parameters: \n{K}\n")
 
     # Create log dir and copy the config file
     basedir = os.path.join(os.getcwd(), "logs")
