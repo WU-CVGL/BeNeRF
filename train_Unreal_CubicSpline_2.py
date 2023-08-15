@@ -6,14 +6,14 @@ from tqdm import trange, tqdm
 
 import optimize_pose_CubicSpline_2
 from config import config_parser
-from load_llff import load_llff_data
+from load_data import load_data
 from logger.wandb_logger import WandbLogger
 from loss import imgloss
+from metrics import compute_img_metric
 from nerf import *
 from run_nerf_helpers import init_nerf, render_image_test
 from utils import imgutils
 from utils.mathutils import safelog
-from metrics import compute_img_metric
 
 
 def train(args):
@@ -27,24 +27,12 @@ def train(args):
     K = None
     poses = None
 
-    if args.dataset_type == 'llff':
-        print("Use llff data")
-        events, images, imgtests, poses_ts, poses, ev_poses = load_llff_data(args.datadir, factor=args.factor,
-                                                                             idx=args.idx,
-                                                                             gray=args.channels == 1, load_pose=True,
-                                                                             deblur_dataset=args.dataset_event_split)
-        print('Loaded llff data', images.shape, args.datadir, args.idx)
-    elif args.dataset_type == 'davis':
-        print("Use davis data")
-        events, images, imgtests, poses_ts = load_davis_data(args.datadir, factor=args.factor, idx=args.idx)
-        print('Loaded davis data', images.shape, args.datadir, args.idx)
-    elif args.dataset_type == "esim":
-        pass
-    elif args.dataset_type == "eds":
-        pass
-    else:
-        print('Unknown dataset type', args.dataset_type, 'exiting')
-        return
+    print("Use llff data")
+    events, images, imgtests, poses_ts, poses, ev_poses = load_data(args.datadir, idx=args.idx,
+                                                                    gray=args.channels == 1,
+                                                                    load_pose=False,
+                                                                    deblur_dataset=args.dataset_event_split)
+    print('Loaded llff data', images.shape, args.datadir, args.idx)
 
     # Cast intrinsics to right types
     H, W, focal = images[0].shape[0], images[0].shape[1], args.focal

@@ -116,8 +116,6 @@ def config_parser():
                         help='idx in the dataset to deblur')
 
     ## llff flags
-    parser.add_argument("--factor", type=int, default=8,
-                        help='downsample factor for LLFF images')
     parser.add_argument("--focal", type=float, default=548.409,
                         help='focal length of images')
     parser.add_argument("--dataset_event_split", type=int, default=500,

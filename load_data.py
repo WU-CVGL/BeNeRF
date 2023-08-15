@@ -7,9 +7,8 @@ from imageio.v3 import imread
 from utils import imgutils
 
 
-def _load_data(basedir, factor=None, width=None, height=None, load_pose=False, gray=False):
-    poses_ts = np.loadtxt(os.path.join(basedir, 'poses_ts.txt'))
-
+def load_img_data(basedir, gray=False):
+    print("Loading images...")
     # Load images
     img0 = [os.path.join(basedir, 'images', f) for f in sorted(os.listdir(os.path.join(basedir, 'images')))
             if f.lower().endswith(("jpg", "png"))][0]
@@ -27,6 +26,11 @@ def _load_data(basedir, factor=None, width=None, height=None, load_pose=False, g
     imgtests = [imgutils.load_image(f, gray) for f in imgtests]
     imgtests = np.stack(imgtests, -1)
 
+    return imgs, imgtests
+
+
+def load_camera_pose(basedir, H, W):
+    sh = H, W
     # load poses
     poses_arr = np.load(os.path.join(basedir, 'poses_bounds.npy'))
     poses = poses_arr[:, :-2].reshape([-1, 3, 5]).transpose([1, 2, 0])  # 3x5xN
@@ -40,9 +44,26 @@ def _load_data(basedir, factor=None, width=None, height=None, load_pose=False, g
     ev_poses[:2, 4, :] = np.array(sh[:2]).reshape([2, 1])
     ev_poses = np.concatenate([ev_poses[:, 1:2, :], -ev_poses[:, 0:1, :], ev_poses[:, 2:, :]], 1)
     ev_poses = np.moveaxis(ev_poses, -1, 0).astype(np.float32)
-    print('Loaded image data', imgs.shape)
 
-    return imgs, imgtests, poses_ts, poses, ev_poses
+    return poses, ev_poses
+
+
+def load_timestamps(basedir):
+    poses_ts_path = os.path.join(basedir, 'poses_ts.txt')
+    poses_start_path = os.path.join(basedir, "poses_start_ts.txt")
+    poses_end_path = os.path.join(basedir, "poses_end_ts.txt")
+    if os.path.exists(poses_ts_path):
+        poses_ts = np.loadtxt(poses_ts_path)
+        poses_start = poses_ts[:-1]
+        poses_end = poses_ts[1:]
+    elif os.path.exists(poses_start_path) and os.path.exists(poses_end_path):
+        poses_start = np.loadtxt(poses_start_path)
+        poses_end = np.loadtxt(poses_end_path)
+    else:
+        print("Cannot load timestamps for images")
+        assert False
+
+    return poses_start, poses_end
 
 
 def normalize(x):
@@ -158,10 +179,9 @@ def spherify_poses(poses, bds):
     return poses_reset, new_poses, bds
 
 
-def load_llff_data(basedir, factor=1, idx=0, deblur_dataset=50, gray=False, load_pose=False):
-    imgs, imgtests, poses_ts, poses, ev_poses = _load_data(basedir, factor=factor, load_pose=load_pose, gray=gray)
-
-    print('Loaded', basedir)
+def load_data(basedir, idx=0, deblur_dataset=50, gray=False, load_pose=False):
+    # process imges
+    imgs, imgtests = load_img_data(basedir, gray=gray)
 
     imgs = np.moveaxis(imgs, -1, 0).astype(np.float32)
     if gray:
@@ -175,12 +195,15 @@ def load_llff_data(basedir, factor=1, idx=0, deblur_dataset=50, gray=False, load
     imgtests = np.expand_dims(imgtests[idx], 0)
     imgtests = torch.Tensor(imgtests)
 
-    poses_ts = poses_ts[idx:idx + 2]
+    # process timestamps
+    ts_start, ts_end = load_timestamps(basedir)
+    poses_ts = np.array((ts_start[idx], ts_end[idx]))
 
+    # process events
     eventdir = os.path.join(basedir, "events")
     if os.path.exists(os.path.join(eventdir, "events.npy")):
         events = np.load(os.path.join(eventdir, "events.npy"))
-        delta = (poses_ts[1] - poses_ts[0]) * 0.001
+        delta = (poses_ts[1] - poses_ts[0]) * 0.01
         events = np.array([event for event in events if poses_ts[0] - delta <= event[2] <= poses_ts[1] + delta])
     else:
         eventfiles = [os.path.join(eventdir, f) for f in sorted(os.listdir(eventdir)) if
@@ -189,12 +212,16 @@ def load_llff_data(basedir, factor=1, idx=0, deblur_dataset=50, gray=False, load
 
         event_list = [np.load(e) for e in eventfiles]
         events = np.concatenate(event_list)
-        events = events[events[:, 2].argsort()]
 
+    events = events[events[:, 2].argsort()]
     # create dictionary
     events = {'x': events[:, 0].astype(int), 'y': events[:, 1].astype(int), 'ts': events[:, 2], 'pol': events[:, 3],
               'num': events.shape[0]}
+
+    # process poses
+    poses, ev_poses = None, None
     if load_pose:
+        poses, ev_poses = load_camera_pose(basedir, imgs.shape[0], imgs.shape[1])
         # recenter for rgb
         poses_all = np.concatenate((poses[idx: idx + 2], ev_poses[idx: idx + 2]), axis=0)
         poses_all = recenter_poses(poses_all)
@@ -203,9 +230,7 @@ def load_llff_data(basedir, factor=1, idx=0, deblur_dataset=50, gray=False, load
         # recenter for event
         ev_poses = poses_all[2:4]
 
-        return events, imgs, imgtests, poses_ts, poses, ev_poses
-
-    return events, imgs, imgtests, poses_ts
+    return events, imgs, imgtests, poses_ts, poses, ev_poses
 
 
 def regenerate_pose(poses, bds, recenter=True, bd_factor=.75, spherify=False, path_zflat=False):

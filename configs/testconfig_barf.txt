@@ -1,4 +1,4 @@
-project = eb-nerf-livingroom_rgb_trans
+project = eb-nerf
 expname = 9-rgb_event_cubic
 datadir = ./data/livingroom_rgb
 dataset_type = llff
@@ -6,7 +6,6 @@ idx = 9
 dataset_event_split = 500
 viewer = wandb
 focal = 548.409
-factor = 1
 cubic_spline = True
 
 # training parameters
@@ -16,13 +15,14 @@ decay_rate = 0.1
 
 optimize_se3 = True
 fix_pose = True
-pose_lrate = 5e-4
+pose_lrate = 1e-4
 decay_rate_pose = 0.01
 
 optimize_event = True
+threshold = 0.1
 fix_event_pose = True
 fix_trans = False
-transform_lrate = 5e-4
+transform_lrate = 1e-4
 decay_rate_transform = 0.01
 
 i_print = 100
