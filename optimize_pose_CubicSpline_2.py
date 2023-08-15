@@ -28,16 +28,20 @@ class Model(nerf.Model):
         if args.cubic_spline:
             self.graph.rgb_pose = CameraPose(4)
             self.graph.event = EventPose(4)
-            se3_poses = spline.SE3_to_se3(torch.tensor(poses[..., :4]))
+            # se3_poses = spline.SE3_to_se3(torch.tensor(poses[..., :4]))
+            # parm_rgb = torch.concatenate(
+            #     (se3_poses[0].reshape(1, 6), se3_poses[0].reshape(1, 6) + torch.rand(1) * 0.01,
+            #      se3_poses[1].reshape(1, 6), se3_poses[1].reshape(1, 6) + torch.rand(1) * 0.01))
             parm_rgb = torch.concatenate(
-                (se3_poses[0].reshape(1, 6), se3_poses[0].reshape(1, 6) + torch.rand(1) * 0.01,
-                 se3_poses[1].reshape(1, 6), se3_poses[1].reshape(1, 6) + torch.rand(1) * 0.01))
+                (torch.rand(1, 6) * 0.01, torch.rand(1, 6) * 0.01, torch.rand(1, 6) * 0.01, torch.rand(1, 6) * 0.01))
             self.graph.rgb_pose.params.weight.data = torch.nn.Parameter(parm_rgb)
 
-            se3_trans = spline.SE3_to_se3(torch.tensor(event_poses[..., :4]))
+            # se3_trans = spline.SE3_to_se3(torch.tensor(event_poses[..., :4]))
+            # parm_e = torch.concatenate(
+            #     (se3_trans[0].reshape(1, 6), se3_trans[0].reshape(1, 6) + torch.rand(1) * 0.01,
+            #      se3_trans[1].reshape(1, 6), se3_trans[1].reshape(1, 6) + torch.rand(1) * 0.01))
             parm_e = torch.concatenate(
-                (se3_trans[0].reshape(1, 6), se3_trans[0].reshape(1, 6) + torch.rand(1) * 0.01,
-                 se3_trans[1].reshape(1, 6), se3_trans[1].reshape(1, 6) + torch.rand(1) * 0.01))
+                (torch.rand(1, 6) * 0.01, torch.rand(1, 6) * 0.01, torch.rand(1, 6) * 0.01, torch.rand(1, 6) * 0.01))
             self.graph.event.params.weight.data = torch.nn.Parameter(parm_e)
 
             return self.graph
@@ -103,18 +107,8 @@ class Graph(nerf.Graph):
         self.pose_eye = torch.eye(3, 4)
 
     def get_pose(self, i, args, events_ts, poses_ts):
-        Dicho_up = poses_ts[:-1][:, np.newaxis].repeat(events_ts.shape[0], axis=1) - events_ts[np.newaxis, :].repeat(
-            poses_ts.shape[0] - 1, axis=0)
-        Dicho_low = poses_ts[1:][:, np.newaxis].repeat(events_ts.shape[0], axis=1) - events_ts[np.newaxis, :].repeat(
-            poses_ts.shape[0] - 1, axis=0)
-        judge_func = Dicho_up * Dicho_low
-
-        bound = np.where(judge_func <= 0)
-        low_bound = bound[0]
-        up_bound = bound[0] + 1
-
-        period = torch.tensor((poses_ts[up_bound] - poses_ts[low_bound])).float()
-        t_tau = torch.tensor((events_ts - poses_ts[low_bound])).float()
+        period = torch.tensor((poses_ts[1] - poses_ts[0])).float()
+        t_tau = torch.tensor((events_ts - poses_ts[0])).float()
 
         if args.cubic_spline:
             pose0 = self.event.params.weight[0].reshape(1, 1, 6)
