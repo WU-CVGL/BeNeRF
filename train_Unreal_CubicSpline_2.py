@@ -24,9 +24,6 @@ def train(args):
     mse_loss = imgloss.MSELoss()
     rgb2gray = imgutils.RGB2Gray()
 
-    K = None
-    poses = None
-
     print("Loading data")
     events, images, imgtests, poses_ts, poses, ev_poses = load_data(args.datadir, idx=args.idx,
                                                                     gray=args.channels == 1,
@@ -35,17 +32,25 @@ def train(args):
     print(f"Loaded data {args.datadir} {args.idx} {images.shape}")
 
     # Cast intrinsics to right types
-    H, W, focal = images[0].shape[0], images[0].shape[1], args.focal
+    H, W = images[0].shape[0], images[0].shape[1]
     H, W = int(H), int(W)
 
-    if K is None:
-        K = torch.Tensor([
-            [focal, 0, 0.5 * W],
-            [0, focal, 0.5 * H],
-            [0, 0, 1]
-        ])
+
+    K = torch.Tensor([
+        [args.focal_x, 0, args.cx],
+        [0, args.focal_y, args.cy],
+        [0, 0, 1]
+    ])
+
+
+    K_event = torch.Tensor([
+        [args.focal_event_x, 0, args.event_cx],
+        [0, args.focal_event_y, args.event_cy],
+        [0, 0, 1]
+    ])
 
     print(f"camera intrinsic parameters: \n{K}\n")
+    print(f"event camera intrinsic parameters: \n{K_event}\n")
 
     # Create log dir and copy the config file
     basedir = os.path.join(os.getcwd(), "logs")
@@ -103,16 +108,18 @@ def train(args):
 
         if i % args.i_video == 0 and i > 0:
             ret_event, ret_rgb, ray_idx_event, ray_idx_rgb, test_poses, events_accu = graph.forward(i, poses_ts,
-                                                                                                    threshold, events,
-                                                                                                    H, W, K, args)
+                                                                                                    events,
+                                                                                                    H, W, K, K_event,
+                                                                                                    args)
 
         elif i % args.i_img == 0 and i > 0:
             ret_event, ret_rgb, ray_idx_event, ray_idx_rgb, test_poses, events_accu = graph.forward(i, poses_ts,
-                                                                                                    threshold, events,
-                                                                                                    H, W, K, args)
+                                                                                                    events,
+                                                                                                    H, W, K, K_event,
+                                                                                                    args)
         else:
-            ret_event, ret_rgb, ray_idx_event, ray_idx_rgb, events_accu = graph.forward(i, poses_ts, threshold, events,
-                                                                                        H, W, K, args)
+            ret_event, ret_rgb, ray_idx_event, ray_idx_rgb, events_accu = graph.forward(i, poses_ts, events,
+                                                                                        H, W, K, K_event, args)
 
         pixels_num = ray_idx_event.shape[0]
 

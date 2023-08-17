@@ -106,7 +106,7 @@ class Graph(nerf.Graph):
                          use_viewdirs)
         self.pose_eye = torch.eye(3, 4)
 
-    def get_pose(self, i, args, events_ts, poses_ts):
+    def get_pose(self, args, events_ts, poses_ts):
         period = torch.tensor((poses_ts[1] - poses_ts[0])).float()
         t_tau = torch.tensor((events_ts - poses_ts[0])).float()
 

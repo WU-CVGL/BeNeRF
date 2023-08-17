@@ -116,7 +116,13 @@ def config_parser():
                         help='idx in the dataset to deblur')
 
     ## llff flags
-    parser.add_argument("--focal", type=float, default=548.409,
+    parser.add_argument("--focal_x", type=float, default=548.409,
+                        help='focal length of images')
+    parser.add_argument("--focal_y", type=float, default=548.409,
+                        help='focal length of images')
+    parser.add_argument("--cx", type=float, default=384.,
+                        help='focal length of images')
+    parser.add_argument("--cy", type=float, default=240.,
                         help='focal length of images')
     parser.add_argument("--dataset_event_split", type=int, default=500,
                         help='tv')
@@ -188,7 +194,18 @@ def config_parser():
                         help='number of sampled rays where with events spiking')
     parser.add_argument("--N_pix_rgb", type=int, default=1024,
                         help='number of sampled rays for computation of image loss function')
-
+    parser.add_argument("--h_event", type=int, default=480,
+                        help='whether to use 3-channel or single-channel images')
+    parser.add_argument("--w_event", type=int, default=768,
+                        help='whether to use 3-channel or single-channel images')
+    parser.add_argument("--focal_event_x", type=float, default=548.409,
+                        help='focal length of images')
+    parser.add_argument("--focal_event_y", type=float, default=548.409,
+                        help='focal length of images')
+    parser.add_argument("--event_cx", type=float, default=384.,
+                        help='focal length of images')
+    parser.add_argument("--event_cy", type=float, default=240.,
+                        help='focal length of images')
     # window
     parser.add_argument("--window_percent", type=float, default=0.1,
                         help='the percentage of the window')

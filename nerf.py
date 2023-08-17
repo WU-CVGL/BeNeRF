@@ -220,112 +220,106 @@ class Graph(nn.Module):
         if args.N_importance > 0:
             self.nerf_fine = NeRF(D, W, input_ch, input_ch_views, output_ch, skips, use_viewdirs, args.channels)
 
-    def forward(self, i, poses_ts, threshold, events, H, W, K, args):
-        if i <= threshold:
-            N_pix_no_event = args.N_pix_no_event
-            N_pix_event = args.N_pix_event
+    def forward(self, i, poses_ts, events, H, W, K, K_event, args):
+        N_pix_no_event = args.N_pix_no_event
+        N_pix_event = args.N_pix_event
 
-            if args.time_window:
-                delta_t = poses_ts[1] - poses_ts[0]
-                window_t = delta_t * args.window_percent
-                low_t = np.random.rand(1) * (1 - args.window_percent) * delta_t + poses_ts[0]
-                upper_t = low_t + window_t
-                idx_a = low_t <= events["ts"]
-                idx_b = events["ts"] <= upper_t
-                idx = idx_a * idx_b
-                indices = np.where(idx)
-                pol_window = events['pol'][indices]
-                x_window = events['x'][indices]
-                y_window = events['y'][indices]
-                ts_window = events['ts'][indices]
+        if args.time_window:
+            delta_t = poses_ts[1] - poses_ts[0]
+            window_t = delta_t * args.window_percent
+            low_t = np.random.rand(1) * (1 - args.window_percent) * delta_t + poses_ts[0]
+            upper_t = low_t + window_t
+            idx_a = low_t <= events["ts"]
+            idx_b = events["ts"] <= upper_t
+            idx = idx_a * idx_b
+            indices = np.where(idx)
+            pol_window = events['pol'][indices]
+            x_window = events['x'][indices]
+            y_window = events['y'][indices]
+            ts_window = events['ts'][indices]
+        else:
+            if args.window_desc:
+                # linear desc
+                i_end = args.max_iter * args.window_desc_end
+                percent = args.window_percent - (args.window_percent - args.window_percent_end) * (
+                        i / i_end) if i < i_end else args.window_percent_end
+                N_window = round(events['num'] * percent)
             else:
-                if args.window_desc:
-                    # linear desc
-                    i_end = args.max_iter * args.window_desc_end
-                    percent = args.window_percent - (args.window_percent - args.window_percent_end) * (
-                            i / i_end) if i < i_end else args.window_percent_end
-                    N_window = round(events['num'] * percent)
-                else:
-                    N_window = round(events['num'] * args.window_percent)
+                N_window = round(events['num'] * args.window_percent)
 
-                if args.random_window:
-                    window_low_bound = np.random.randint(events['num'] - N_window)
-                else:
-                    window_low_bound = np.random.randint((events['num'] - N_window) // N_window) * N_window
-
-                window_up_bound = int(window_low_bound + N_window)
-                pol_window = events['pol'][window_low_bound:window_up_bound]
-                x_window = events['x'][window_low_bound:window_up_bound]
-                y_window = events['y'][window_low_bound:window_up_bound]
-                ts_window = events['ts'][window_low_bound:window_up_bound]
-
-            def accumulate_events(xs, ys, ts, ps, resolution_level=1):
-                xy = torch.tensor(np.array((ys, xs)), dtype=torch.int64)
-                p = torch.tensor(ps)
-                out = torch.sparse.FloatTensor(xy, p).to_dense()
-                return out
-
-            events_accu = accumulate_events(x_window, y_window, ts_window, pol_window) * args.threshold
-
-            # timestamps of event windows begin and end
-            if args.time_window:
-                events_ts = np.stack((low_t, upper_t)).reshape(2)
+            if args.random_window:
+                window_low_bound = np.random.randint(events['num'] - N_window)
             else:
-                events_ts = ts_window[np.array([0, int(N_window) - 1])]
+                window_low_bound = np.random.randint((events['num'] - N_window) // N_window) * N_window
 
-            # pixels events spiking and not spiking
-            pixels_event = torch.where(events_accu != 0)
-            pixels_no_event = torch.where(events_accu == 0)
+            window_up_bound = int(window_low_bound + N_window)
+            pol_window = events['pol'][window_low_bound:window_up_bound]
+            x_window = events['x'][window_low_bound:window_up_bound]
+            y_window = events['y'][window_low_bound:window_up_bound]
+            ts_window = events['ts'][window_low_bound:window_up_bound]
 
-            # selected pixels where no spiked events
-            bg_pixels_id = torch.randperm(pixels_no_event[0].shape[0])[:N_pix_no_event]
+        def accumulate_events(xs, ys, ts, ps, resolution_level=1):
+            xy = torch.tensor(np.array((ys, xs)), dtype=torch.int64)
+            p = torch.tensor(ps)
+            out = torch.sparse.FloatTensor(xy, p).to_dense()
+            return out
 
-            # selected pixels where with spiked events
-            event_pixel_id = torch.randperm(pixels_event[0].shape[0])[:N_pix_event]
-            # all selected pixels
-            pixels_y = torch.concatenate([pixels_event[0][event_pixel_id], pixels_no_event[0][bg_pixels_id]], 0)
-            pixels_x = torch.concatenate([pixels_event[1][event_pixel_id], pixels_no_event[1][bg_pixels_id]], 0)
+        events_accu = accumulate_events(x_window, y_window, ts_window, pol_window) * args.threshold
 
-            ray_idx_event = pixels_y * W + pixels_x
+        # timestamps of event windows begin and end
+        if args.time_window:
+            events_ts = np.stack((low_t, upper_t)).reshape(2)
+        else:
+            events_ts = ts_window[np.array([0, int(N_window) - 1])]
 
-            spline_poses = self.get_pose(i, args, events_ts, poses_ts)
-            spline_rgb_poses = self.get_pose_rgb(args)
+        # pixels events spiking and not spiking
+        pixels_event = torch.where(events_accu != 0)
+        pixels_no_event = torch.where(events_accu == 0)
 
-            # render event
-            ret_event = self.render(i, spline_poses, ray_idx_event.reshape(-1, 1).squeeze(), H, W, K, args,
-                                    ray_idx_tv=None,
-                                    training=True)
+        # selected pixels where no spiked events
+        bg_pixels_id = torch.randperm(pixels_no_event[0].shape[0])[:N_pix_no_event]
 
-            # render rgb
-            ray_idx_rgb = torch.randperm(H * W)[:args.N_pix_rgb // args.deblur_images]
-            ret_rgb = self.render(i, spline_rgb_poses, ray_idx_rgb.reshape(-1, 1).squeeze(), H, W, K, args,
-                                  ray_idx_tv=None,
-                                  training=True)
+        # selected pixels where with spiked events
+        event_pixel_id = torch.randperm(pixels_event[0].shape[0])[:N_pix_event]
+        # all selected pixels
+        pixels_y = torch.concatenate([pixels_event[0][event_pixel_id], pixels_no_event[0][bg_pixels_id]], 0)
+        pixels_x = torch.concatenate([pixels_event[1][event_pixel_id], pixels_no_event[1][bg_pixels_id]], 0)
 
-            if i % args.i_video == 0 and i > 0:
+        ray_idx_event = pixels_y * args.w_event + pixels_x
+
+        spline_poses = self.get_pose(args, events_ts, poses_ts)
+        spline_rgb_poses = self.get_pose_rgb(args)
+
+        # render event
+        ret_event = self.render(i, spline_poses, ray_idx_event.reshape(-1, 1).squeeze(), args.h_event, args.w_event,
+                                K_event,
+                                args,
+                                ray_idx_tv=None,
+                                training=True)
+
+        # render rgb
+        ray_idx_rgb = torch.randperm(H * W)[:args.N_pix_rgb // args.deblur_images]
+        ret_rgb = self.render(i, spline_rgb_poses, ray_idx_rgb.reshape(-1, 1).squeeze(), H, W, K, args,
+                              ray_idx_tv=None,
+                              training=True)
+
+        if i % args.i_video == 0 and i > 0:
+            spline_poses_test = spline_rgb_poses
+            return ret_event, ret_rgb, ray_idx_event, ray_idx_rgb, spline_poses_test, events_accu
+
+        elif i % args.i_img == 0 and i > 0:
+            shape0 = spline_rgb_poses.shape[0]
+            if shape0 % 2 == 1:
                 spline_poses_test = spline_rgb_poses
-                return ret_event, ret_rgb, ray_idx_event, ray_idx_rgb, spline_poses_test, events_accu
-
-            elif i % args.i_img == 0 and i > 0:
-                shape0 = spline_rgb_poses.shape[0]
-                if shape0 % 2 == 1:
-                    spline_poses_test = spline_rgb_poses
-                else:
-                    spline_poses_test = self.get_pose_rgb(args, args.deblur_images + 1)
-                return ret_event, ret_rgb, ray_idx_event, ray_idx_rgb, spline_poses_test, events_accu
-
             else:
-                return ret_event, ret_rgb, ray_idx_event, ray_idx_rgb, events_accu
+                spline_poses_test = self.get_pose_rgb(args, args.deblur_images + 1)
+            return ret_event, ret_rgb, ray_idx_event, ray_idx_rgb, spline_poses_test, events_accu
 
         else:
-            pose_nums = torch.randperm(int(H // 10))[:5]
-            spline_poses = self.get_pose(i, args, events_ts, poses_ts)
-            # torch.manual_seed(0)
-            ray_idx = torch.randperm(H * W)[:args.N_pix_rgb // args.deblur_images]
-            return spline_poses, ray_idx
+            return ret_event, ret_rgb, ray_idx_event, ray_idx_rgb, events_accu
 
-    def get_pose(self, i, args, events_ts, poses_ts):
-        return i
+    def get_pose(self, args, events_ts, poses_ts):
+        pass
 
     def get_pose_render(self):
 

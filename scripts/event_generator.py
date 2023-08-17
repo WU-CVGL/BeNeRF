@@ -22,7 +22,7 @@ START = 0
 
 data_type = 'train'
 
-basedir = 'D:\\\EXP_ORIGINAL\\LivingRoom'
+basedir = 'D:\\EXP_ORIGINAL\\LivingRoom_half_reso'
 imgdir = os.path.join(basedir, 'camera/temp')
 savedir_RGB = os.path.join(basedir, data_type + '_RGB')
 savedir_RGB_start = os.path.join(basedir, data_type + '_RGB_start')
