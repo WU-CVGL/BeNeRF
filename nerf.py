@@ -4,6 +4,7 @@ import torch.nn.functional as F
 from torch import nn
 
 from run_nerf_helpers import get_specific_rays, get_rays, ndc_rays, sample_pdf
+from utils.eventutils import accumulate_events
 
 PIXELS_EVERY_POSE = 7
 max_iter = 200000
@@ -258,13 +259,11 @@ class Graph(nn.Module):
             y_window = events['y'][window_low_bound:window_up_bound]
             ts_window = events['ts'][window_low_bound:window_up_bound]
 
-        def accumulate_events(xs, ys, ts, ps, resolution_level=1):
-            xy = torch.tensor(np.array((ys, xs)), dtype=torch.int64)
-            p = torch.tensor(ps)
-            out = torch.sparse.FloatTensor(xy, p).to_dense()
-            return out
 
-        events_accu = accumulate_events(x_window, y_window, ts_window, pol_window) * args.threshold
+        out = np.zeros((args.h_event, args.w_event))
+        accumulate_events(out, x_window, y_window, pol_window)
+        out *= args.threshold
+        events_accu = torch.tensor(out)
 
         # timestamps of event windows begin and end
         if args.time_window:

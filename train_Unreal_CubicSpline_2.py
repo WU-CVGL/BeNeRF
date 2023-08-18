@@ -136,6 +136,7 @@ def train(args):
         optimizer_pose.zero_grad()
         optimizer_trans.zero_grad()
         optimizer.zero_grad()
+        loss = 0
         if args.channels == 3:
             img_loss = mse_loss(safelog(rgb2gray(ret_gray2['rgb_map'])) - safelog(rgb2gray(ret_gray1['rgb_map'])),
                                 target_s)
@@ -158,7 +159,7 @@ def train(args):
 
         logger.write("train_event_loss", event_loss.item())
 
-        loss = event_loss
+        loss += event_loss
 
         # RGB loss
         if args.rgb_loss:

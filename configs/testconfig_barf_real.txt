@@ -1,0 +1,82 @@
+project = eb-nerf-real
+expname = 9-rgb_event_cubic
+datadir = ./data/real
+dataset_type = llff
+idx = 93
+dataset_event_split = 500
+viewer = wandb
+focal_x = 1782.310233143170
+focal_y = 1782.887779096247
+cx = 683.0735988620997
+cy = 596.4069032198300
+cubic_spline = True
+
+# training parameters
+optimize_nerf = True
+lrate = 5e-4
+decay_rate = 0.1
+
+optimize_se3 = True
+fix_pose = True
+pose_lrate = 5e-4
+decay_rate_pose = 0.01
+
+optimize_event = True
+threshold = 0.1
+fix_event_pose = True
+fix_trans = False
+transform_lrate = 5e-4
+decay_rate_transform = 0.01
+focal_event_x = 685.7668012086921
+focal_event_y = 687.1234535722497
+event_cx = 331.4548914718735
+event_cy = 235.7054816902933
+w_event = 640
+h_event = 480
+
+i_print = 100
+i_img = 2500
+i_video = 500000
+i_weights = 10000
+max_iter = 50000
+
+rgb_loss = True
+rgb_blur_loss = False
+
+channels = 3
+
+N_pix_no_event = 512
+N_pix_event = 1536
+N_pix_rgb = 5120
+
+window_desc = False
+window_percent = 0.1
+window_percent_end = 0.05
+window_desc_end = 0.8
+random_window = False
+time_window = False
+
+barf = False
+barf_start = 0.1
+barf_end = 0.5
+
+N_samples = 64
+N_importance = 64
+
+use_viewdirs = True
+raw_noise_std = 0
+
+load_weights = False
+weight_iter = 10000
+
+tv_loss = False
+tv_width_nerf = 20
+tv_loss_rgb = True
+tv_loss_gray = True
+tv_loss_lambda = 0.001
+n_tvloss = 0
+
+deblur_images = 15
+event_coefficient = 0.1
+rgb_coefficient = 1.0
+rgb_blur_coefficient = 0.3
