@@ -179,36 +179,41 @@ def spherify_poses(poses, bds):
     return poses_reset, new_poses, bds
 
 
-def load_data(basedir, idx=0, deblur_dataset=50, gray=False, load_pose=False):
+def load_data(basedir, args, load_pose=False):
+    gray = args.channels == 1
+
     # process imges
     imgs, imgtests = load_img_data(basedir, gray=gray)
 
     imgs = np.moveaxis(imgs, -1, 0).astype(np.float32)
     if gray:
         imgs = np.expand_dims(imgs, -1)
-    imgs = np.expand_dims(imgs[idx], 0)
+    imgs = np.expand_dims(imgs[args.idx], 0)
     imgs = torch.Tensor(imgs)
 
     imgtests = np.moveaxis(imgtests, -1, 0).astype(np.float32)
     if gray:
         imgtests = np.expand_dims(imgtests, -1)
-    imgtests = np.expand_dims(imgtests[idx], 0)
+    imgtests = np.expand_dims(imgtests[args.idx], 0)
     imgtests = torch.Tensor(imgtests)
 
-    # process timestamps
+    # process events and timestamps
     ts_start, ts_end = load_timestamps(basedir)
-    poses_ts = np.array((ts_start[idx], ts_end[idx]))
-
-    # process events
     eventdir = os.path.join(basedir, "events")
     if os.path.exists(os.path.join(eventdir, "events.npy")):
+        # event shift, selecting more events means better result
+        st = max(args.idx - args.event_shift_start, 0)
+        ed = min(args.idx + args.event_shift_end, len(ts_end) - 1)
+        poses_ts = np.array((ts_start[st], ts_end[ed]))
         events = np.load(os.path.join(eventdir, "events.npy"))
         delta = (poses_ts[1] - poses_ts[0]) * 0.01
         events = np.array([event for event in events if poses_ts[0] - delta <= event[2] <= poses_ts[1] + delta])
     else:
+        # synthesis dataset
+        poses_ts = np.array((ts_start[args.idx], ts_end[args.idx]))
         eventfiles = [os.path.join(eventdir, f) for f in sorted(os.listdir(eventdir)) if
                       f.endswith('npy') and f.startswith(('0', '1', '2', '3', '4', '5', '6', '7', '8', '9'))]
-        eventfiles = eventfiles[deblur_dataset * idx: deblur_dataset * (idx + 1)]
+        eventfiles = eventfiles[args.dataset_event_split * args.idx: args.dataset_event_split * (args.idx + 1)]
 
         event_list = [np.load(e) for e in eventfiles]
         events = np.concatenate(event_list)
@@ -223,7 +228,7 @@ def load_data(basedir, idx=0, deblur_dataset=50, gray=False, load_pose=False):
     if load_pose:
         poses, ev_poses = load_camera_pose(basedir, imgs.shape[0], imgs.shape[1])
         # recenter for rgb
-        poses_all = np.concatenate((poses[idx: idx + 2], ev_poses[idx: idx + 2]), axis=0)
+        poses_all = np.concatenate((poses[args.idx: args.idx + 2], ev_poses[args.idx: args.idx + 2]), axis=0)
         poses_all = recenter_poses(poses_all)
         poses = poses_all[0:2]
 

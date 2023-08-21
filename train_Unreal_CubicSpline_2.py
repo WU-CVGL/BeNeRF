@@ -25,23 +25,18 @@ def train(args):
     rgb2gray = imgutils.RGB2Gray()
 
     print("Loading data")
-    events, images, imgtests, poses_ts, poses, ev_poses = load_data(args.datadir, idx=args.idx,
-                                                                    gray=args.channels == 1,
-                                                                    load_pose=False,
-                                                                    deblur_dataset=args.dataset_event_split)
+    events, images, imgtests, poses_ts, poses, ev_poses = load_data(args.datadir, args, load_pose=False)
     print(f"Loaded data {args.datadir} {args.idx} {images.shape}")
 
     # Cast intrinsics to right types
     H, W = images[0].shape[0], images[0].shape[1]
     H, W = int(H), int(W)
 
-
     K = torch.Tensor([
         [args.focal_x, 0, args.cx],
         [0, args.focal_y, args.cy],
         [0, 0, 1]
     ])
-
 
     K_event = torch.Tensor([
         [args.focal_event_x, 0, args.event_cx],
@@ -132,10 +127,12 @@ def train(args):
 
         target_s = events_accu.reshape(-1, 1)[ray_idx_event]
 
-        # backward
+        # zero grad
         optimizer_pose.zero_grad()
         optimizer_trans.zero_grad()
         optimizer.zero_grad()
+
+        # compute loss
         loss = 0
         if args.channels == 3:
             img_loss = mse_loss(safelog(rgb2gray(ret_gray2['rgb_map'])) - safelog(rgb2gray(ret_gray1['rgb_map'])),
@@ -245,8 +242,7 @@ def train(args):
         if args.optimize_event:
             optimizer_trans.step()
 
-        # NOTE: IMPORTANT!
-        ###   update learning rate   ###
+        # update learning rate
         decay_rate = args.decay_rate
         decay_steps = args.lrate_decay * 1000
         new_lrate = args.lrate * (decay_rate ** (global_step / decay_steps))
@@ -265,7 +261,6 @@ def train(args):
         logger.write("lr_trans", new_lrate_trans)
         for param_group in optimizer_trans.param_groups:
             param_group['lr'] = new_lrate_trans
-        ###############################
 
         # print result in console
         if i % args.i_print == 0:
@@ -291,9 +286,6 @@ def train(args):
         # test
         if i % args.i_img == 0 and i > 0:
             with torch.no_grad():
-                # imgs_render = render_image_test(i, graph, poses[0][:, :4].reshape(1, 3, 4), H, W, K, args,
-                #                                 dir='test_poses_mid',
-                #                                 need_depth=False)
                 imgs, depth = render_image_test(i, graph, test_poses, H, W, K, args,
                                                 dir='test', need_depth=False)
                 if len(imgs) > 0:

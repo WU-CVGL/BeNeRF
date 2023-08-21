@@ -167,9 +167,6 @@ def config_parser():
     parser.add_argument("--n_tvloss", type=int, default=0,
                         help='barf start')
 
-    # 分段
-    parser.add_argument("--two_phase", action='store_true',
-                        help='if use two-phase optimization')
 
     # optimize
     parser.add_argument("--optimize_se3", action='store_true',
@@ -206,6 +203,10 @@ def config_parser():
                         help='focal length of images')
     parser.add_argument("--event_cy", type=float, default=240.,
                         help='focal length of images')
+    parser.add_argument("--event_shift_start", type=int, default=5,
+                        help='tv')
+    parser.add_argument("--event_shift_end", type=int, default=5,
+                        help='tv')
     # window
     parser.add_argument("--window_percent", type=float, default=0.1,
                         help='the percentage of the window')
