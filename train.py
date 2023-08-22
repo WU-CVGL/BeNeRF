@@ -4,7 +4,7 @@ import random
 import torch.nn
 from tqdm import trange, tqdm
 
-import optimize_pose_CubicSpline_2
+import nerf_model
 from config import config_parser
 from load_data import load_data
 from logger.wandb_logger import WandbLogger
@@ -64,7 +64,7 @@ def train(args):
 
     # init model
     if args.load_weights:
-        model = optimize_pose_CubicSpline_2.Model()
+        model = nerf_model.Model()
         graph = model.build_network(args)
         optimizer, optimizer_pose, optimizer_trans = model.setup_optimizer(args)
         path = os.path.join(basedir, expname, '{:06d}.tar'.format(args.weight_iter))
@@ -81,7 +81,7 @@ def train(args):
 
         print('Model Load Done!')
     else:
-        model = optimize_pose_CubicSpline_2.Model()
+        model = nerf_model.Model()
         graph = model.build_network(args, poses=poses, event_poses=ev_poses)  # nerf, nerf_fine, forward
         optimizer, optimizer_pose, optimizer_trans = model.setup_optimizer(args)
         print('Not Load Model!')
@@ -93,7 +93,6 @@ def train(args):
     if not args.load_weights:
         global_step = start
     global_step_ = global_step
-    threshold = N_iters + 101
 
     for i in trange(start, N_iters):
         i = i + global_step_
