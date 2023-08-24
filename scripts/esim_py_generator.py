@@ -14,6 +14,7 @@ outdir = os.path.expanduser("./data/livingroom_output")
 if __name__ == '__main__':
     imgfiles = [os.path.join(imgdir, f) for f in sorted(os.listdir(imgdir)) if
                 f.lower().endswith(('jpg', 'png', 'jpeg'))]
+    imgfiles = imgfiles[:500 * (30 + 1)]
 
     list_of_timestamps = [float(os.path.splitext(os.path.basename(f))[0]) for f in imgfiles]
 
