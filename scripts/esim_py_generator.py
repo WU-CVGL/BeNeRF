@@ -8,13 +8,14 @@ refractory_period = 0
 log_eps = 1e-3
 use_log = False
 
-imgdir = os.path.expanduser("./data/event-datasets-origin/LivingRoom/camera/temp")
-outdir = os.path.expanduser("./data/livingroom_output")
+imgdir = os.path.expanduser("./data/livingroom/camera/temp")
+outdir = os.path.expanduser("./data/livingroom/camera/esim")
 
 if __name__ == '__main__':
     imgfiles = [os.path.join(imgdir, f) for f in sorted(os.listdir(imgdir)) if
                 f.lower().endswith(('jpg', 'png', 'jpeg'))]
     imgfiles = imgfiles[:500 * (30 + 1)]
+    os.makedirs(outdir, exist_ok=True)
 
     list_of_timestamps = [float(os.path.splitext(os.path.basename(f))[0]) for f in imgfiles]
 
