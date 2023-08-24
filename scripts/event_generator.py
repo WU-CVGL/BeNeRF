@@ -22,7 +22,7 @@ START = 0
 
 data_type = 'train'
 
-basedir = 'D:\\EXP_ORIGINAL\\LivingRoom_half_reso'
+basedir = r'D:\wp-gen\whiteroom'
 imgdir = os.path.join(basedir, 'camera/temp')
 savedir_RGB = os.path.join(basedir, data_type + '_RGB')
 savedir_RGB_start = os.path.join(basedir, data_type + '_RGB_start')
@@ -74,12 +74,11 @@ def imread(f):
         return imageio.v3.imread(f)
 
 
-groundtruth = np.loadtxt(os.path.join(basedir, 'groundtruth.txt'))
-time_stamp = groundtruth[..., 0][START:START + NUM_Img]
-
-
 def Gray_Event_Simulate(imgfiles, W):
     """"""
+    groundtruth = np.loadtxt(os.path.join(basedir, 'groundtruth.txt'))
+    time_stamp = groundtruth[..., 0][START:START + NUM_Img]
+
     n_pix_row = W
 
     img0 = cv2.imread(imgfiles[0], cv2.IMREAD_GRAYSCALE).flatten() / 1.0
@@ -137,7 +136,7 @@ def Gray_Event_Simulate(imgfiles, W):
 
         event_file_name = os.path.join(eventdir, '{:06d}.txt'.format(i))
 
-        # with open(event_file_name, "ab") as f:    # 
+        # with open(event_file_name, "ab") as f:    #
         with open(event_file_name, "wb") as f:
             np.savetxt(f, eve_gene_sorted, delimiter=" ", fmt='%.8f')
 
@@ -224,6 +223,6 @@ if __name__ == '__main__':
 
     [H, W] = img0.shape
 
-    Gray_Event_Simulate(imgfiles, W)
+    # Gray_Event_Simulate(imgfiles, W)
 
     print('end!')

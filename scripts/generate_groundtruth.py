@@ -4,7 +4,6 @@ import numpy as np
 import imageio.v3 as imageio
 from spline import *
 import collections
-os.environ["OPENCV_IO_ENABLE_OPENEXR"]="1"
 
 def Spline_GT(start_pose, end_pose, poses_number, H):
     # start_pose & end_pose are se3
@@ -138,7 +137,7 @@ def poses_2_mat(groundtruth_data, m_c2b, near, far):
     for i in range(0, poses.shape[2]):
 
         # near, far = depth_data[i][0], depth_data[i][1]
-        if dataset_name == 'BlueRoom':
+        if dataset_name == 'blueroom':
             near, far = 0.5, 121.51878159270797
 
         poses_bounds.append(np.concatenate([poses[..., i].ravel(), np.array([near, far])], 0))
@@ -179,6 +178,7 @@ def cal_bounds(basedir):
 
 
 if __name__ == '__main__':
+    os.environ["OPENCV_IO_ENABLE_OPENEXR"] = "1"
     print('Start')
 
     NUM_I_RGB = 30
@@ -186,8 +186,8 @@ if __name__ == '__main__':
 
     length = NUM_I_RGB * INTERVAL + 1
 
-    dataset_name = 'WhiteRoom'
-    basedir = os.path.join('D:\\dataset\\', dataset_name)
+    dataset_name = 'blueroom'
+    basedir = os.path.join(r'D:\wp-gen', dataset_name)
 
     revert = False
 
