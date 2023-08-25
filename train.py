@@ -1,6 +1,7 @@
 import os
 import random
 
+import imageio
 import torch.nn
 from tqdm import trange, tqdm
 
@@ -11,7 +12,7 @@ from logger.wandb_logger import WandbLogger
 from loss import imgloss
 from metrics import compute_img_metric
 from nerf import *
-from run_nerf_helpers import init_nerf, render_image_test
+from run_nerf_helpers import init_nerf, render_image_test, render_video_test
 from utils import imgutils
 from utils.mathutils import safelog
 
@@ -305,23 +306,25 @@ def train(args):
                     logger.write_img("test_depth_mid", depth[len(depth) // 2])
                     logger.write_imgs("test_depth_all", depth)
 
-        # if i % args.i_video == 0 and i > 0:
-        #     bds = np.array([1 / 0.75, 150 / 0.75])
-        #     optimized_se3 = graph.rgb_pose.end.weight.data
-        #     optimized_pose = se3_to_SE3_N(optimized_se3)
-        #     optimized_pose = torch.cat(
-        #         [optimized_pose, torch.tensor([H, W, focal]).reshape([1, 3, 1]).repeat(optimized_pose.shape[0], 1, 1)],
-        #         -1)
-        #     optimized_pose = optimized_pose.cpu().numpy()
-        #     render_poses = regenerate_pose(optimized_pose, bds, recenter=True, bd_factor=.75, spherify=False,
-        #                                    path_zflat=False)
-        #     # Turn on testing mode
-        #     with torch.no_grad():  # here render_video有点问题
-        #         rgbs, disps = render_video_test(i, graph, render_poses, H, W, K, args)
-        #     print('Done, saving', rgbs.shape, disps.shape)
-        #     moviebase = os.path.join(basedir, expname, '{}_spiral_{:06d}_'.format(expname, i))
-        #     imageio.mimwrite(moviebase + 'rgb.mp4', imgutils.to8bit(rgbs), fps=30, quality=8)
-        #     imageio.mimwrite(moviebase + 'disp.mp4', imgutils.to8bit(disps / np.max(disps)), fps=30, quality=8)
+        if i % args.i_video == 0 and i > 0:
+            # bds = np.array([1 / 0.75, 150 / 0.75])
+            # optimized_se3 = graph.rgb_pose.end.weight.data
+            # optimized_pose = se3_to_SE3_N(optimized_se3)
+            # optimized_pose = torch.cat(
+            #     [optimized_pose, torch.tensor([H, W, focal]).reshape([1, 3, 1]).repeat(optimized_pose.shape[0], 1, 1)],
+            #     -1)
+            # optimized_pose = optimized_pose.cpu().numpy()
+            # render_poses = regenerate_pose(optimized_pose, bds, recenter=True, bd_factor=.75, spherify=False,
+            #                                path_zflat=False)
+
+
+            # Turn on testing mode
+            with torch.no_grad():
+                rgbs, disps = render_video_test(i, graph, render_poses, H, W, K, args)
+            print('Done, saving', rgbs.shape, disps.shape)
+            moviebase = os.path.join(basedir, expname, '{}_spiral_{:06d}_'.format(expname, i))
+            imageio.mimwrite(moviebase + 'rgb.mp4', imgutils.to8bit(rgbs), fps=30, quality=8)
+            imageio.mimwrite(moviebase + 'disp.mp4', imgutils.to8bit(disps / np.max(disps)), fps=30, quality=8)
 
         logger.update_buffer()
         global_step += 1
