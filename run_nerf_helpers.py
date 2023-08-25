@@ -123,12 +123,9 @@ def sample_pdf(bins, weights, N_samples, det=False, pytest=False):
 def render_video_test(i_, graph, render_poses, H, W, K, args):
     rgbs = []
     disps = []
-    # t = time.time()
     for i, pose in enumerate(tqdm(render_poses)):
-        # print(i, time.time() - t)
-        # t = time.time()
         pose = pose[None, :3, :4]
-        ret = graph.render_video(i_, pose[:3, :4], H, W, K, args)  # 直接调用graph.render 可以在render加个设置， if ray_idx is None
+        ret = graph.render_video(i_, pose[:3, :4], H, W, K, args)
         rgbs.append(ret['rgb_map'].cpu().numpy())
         disps.append(ret['disp_map'].cpu().numpy())
         if i == 0:
