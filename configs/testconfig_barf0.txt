@@ -1,6 +1,6 @@
 project = eb-nerf-test
 expname = 9-rgb_event_cubic
-datadir = ./data/livingroom_origin
+datadir = ~/data/synthetic_unreal/livingroom_origin
 dataset_type = llff
 idx = 9
 viewer = wandb
