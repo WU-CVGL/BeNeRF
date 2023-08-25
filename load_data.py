@@ -180,6 +180,7 @@ def spherify_poses(poses, bds):
 
 
 def load_data(basedir, args, load_pose=False):
+    basedir = os.path.expanduser(basedir)
     gray = args.channels == 1
 
     # process imges
