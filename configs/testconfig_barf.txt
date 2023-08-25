@@ -1,15 +1,9 @@
-project = eb-nerf
+project = eb-nerf-test
 expname = 9-rgb_event_cubic
-datadir = ./data/livingroom_rgb_half_resolutioln_all
+datadir = ./data/livingroom_origin
 dataset_type = llff
 idx = 9
-dataset_event_split = 500
 viewer = wandb
-focal_x = 548.409
-focal_y = 548.409
-cx = 384
-cy = 240
-cubic_spline = True
 
 # training parameters
 optimize_nerf = True
@@ -17,9 +11,14 @@ lrate = 5e-4
 decay_rate = 0.1
 
 optimize_se3 = True
+cubic_spline = True
 fix_pose = True
 pose_lrate = 5e-4
 decay_rate_pose = 0.01
+focal_x = 548.409
+focal_y = 548.409
+cx = 384
+cy = 240
 
 optimize_event = True
 threshold = 0.1
@@ -29,13 +28,16 @@ transform_lrate = 5e-4
 decay_rate_transform = 0.01
 focal_event_x = 548.409
 focal_event_y = 548.409
-event_cx = 192
-event_cy = 120
-w_event = 384
-h_event = 240
+event_cx = 384
+event_cy = 240
+w_event = 768
+h_event = 480
+event_shift_start = 0
+event_shift_end = 0
+dataset_event_split = 500
 
 i_print = 100
-i_img = 2500
+i_img = 50
 i_video = 500000
 i_weights = 10000
 max_iter = 50000

@@ -1,6 +1,6 @@
 project = eb-nerf-real
 expname = 9-rgb_event_cubic
-datadir = ./data/real_gray
+datadir = ./data/real
 dataset_type = llff
 idx = 93
 viewer = wandb
@@ -45,7 +45,7 @@ max_iter = 50000
 rgb_loss = True
 rgb_blur_loss = False
 
-channels = 1
+channels = 3
 
 N_pix_no_event = 512
 N_pix_event = 1536
