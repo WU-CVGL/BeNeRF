@@ -207,7 +207,8 @@ def load_data(basedir, args, load_pose=False):
         poses_ts = np.array((ts_start[st], ts_end[ed]))
         events = np.load(os.path.join(eventdir, "events.npy"))
         delta = (poses_ts[1] - poses_ts[0]) * 0.01
-        events = np.array([event for event in events if poses_ts[0] - delta <= event[2] <= poses_ts[1] + delta])
+        poses_ts = np.array([poses_ts[0] - delta, poses_ts[1] + delta])
+        events = np.array([event for event in events if poses_ts[0] <= event[2] <= poses_ts[1]])
     else:
         # synthesis dataset
         poses_ts = np.array((ts_start[args.idx], ts_end[args.idx]))
