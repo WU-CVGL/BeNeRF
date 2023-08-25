@@ -6,7 +6,7 @@ contrast_threshold_pos = 0.1
 contrast_threshold_neg = 0.1
 refractory_period = 0
 log_eps = 1e-3
-use_log = False
+use_log = True
 
 imgdir = os.path.expanduser("./data/livingroom/camera/temp")
 outdir = os.path.expanduser("./data/livingroom/camera/esim")
