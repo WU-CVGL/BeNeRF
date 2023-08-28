@@ -49,17 +49,15 @@ def train(args):
     print(f"event camera intrinsic parameters: \n{K_event}\n")
 
     # Create log dir and copy the config file
-    basedir = os.path.join(os.getcwd(), "logs")
-    args.__setattr__("basedir", basedir)
-    expname = args.expname
-    os.makedirs(os.path.join(basedir, expname), exist_ok=True)
-    f = os.path.join(basedir, expname, 'args.txt')
+    logdir = os.path.join(os.path.expanduser(args.logdir), args.expname)
+    os.makedirs(logdir, exist_ok=True)
+    f = os.path.join(logdir, 'args.txt')
     with open(f, 'w') as file:
         for arg in sorted(vars(args)):
             attr = getattr(args, arg)
             file.write('{} = {}\n'.format(arg, attr))
     if args.config is not None:
-        f = os.path.join(basedir, expname, 'config.txt')
+        f = os.path.join(logdir, 'config.txt')
         with open(f, 'w') as file:
             file.write(open(args.config, 'r').read())
 
@@ -68,7 +66,7 @@ def train(args):
         model = nerf_model.Model()
         graph = model.build_network(args)
         optimizer, optimizer_pose, optimizer_trans = model.setup_optimizer(args)
-        path = os.path.join(basedir, expname, '{:06d}.tar'.format(args.weight_iter))
+        path = os.path.join(logdir, '{:06d}.tar'.format(args.weight_iter))
         graph_ckpt = torch.load(path)
 
         graph.load_state_dict(graph_ckpt['graph'])
@@ -271,7 +269,7 @@ def train(args):
 
         # save checkpoint
         if i % args.i_weights == 0 and i > 0:
-            path = os.path.join(basedir, expname, '{:06d}.tar'.format(i))
+            path = os.path.join(logdir, '{:06d}.tar'.format(i))
             torch.save({
                 'global_step': global_step,
                 'graph': graph.state_dict(),
@@ -280,25 +278,23 @@ def train(args):
                 'optimizer_trans': optimizer_trans.state_dict(),
             }, path)
             # save to logger
-            logger.write_checkpoint(path, expname)
+            logger.write_checkpoint(path, args.expname)
             print('Saved checkpoints at', path)
 
         # test
         if i % args.i_img == 0 and i > 0:
             with torch.no_grad():
-                imgs, depth = render_image_test(i, graph, test_poses, H, W, K, args,
-                                                dir='test', need_depth=args.depth)
+                imgs, depth = render_image_test(i, graph, test_poses, H, W, K, args, logdir,
+                                                dir='images_test', need_depth=args.depth)
                 if len(imgs) > 0:
                     logger.write_img("test_img_mid", imgs[len(imgs) // 2])
                     logger.write_imgs("test_img_all", imgs)
                     img_mid = imgs[len(imgs) // 2] / 255.
                     img_mid = torch.unsqueeze(torch.tensor(img_mid, dtype=torch.float32), dim=0)
-                    test_mid_mse = compute_img_metric(img_mid, imgtests, metric="mse")
                     test_mid_psnr = compute_img_metric(img_mid, imgtests, metric="psnr")
                     test_mid_ssim = compute_img_metric(img_mid, imgtests, metric="ssim")
                     test_mid_lpips = compute_img_metric(img_mid, imgtests, metric="lpips")
 
-                    logger.write("test_mid_mse", test_mid_mse)
                     logger.write("test_mid_psnr", test_mid_psnr)
                     logger.write("test_mid_ssim", test_mid_ssim)
                     logger.write("test_mid_lpips", test_mid_lpips)
@@ -317,12 +313,11 @@ def train(args):
             # render_poses = regenerate_pose(optimized_pose, bds, recenter=True, bd_factor=.75, spherify=False,
             #                                path_zflat=False)
 
-
             # Turn on testing mode
             with torch.no_grad():
                 rgbs, disps = render_video_test(i, graph, render_poses, H, W, K, args)
             print('Done, saving', rgbs.shape, disps.shape)
-            moviebase = os.path.join(basedir, expname, '{}_spiral_{:06d}_'.format(expname, i))
+            moviebase = os.path.join(logdir, '{}_spiral_{:06d}_'.format(args.expname, i))
             imageio.mimwrite(moviebase + 'rgb.mp4', imgutils.to8bit(rgbs), fps=30, quality=8)
             imageio.mimwrite(moviebase + 'disp.mp4', imgutils.to8bit(disps / np.max(disps)), fps=30, quality=8)
 

@@ -1,6 +1,7 @@
 project = eb-nerf-real
 expname = 9-rgb_event_cubic
 datadir = ./data/real
+logdir = ~/exp/real
 dataset_type = llff
 idx = 93
 viewer = wandb

@@ -17,6 +17,8 @@ def config_parser():
                         help='experiment name')
     parser.add_argument("--datadir", type=str, default='./data/llff/fern',
                         help='input data directory')
+    parser.add_argument("--logdir", type=str, default='./data/llff/fern',
+                        help='input data directory')
 
     # training options
     parser.add_argument("--deblur_images", type=int, default=7,

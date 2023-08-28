@@ -1,6 +1,7 @@
 project = eb-nerf-test
-expname = 9-rgb_event_cubic
-datadir = ~/data/synthetic_unreal/livingroom_origin
+expname = 9
+datadir = ./data/livingroom_origin
+logdir = ./logs/livingroom
 dataset_type = llff
 idx = 9
 viewer = wandb
@@ -37,10 +38,10 @@ event_shift_start = 0
 event_shift_end = 0
 dataset_event_split = 500
 
-i_print = 100
-i_img = 2500
+i_print = 1
+i_img = 10
 i_video = 500000
-i_weights = 10000
+i_weights = 5
 max_iter = 50000
 
 rgb_loss = True

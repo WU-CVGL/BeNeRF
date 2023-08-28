@@ -7,15 +7,14 @@ from imageio.v3 import imread
 from utils import imgutils
 
 
-def load_img_data(basedir, gray=False):
+def load_img_data(datadir, gray=False):
     print("Loading images...")
     # Load images
-    img0 = [os.path.join(basedir, 'images', f) for f in sorted(os.listdir(os.path.join(basedir, 'images')))
+    img0 = [os.path.join(datadir, 'images', f) for f in sorted(os.listdir(os.path.join(datadir, 'images')))
             if f.lower().endswith(("jpg", "png"))][0]
-    sh = imread(img0).shape
 
-    imgdir = os.path.join(basedir, 'images')
-    testdir = os.path.join(basedir, 'images' + "_test")
+    imgdir = os.path.join(datadir, 'images')
+    testdir = os.path.join(datadir, 'images' + "_test")
 
     imgfiles = [os.path.join(imgdir, f) for f in sorted(os.listdir(imgdir)) if f.lower().endswith(("jpg", "png"))]
     imgtests = [os.path.join(testdir, f) for f in sorted(os.listdir(testdir)) if f.lower().endswith(("jpg", "png"))]
@@ -179,12 +178,12 @@ def spherify_poses(poses, bds):
     return poses_reset, new_poses, bds
 
 
-def load_data(basedir, args, load_pose=False):
-    basedir = os.path.expanduser(basedir)
+def load_data(datadir, args, load_pose=False):
+    datadir = os.path.expanduser(datadir)
     gray = args.channels == 1
 
     # process imges
-    imgs, imgtests = load_img_data(basedir, gray=gray)
+    imgs, imgtests = load_img_data(datadir, gray=gray)
 
     imgs = np.moveaxis(imgs, -1, 0).astype(np.float32)
     if gray:
@@ -199,8 +198,8 @@ def load_data(basedir, args, load_pose=False):
     imgtests = torch.Tensor(imgtests)
 
     # process events and timestamps
-    ts_start, ts_end = load_timestamps(basedir)
-    eventdir = os.path.join(basedir, "events")
+    ts_start, ts_end = load_timestamps(datadir)
+    eventdir = os.path.join(datadir, "events")
     if os.path.exists(os.path.join(eventdir, "events.npy")):
         # event shift, selecting more events means better result
         st = max(args.idx - args.event_shift_start, 0)
@@ -228,7 +227,7 @@ def load_data(basedir, args, load_pose=False):
     # process poses
     poses, ev_poses = None, None
     if load_pose:
-        poses, ev_poses = load_camera_pose(basedir, imgs.shape[0], imgs.shape[1])
+        poses, ev_poses = load_camera_pose(datadir, imgs.shape[0], imgs.shape[1])
         # recenter for rgb
         poses_all = np.concatenate((poses[args.idx: args.idx + 2], ev_poses[args.idx: args.idx + 2]), axis=0)
         poses_all = recenter_poses(poses_all)

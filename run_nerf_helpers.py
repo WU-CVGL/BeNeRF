@@ -7,21 +7,6 @@ from tqdm import tqdm
 
 from utils import imgutils
 
-# Misc
-mse2psnr = lambda x: -10. * torch.log(x) / torch.log(torch.Tensor([10.]))  # logab = logcb / logca
-
-
-def load_imgs(path):
-    imgfiles = [os.path.join(path, f) for f in sorted(os.listdir(path)) if
-                f.endswith('JPG') or f.endswith('jpg') or f.endswith('png')]
-    imgs = [imread(f)[..., :3] / 255. for f in imgfiles]
-    imgs = np.stack(imgs, -1)
-    imgs = np.moveaxis(imgs, -1, 0).astype(np.float32)
-    imgs = imgs.astype(np.float32)
-    imgs = torch.tensor(imgs).cuda()
-
-    return imgs
-
 
 # Ray helpers
 def get_rays(H, W, K, c2w):
@@ -136,8 +121,8 @@ def render_video_test(i_, graph, render_poses, H, W, K, args):
     return rgbs, disps
 
 
-def render_image_test(i, graph, render_poses, H, W, K, args, dir=None, need_depth=True):
-    img_dir = os.path.join(args.basedir, args.expname, dir, 'img_test_{:06d}'.format(i))
+def render_image_test(i, graph, render_poses, H, W, K, args, logdir, dir=None, need_depth=True):
+    img_dir = os.path.join(logdir, dir, 'img_test_{:06d}'.format(i))
     os.makedirs(img_dir, exist_ok=True)
     imgs = []
     depth = []
