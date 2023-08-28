@@ -476,64 +476,6 @@ def SplineEvent(se3_start, se3_end, t_tau, period, delay_time=0):
     return poses
 
 
-### here: test ###
-def test_Spline(start_pose, end_pose, NUM, device=None):
-    # start_pose & end_pose are se3
-
-    # spline t
-    pose_list = []
-    interval = 1 / (NUM - 1)
-    for i in range(0, start_pose.shape[0]):
-        # start_pose = start_pose[None, :, :]
-        # end_pose = end_pose[None, :, :]
-        q_start, t_start = se3_2_qt(start_pose[i])  # N poses
-        q_end, t_end = se3_2_qt(end_pose[i])
-
-        for j in range(0, NUM):
-            # five variables
-            if j == NUM // 2:
-                sample_time = j * interval + 0.1
-            else:
-                sample_time = j * interval + 0.1
-
-            # sample t_vector
-            t_t = (1 - sample_time) * t_start + sample_time * t_end
-            # print(t_t[0], t_t[1], t_t[2])
-
-            # sample rotation_vector
-            q_tau_0 = q_to_Q(q_to_q_conj(q_start)) @ q_end  # equation 50 shape:[4]
-            r = sample_time * log_q2r(q_tau_0)  # equation 51 shape:[3]
-            q_t_0 = exp_r2q(r)  # equation 52 shape:[4]
-            q_t = q_to_Q(q_start) @ q_t_0  # equation 53 shape:[4]
-
-            # convert q&t to RT
-            R = q_to_R(q_t)  # [3,3]
-            t = t_t.reshape(3, 1)
-            # R = torch.Tensor(R).to(device)
-            # t = torch.Tensor(t).to(device)
-            pose_spline = torch.cat([R, t], -1)  # [3, 4]
-            pose_list.append(pose_spline)
-
-    poses = torch.stack(pose_list, 0)  # [N, 3, 4]
-
-    return poses[1]
-
-
-def test_autograd(se3_start, se3_end, deblur_num=3):
-    spline_pose = test_Spline(se3_start, se3_end, deblur_num)
-    loss = torch.sum(spline_pose)
-
-    loss.backward()
-    print(se3_start.grad)
-
-    return loss
-
-
-def test_math_grad(se3_start, se3_end, deblur_num=3):
-    spline_pose = test_Spline(se3_start, se3_end, deblur_num)
-    return spline_pose
-
-
 # a = exp_r2q(torch.tensor([0.1, 0.1, 0.1]))
 # print(a)
 def SplineN_linear(start_pose, end_pose, poses_number, NUM, device=None):
