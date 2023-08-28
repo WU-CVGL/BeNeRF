@@ -232,7 +232,8 @@ def config_parser():
     # viewer
     parser.add_argument("--viewer", type=str, default="wandb",
                         help='the viewer to use (wandb)')
-
+    parser.add_argument("--depth", action='store_true',
+                        help='the viewer to use (wandb)')
     parser.add_argument("--fix_pose", action='store_true',
                         help='the viewer to use (wandb)')
     parser.add_argument("--fix_event_pose", action='store_true',

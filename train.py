@@ -287,7 +287,7 @@ def train(args):
         if i % args.i_img == 0 and i > 0:
             with torch.no_grad():
                 imgs, depth = render_image_test(i, graph, test_poses, H, W, K, args,
-                                                dir='test', need_depth=False)
+                                                dir='test', need_depth=args.depth)
                 if len(imgs) > 0:
                     logger.write_img("test_img_mid", imgs[len(imgs) // 2])
                     logger.write_imgs("test_img_all", imgs)

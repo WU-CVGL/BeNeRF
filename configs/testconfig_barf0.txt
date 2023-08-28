@@ -4,6 +4,7 @@ datadir = ~/data/synthetic_unreal/livingroom_origin
 dataset_type = llff
 idx = 9
 viewer = wandb
+depth = False
 
 # training parameters
 optimize_nerf = True
