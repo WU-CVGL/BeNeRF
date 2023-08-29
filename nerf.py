@@ -6,7 +6,6 @@ from torch import nn
 from run_nerf_helpers import get_specific_rays, get_rays, ndc_rays, sample_pdf
 from utils.eventutils import accumulate_events
 
-PIXELS_EVERY_POSE = 7
 max_iter = 200000
 
 
