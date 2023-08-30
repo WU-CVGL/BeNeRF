@@ -5,6 +5,7 @@ logdir = ~/exp/real
 dataset_type = llff
 idx = 93
 viewer = wandb
+model = cubic_optimpose
 depth = False
 
 # training parameters
@@ -13,8 +14,7 @@ lrate = 5e-4
 decay_rate = 0.1
 
 optimize_se3 = True
-cubic_spline = True
-fix_pose = True
+loadpose = False
 pose_lrate = 5e-4
 decay_rate_pose = 0.01
 focal_x = 1782.310233143170
@@ -23,9 +23,8 @@ cx = 683.0735988620997
 cy = 596.4069032198300
 
 optimize_event = True
+loadtrans = False
 threshold = 0.1
-fix_event_pose = True
-fix_trans = False
 transform_lrate = 5e-4
 decay_rate_transform = 0.01
 focal_event_x = 685.7668012086921
@@ -59,10 +58,6 @@ window_percent_end = 0.05
 window_desc_end = 0.8
 random_window = False
 time_window = False
-
-barf = False
-barf_start = 0.1
-barf_end = 0.5
 
 N_samples = 64
 N_importance = 64

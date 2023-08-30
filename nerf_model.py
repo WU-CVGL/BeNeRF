@@ -89,7 +89,7 @@ class Model(nerf.Model):
         grad_vars = list(self.graph.nerf.parameters())
         if args.N_importance > 0:
             grad_vars += list(self.graph.nerf_fine.parameters())
-        self.optim = torch.optim.Adam(params=grad_vars, lr=args.lrate, betas=(0.9, 0.999))
+        self.optim = torch.optim.Adam(params=grad_vars, lr=args.lrate)
 
         grad_vars_pose = list(self.graph.rgb_pose.parameters())
         self.optim_pose = torch.optim.Adam(params=grad_vars_pose, lr=args.pose_lrate)
@@ -116,7 +116,7 @@ class Graph(nerf.Graph):
             pose2 = self.event.params.weight[2].reshape(1, 1, 6)
             pose3 = self.event.params.weight[3].reshape(1, 1, 6)
 
-            spline_poses = spline.Spline4N_new(pose0, pose1, pose2, pose3, t_tau, period)
+            spline_poses = spline.spline_event_cubic(pose0, pose1, pose2, pose3, t_tau, period)
 
             return spline_poses
 
@@ -142,7 +142,7 @@ class Graph(nerf.Graph):
             SE3_end = SE3_from @ SE3_trans
             se3_end = spline.SE3_to_se3(SE3_end[:3, :4].reshape(1, 3, 4))
 
-        spline_poses = spline.SplineEvent(se3_start, se3_end, t_tau, period)
+        spline_poses = spline.spline_event_linear(se3_start, se3_end, t_tau, period)
 
         return spline_poses
 
@@ -156,10 +156,10 @@ class Graph(nerf.Graph):
             # spline
             if seg_num is None:
                 pose_nums = torch.arange(args.deblur_images).reshape(1, -1).repeat(pose0.shape[0], 1)
-                spline_poses = spline.Spline4N_Cubic(pose0, pose1, pose2, pose3, pose_nums, args.deblur_images)
+                spline_poses = spline.spline_cubic(pose0, pose1, pose2, pose3, pose_nums, args.deblur_images)
             else:
                 pose_nums = torch.arange(seg_num).reshape(1, -1).repeat(pose0.shape[0], 1)
-                spline_poses = spline.Spline4N_Cubic(pose0, pose1, pose2, pose3, pose_nums, seg_num)
+                spline_poses = spline.spline_cubic(pose0, pose1, pose2, pose3, pose_nums, seg_num)
 
             return spline_poses
 
@@ -175,10 +175,10 @@ class Graph(nerf.Graph):
         # spline
         if seg_num is None:
             pose_nums = torch.arange(args.deblur_images).reshape(1, -1).repeat(se3_start.shape[0], 1)
-            spline_poses = spline.SplineN_linear(se3_start, se3_end, pose_nums, args.deblur_images)
+            spline_poses = spline.spline_linear(se3_start, se3_end, pose_nums, args.deblur_images)
         else:
             pose_nums = torch.arange(seg_num).reshape(1, -1).repeat(se3_start.shape[0], 1)
-            spline_poses = spline.SplineN_linear(se3_start, se3_end, pose_nums, seg_num)
+            spline_poses = spline.spline_linear(se3_start, se3_end, pose_nums, seg_num)
 
         return spline_poses
 

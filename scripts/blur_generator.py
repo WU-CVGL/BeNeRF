@@ -12,8 +12,8 @@ START = 0
 
 data_type = 'train'
 
-basedir = r'D:\blender\scripts\BlenderCV\tanabata_1'
-imgdir = os.path.join(basedir, 'camera/temp')
+basedir = r'D:\blender\scripts\BlenderCV\tanabata_2'
+imgdir = os.path.join(basedir, 'raw')
 savedir_RGB = os.path.join(basedir, data_type + '_RGB')
 savedir_RGB_start = os.path.join(basedir, data_type + '_RGB_start')
 savedir_RGB_end = os.path.join(basedir, data_type + '_RGB_end')

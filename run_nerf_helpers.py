@@ -105,12 +105,12 @@ def sample_pdf(bins, weights, N_samples, det=False, pytest=False):
     return samples
 
 
-def render_video_test(i_, graph, render_poses, H, W, K, args):
+def render_video_test(graph, render_poses, H, W, K, args):
     rgbs = []
     disps = []
     for i, pose in enumerate(tqdm(render_poses)):
         pose = pose[None, :3, :4]
-        ret = graph.render_video(i_, pose[:3, :4], H, W, K, args)
+        ret = graph.render_video(pose[:3, :4], H, W, K, args)
         rgbs.append(ret['rgb_map'].cpu().numpy())
         disps.append(ret['disp_map'].cpu().numpy())
         if i == 0:
@@ -129,7 +129,7 @@ def render_image_test(i, graph, render_poses, H, W, K, args, logdir, dir=None, n
 
     for j, pose in enumerate(tqdm(render_poses)):
         pose = pose[None, :3, :4]
-        ret = graph.render_video(i, pose[:3, :4], H, W, K, args)
+        ret = graph.render_video(pose[:3, :4], H, W, K, args)
         rgbs = ret['rgb_map'].cpu().numpy()
         rgb8 = imgutils.to8bit(rgbs)
         imwrite(os.path.join(img_dir, dir[11:] + 'img_{:03d}.png'.format(j)), rgb8.squeeze(),

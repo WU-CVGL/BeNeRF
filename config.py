@@ -21,6 +21,8 @@ def config_parser():
                         help='input data directory')
 
     # training options
+    parser.add_argument("--model", type=str, default='cubic_optimpose',
+                        help='model type to use')
     parser.add_argument("--deblur_images", type=int, default=7,
                         help='the number of sharp images one blur image corresponds to')
     parser.add_argument("--pixels", type=int, default=320,
@@ -99,10 +101,6 @@ def config_parser():
     parser.add_argument("--precrop_frac", type=float,
                         default=.5, help='fraction of img taken for central crops')
 
-    # spline type
-    parser.add_argument("--cubic_spline", action='store_true',
-                        help='the viewer to use (wandb)')
-
     # dataset options
     parser.add_argument("--dataset_type", type=str, default='llff',
                         help='options: llff / blender / deepvoxels')
@@ -147,14 +145,6 @@ def config_parser():
     parser.add_argument("--max_iter", type=int, default=200000,
                         help='max_iter')
 
-    # barf: up & down
-    parser.add_argument("--barf", action='store_true',
-                        help='barf')
-    parser.add_argument("--barf_start", type=float, default=0.1,
-                        help='barf start')
-    parser.add_argument("--barf_end", type=float, default=0.9,
-                        help='barf start')
-
     # tv loss
     parser.add_argument("--tv_loss", action='store_true',
                         help='TV loss')
@@ -168,7 +158,6 @@ def config_parser():
                         help='barf start')
     parser.add_argument("--n_tvloss", type=int, default=0,
                         help='barf start')
-
 
     # optimize
     parser.add_argument("--optimize_se3", action='store_true',
@@ -236,10 +225,8 @@ def config_parser():
                         help='the viewer to use (wandb)')
     parser.add_argument("--depth", action='store_true',
                         help='the viewer to use (wandb)')
-    parser.add_argument("--fix_pose", action='store_true',
+    parser.add_argument("--loadpose", action='store_true',
                         help='the viewer to use (wandb)')
-    parser.add_argument("--fix_event_pose", action='store_true',
-                        help='the viewer to use (wandb)')
-    parser.add_argument("--fix_trans", action='store_true',
+    parser.add_argument("--loadtrans", action='store_true',
                         help='the viewer to use (wandb)')
     return parser

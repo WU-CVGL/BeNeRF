@@ -6,6 +6,10 @@ import torch.nn
 from tqdm import trange, tqdm
 
 import nerf_model
+import nerf_model_cubic_optimpose
+import nerf_model_cubic_optimtrans
+import nerf_model_linear_optimpose
+import nerf_model_linear_optimtrans
 from config import config_parser
 from load_data import load_data
 from logger.wandb_logger import WandbLogger
@@ -61,9 +65,23 @@ def train(args):
         with open(f, 'w') as file:
             file.write(open(args.config, 'r').read())
 
+    # choose model
+    if args.model == "cubic_optimpose":
+        model = nerf_model_cubic_optimpose.Model()
+    elif args.model == "cubic_optimtrans":
+        model = nerf_model_cubic_optimtrans.Model()
+    elif args.model == "linear_optimpose":
+        model = nerf_model_linear_optimpose.Model()
+    elif args.modle == "linear_optimtrans":
+        model = nerf_model_linear_optimtrans.Model()
+    else:
+        print("Unknown model type")
+        return
+
+    print(f"Use model type {args.model}")
+
     # init model
     if args.load_weights:
-        model = nerf_model.Model()
         graph = model.build_network(args)
         optimizer, optimizer_pose, optimizer_trans = model.setup_optimizer(args)
         path = os.path.join(logdir, '{:06d}.tar'.format(args.weight_iter))
@@ -80,7 +98,6 @@ def train(args):
 
         print('Model Load Done!')
     else:
-        model = nerf_model.Model()
         graph = model.build_network(args, poses=poses, event_poses=ev_poses)  # nerf, nerf_fine, forward
         optimizer, optimizer_pose, optimizer_trans = model.setup_optimizer(args)
         print('Not Load Model!')
@@ -315,7 +332,7 @@ def train(args):
 
             # Turn on testing mode
             with torch.no_grad():
-                rgbs, disps = render_video_test(i, graph, render_poses, H, W, K, args)
+                rgbs, disps = render_video_test(graph, render_poses, H, W, K, args)
             print('Done, saving', rgbs.shape, disps.shape)
             moviebase = os.path.join(logdir, '{}_spiral_{:06d}_'.format(args.expname, i))
             imageio.mimwrite(moviebase + 'rgb.mp4', imgutils.to8bit(rgbs), fps=30, quality=8)

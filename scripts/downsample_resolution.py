@@ -4,8 +4,8 @@ import cv2
 import numpy as np
 
 if __name__ == '__main__':
-    imgdir = os.path.expanduser(r"D:\blender\scripts\BlenderCV\gttanabata_test1\raw")
-    outdir = os.path.expanduser(r"D:\blender\scripts\BlenderCV\gttanabata_test1\raw_half_resolution")
+    imgdir = os.path.expanduser(r"D:\blender\scripts\BlenderCV\tanabata_2\raw")
+    outdir = os.path.expanduser(r"D:\blender\scripts\BlenderCV\tanabata_2\raw_half_resolution")
     os.makedirs(outdir, exist_ok=True)
     rate = 2
 

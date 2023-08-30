@@ -9,23 +9,6 @@ from utils.eventutils import accumulate_events
 max_iter = 200000
 
 
-def barf(barf_i, ps_embedded, L, args):  # ps_embedded: [, 6L_new]
-    """
-    barf_i 代表当前的 iteration
-    """
-    # barf_i = 30001
-    L_new = L // 6
-    progress = (barf_i - 1) / max_iter
-    start, end = args.barf_start, args.barf_end  # 0.1 0.5
-    alpha = (progress - start) / (end - start) * L_new
-    k = torch.arange(L_new)
-    weight = (1 - (alpha - k).clamp_(min=0, max=1).mul_(np.pi).cos_()) / 2
-    shape = ps_embedded.shape
-    ps_embedded = (ps_embedded.view(-1, L_new) * weight).view(
-        *shape)  # 从 args.barf_start * max_iter 到 args.barf_end * max_iter 逐渐引入高频分量
-    return ps_embedded
-
-
 class Embedder:
     def __init__(self, **kwargs):
         self.kwargs = kwargs
@@ -64,7 +47,7 @@ def get_embedder(args, multires, i=0):
         return nn.Identity(), 3
 
     embed_kwargs = {
-        'include_input': False if args.barf else True,
+        'include_input': True,
         'input_dims': 3,
         'max_freq_log2': multires - 1,
         'num_freqs': multires,
@@ -122,7 +105,7 @@ class NeRF(nn.Module):
             self.output_linear = nn.Linear(W, channels + 1)
 
     # positional encoding和nerf的mlp
-    def forward(self, barf_i, pts, viewdirs, args):
+    def forward(self, pts, viewdirs, args):
         # step1: positional encoding
         # create positional encoding
         embed_fn, input_ch = get_embedder(args, args.multires, args.i_embed)  # xyz 公式4
@@ -134,18 +117,11 @@ class NeRF(nn.Module):
         pts_flat = torch.reshape(pts, [-1, pts.shape[-1]])
         embedded = embed_fn(pts_flat)
 
-        if args.barf:
-            embedded = barf(barf_i, embedded, input_ch, args)
-            embedded = torch.cat([pts_flat, embedded], -1)  # [..., 63]
-
         if viewdirs is not None:
             # embedded_dirs:[1024x64, 27]
             input_dirs = viewdirs[:, None].expand(pts.shape)
             input_dirs_flat = torch.reshape(input_dirs, [-1, input_dirs.shape[-1]])
             embedded_dirs = embeddirs_fn(input_dirs_flat)
-            if args.barf:
-                embedded_dirs = barf(barf_i, embedded_dirs, input_ch_views, args)
-                embedded_dirs = torch.cat([input_dirs_flat, embedded_dirs], -1)  # [..., 27]
             embedded = torch.cat([embedded, embedded_dirs], -1)
 
         # step2: 将positional encoding后的编码送入到nerf的mlp
@@ -177,7 +153,6 @@ class NeRF(nn.Module):
         return outputs  # [N, 4(RGBA A is sigma)]
 
     def raw2output(self, raw, z_vals, rays_d, raw_noise_std=1.0):
-
         raw2alpha = lambda raw, dists, act_fn=F.relu: 1. - torch.exp(-act_fn(raw) * dists)
 
         dists = z_vals[..., 1:] - z_vals[..., :-1]
@@ -200,7 +175,6 @@ class NeRF(nn.Module):
         rgb_map = torch.sum(weights[..., None] * rgb, -2)  # [N_rays, 3]
 
         depth_map = torch.sum(weights * z_vals, -1)
-        # fixme
         disp_map = 1. / torch.max(1e-10 * torch.ones_like(depth_map), depth_map / torch.sum(weights, -1))
         # disp_map = torch.max(1e-6 * torch.ones_like(depth_map), depth_map / (torch.sum(weights, -1) + 1e-6))
         acc_map = torch.sum(weights, -1)
@@ -258,7 +232,6 @@ class Graph(nn.Module):
             y_window = events['y'][window_low_bound:window_up_bound]
             ts_window = events['ts'][window_low_bound:window_up_bound]
 
-
         out = np.zeros((args.h_event, args.w_event))
         accumulate_events(out, x_window, y_window, pol_window)
         out *= args.threshold
@@ -289,7 +262,7 @@ class Graph(nn.Module):
         spline_rgb_poses = self.get_pose_rgb(args)
 
         # render event
-        ret_event = self.render(i, spline_poses, ray_idx_event.reshape(-1, 1).squeeze(), args.h_event, args.w_event,
+        ret_event = self.render(spline_poses, ray_idx_event.reshape(-1, 1).squeeze(), args.h_event, args.w_event,
                                 K_event,
                                 args,
                                 ray_idx_tv=None,
@@ -297,7 +270,7 @@ class Graph(nn.Module):
 
         # render rgb
         ray_idx_rgb = torch.randperm(H * W)[:args.N_pix_rgb // args.deblur_images]
-        ret_rgb = self.render(i, spline_rgb_poses, ray_idx_rgb.reshape(-1, 1).squeeze(), H, W, K, args,
+        ret_rgb = self.render(spline_rgb_poses, ray_idx_rgb.reshape(-1, 1).squeeze(), H, W, K, args,
                               ray_idx_tv=None,
                               training=True)
 
@@ -319,18 +292,19 @@ class Graph(nn.Module):
     def get_pose(self, args, events_ts, poses_ts):
         pass
 
-    def get_pose_render(self):
+    def get_pose_rgb(self, args, seg_num=None):
+        pass
 
-        return 0
+    def get_pose_render(self):
+        pass
 
     def get_pose_i(self, pose_i, args, ray_idx_rgb):
-        return 0
+        pass
 
     def get_gt_pose(self, poses, args):
-
         return poses
 
-    def render(self, barf_i, poses, ray_idx, H, W, K, args, near=0., far=1., ray_idx_tv=None, training=False):
+    def render(self, poses, ray_idx, H, W, K, args, near=0., far=1., ray_idx_tv=None, training=False):
         if training:
             ray_idx_ = ray_idx.repeat(poses.shape[0])
             poses = poses.unsqueeze(1).repeat(1, ray_idx.shape[0], 1, 1).reshape(-1, 3, 4)
@@ -395,7 +369,7 @@ class Graph(nn.Module):
         z_vals = lower + (upper - lower) * t_rand
         pts = rays_o[..., None, :] + rays_d[..., None, :] * z_vals[..., :, None]
 
-        raw_output = self.nerf.forward(barf_i, pts, viewdirs, args)
+        raw_output = self.nerf.forward(pts, viewdirs, args)
 
         rgb_map, disp_map, acc_map, weights, depth_map, sigma = self.nerf.raw2output(raw_output, z_vals, rays_d)
 
@@ -409,7 +383,7 @@ class Graph(nn.Module):
             z_vals, _ = torch.sort(torch.cat([z_vals, z_samples], -1), -1)
             pts = rays_o[..., None, :] + rays_d[..., None, :] * z_vals[..., :, None]
 
-            raw_output = self.nerf_fine.forward(barf_i, pts, viewdirs, args)
+            raw_output = self.nerf_fine.forward(pts, viewdirs, args)
             rgb_map, disp_map, acc_map, weights, depth_map, sigma = self.nerf_fine.raw2output(raw_output, z_vals,
                                                                                               rays_d)
 
@@ -423,11 +397,11 @@ class Graph(nn.Module):
         return ret
 
     @torch.no_grad()
-    def render_video(self, barf_i, poses, H, W, K, args):
+    def render_video(self, poses, H, W, K, args):
         all_ret = {}
         ray_idx = torch.arange(0, H * W)
         for i in range(0, ray_idx.shape[0], args.chunk):
-            ret = self.render(barf_i, poses, ray_idx[i:i + args.chunk], H, W, K, args)
+            ret = self.render(poses, ray_idx[i:i + args.chunk], H, W, K, args)
             for k in ret:
                 if k not in all_ret:
                     all_ret[k] = []
