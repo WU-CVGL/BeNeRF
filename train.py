@@ -148,12 +148,9 @@ def train(args):
         target_s = events_accu.reshape(-1, 1)[ray_idx_event]
 
         # zero grad
-        if optimizer_pose is not None:
-            optimizer_pose.zero_grad()
-        if optimizer_trans is not None:
-            optimizer_trans.zero_grad()
-        if optimizer is not None:
-            optimizer.zero_grad()
+        optimizer_pose.zero_grad()
+        optimizer_trans.zero_grad()
+        optimizer.zero_grad()
 
         # compute loss
         loss = 0
@@ -258,11 +255,11 @@ def train(args):
         loss.backward()
 
         # step
-        if args.optimize_nerf and optimizer is not None:
+        if args.optimize_nerf:
             optimizer.step()
-        if args.optimize_se3 and optimizer_pose is not None:
+        if args.optimize_se3:
             optimizer_pose.step()
-        if args.optimize_event and optimizer_trans is not None:
+        if args.optimize_event:
             optimizer_trans.step()
 
         # update learning rate

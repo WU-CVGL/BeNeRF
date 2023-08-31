@@ -24,7 +24,8 @@ class Model(nerf_model.Model):
         grad_vars_pose = list(self.graph.rgb_pose.parameters())
         self.optim_pose = torch.optim.Adam(params=grad_vars_pose, lr=args.pose_lrate)
 
-        self.optim_transform = None
+        # Fake optimizer
+        self.optim_transform = torch.optim.Adam(params=[torch.nn.Parameter(torch.tensor(.0))], lr=args.pose_lrate)
 
         return self.optim, self.optim_pose, self.optim_transform
 
