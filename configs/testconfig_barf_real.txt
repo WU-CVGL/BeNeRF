@@ -39,7 +39,7 @@ dataset_event_split = 500
 
 i_print = 100
 i_img = 2500
-i_video = 500000
+i_video = 50000
 i_weights = 10000
 max_iter = 50000
 

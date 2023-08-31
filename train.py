@@ -5,17 +5,18 @@ import imageio
 import torch.nn
 from tqdm import trange, tqdm
 
-import nerf_model
-import nerf_model_cubic_optimpose
-import nerf_model_cubic_optimtrans
-import nerf_model_linear_optimpose
-import nerf_model_linear_optimtrans
+from model import nerf_model_cubic_optimtrans
+from model import nerf_model_cubic_optimposeset
+from model import nerf_model_linear_optimposeset
+from model import nerf_model_linear_optimtrans
+from model import nerf_model_cubic_optimpose
+from model import nerf_model_linear_optimpose
 from config import config_parser
 from load_data import load_data
 from logger.wandb_logger import WandbLogger
 from loss import imgloss
 from metrics import compute_img_metric
-from nerf import *
+from model.nerf import *
 from run_nerf_helpers import init_nerf, render_image_test, render_video_test
 from utils import imgutils
 from utils.mathutils import safelog
@@ -70,10 +71,14 @@ def train(args):
         model = nerf_model_cubic_optimpose.Model()
     elif args.model == "cubic_optimtrans":
         model = nerf_model_cubic_optimtrans.Model()
+    elif args.model == "cubic_optimposeset":
+        model = nerf_model_cubic_optimposeset.Model()
     elif args.model == "linear_optimpose":
         model = nerf_model_linear_optimpose.Model()
     elif args.modle == "linear_optimtrans":
         model = nerf_model_linear_optimtrans.Model()
+    elif args.modle == "linear_optimposeset":
+        model = nerf_model_linear_optimposeset.Model()
     else:
         print("Unknown model type")
         return
@@ -250,11 +255,11 @@ def train(args):
         loss.backward()
 
         # step
-        if args.optimize_nerf:
+        if args.optimize_nerf and optimizer is not None:
             optimizer.step()
-        if args.optimize_se3:
+        if args.optimize_se3 and optimizer_pose is not None:
             optimizer_pose.step()
-        if args.optimize_event:
+        if args.optimize_event and optimizer_trans is not None:
             optimizer_trans.step()
 
         # update learning rate
@@ -320,23 +325,14 @@ def train(args):
                     logger.write_imgs("test_depth_all", depth)
 
         if i % args.i_video == 0 and i > 0:
-            # bds = np.array([1 / 0.75, 150 / 0.75])
-            # optimized_se3 = graph.rgb_pose.end.weight.data
-            # optimized_pose = se3_to_SE3_N(optimized_se3)
-            # optimized_pose = torch.cat(
-            #     [optimized_pose, torch.tensor([H, W, focal]).reshape([1, 3, 1]).repeat(optimized_pose.shape[0], 1, 1)],
-            #     -1)
-            # optimized_pose = optimized_pose.cpu().numpy()
-            # render_poses = regenerate_pose(optimized_pose, bds, recenter=True, bd_factor=.75, spherify=False,
-            #                                path_zflat=False)
+            render_poses = graph.get_pose_rgb(args, 90)
 
-            # Turn on testing mode
             with torch.no_grad():
                 rgbs, disps = render_video_test(graph, render_poses, H, W, K, args)
             print('Done, saving', rgbs.shape, disps.shape)
             moviebase = os.path.join(logdir, '{}_spiral_{:06d}_'.format(args.expname, i))
-            imageio.mimwrite(moviebase + 'rgb.mp4', imgutils.to8bit(rgbs), fps=30, quality=8)
-            imageio.mimwrite(moviebase + 'disp.mp4', imgutils.to8bit(disps / np.max(disps)), fps=30, quality=8)
+            imageio.mimsave(moviebase + 'rgb.mp4', imgutils.to8bit(rgbs), fps=30, quality=8)
+            imageio.mimsave(moviebase + 'disp.mp4', imgutils.to8bit(disps / np.max(disps)), fps=30, quality=8)
 
         logger.update_buffer()
         global_step += 1
