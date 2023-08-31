@@ -265,13 +265,11 @@ class Graph(nn.Module):
         ret_event = self.render(spline_poses, ray_idx_event.reshape(-1, 1).squeeze(), args.h_event, args.w_event,
                                 K_event,
                                 args,
-                                ray_idx_tv=None,
                                 training=True)
 
         # render rgb
         ray_idx_rgb = torch.randperm(H * W)[:args.N_pix_rgb // args.deblur_images]
         ret_rgb = self.render(spline_rgb_poses, ray_idx_rgb.reshape(-1, 1).squeeze(), H, W, K, args,
-                              ray_idx_tv=None,
                               training=True)
 
         if i % args.i_video == 0 and i > 0:
@@ -304,7 +302,7 @@ class Graph(nn.Module):
     def get_gt_pose(self, poses, args):
         return poses
 
-    def render(self, poses, ray_idx, H, W, K, args, near=0., far=1., ray_idx_tv=None, training=False):
+    def render(self, poses, ray_idx, H, W, K, args, near=0., far=1., training=False):
         if training:
             ray_idx_ = ray_idx.repeat(poses.shape[0])
             poses = poses.unsqueeze(1).repeat(1, ray_idx.shape[0], 1, 1).reshape(-1, 3, 4)

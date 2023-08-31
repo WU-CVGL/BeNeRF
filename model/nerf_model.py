@@ -2,7 +2,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-import nerf
+from model import nerf
 import spline
 
 

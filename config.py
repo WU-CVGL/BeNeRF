@@ -145,20 +145,6 @@ def config_parser():
     parser.add_argument("--max_iter", type=int, default=200000,
                         help='max_iter')
 
-    # tv loss
-    parser.add_argument("--tv_loss", action='store_true',
-                        help='TV loss')
-    parser.add_argument("--tv_width_nerf", type=int, default=15,
-                        help='tv')
-    parser.add_argument("--tv_loss_rgb", action='store_true',
-                        help='tv_rgb')
-    parser.add_argument("--tv_loss_gray", action='store_true',
-                        help='tv_gray')
-    parser.add_argument("--tv_loss_lambda", type=float, default=0.001,
-                        help='barf start')
-    parser.add_argument("--n_tvloss", type=int, default=0,
-                        help='barf start')
-
     # optimize
     parser.add_argument("--optimize_se3", action='store_true',
                         help='whether to optimize SE3 network')

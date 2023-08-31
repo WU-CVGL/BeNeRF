@@ -1,8 +1,8 @@
 import torch
 
-import nerf_model
+from model import nerf_model
 import spline
-from nerf_model import CameraPose, EventPose
+from model.nerf_model import CameraPose, EventPose
 
 
 class Model(nerf_model.Model):
