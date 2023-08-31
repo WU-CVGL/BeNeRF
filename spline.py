@@ -5,14 +5,12 @@ delt = 0
 
 
 def se3_2_qt(wu):
-    w, u = wu.split([3, 3], dim=-1)  # w:前3个代表旋转，后3个代表平移
-    wx = skew_symmetric(w)  # wx=[0 -w(2) w(1);w(2) 0 -w(0);-w(1) w(0) 0]
-    theta = w.norm(dim=-1)[..., None, None]  # theta=sqrt(w'*w)
+    w, u = wu.split([3, 3], dim=-1)
+    wx = skew_symmetric(w)
+    theta = w.norm(dim=-1)[..., None, None]
     I = torch.eye(3, device=w.device, dtype=torch.float32)
-    # A = taylor_A(theta)
     B = taylor_B(theta)
     C = taylor_C(theta)
-    # R = I + A * wx + B * wx @ wx
     V = I + B * wx + C * wx @ wx
     t = V @ u[..., None]
     q = exp_r2q(w)
@@ -20,14 +18,12 @@ def se3_2_qt(wu):
 
 
 def se3_2_qt_parallel(wu):
-    w, u = wu.split([3, 3], dim=-1)  # w:前3个代表旋转，后3个代表平移
-    wx = skew_symmetric(w)  # wx=[0 -w(2) w(1);w(2) 0 -w(0);-w(1) w(0) 0]
-    theta = w.norm(dim=-1)[..., None, None]  # theta=sqrt(w'*w)
+    w, u = wu.split([3, 3], dim=-1)
+    wx = skew_symmetric(w)
+    theta = w.norm(dim=-1)[..., None, None]
     I = torch.eye(3, device=w.device, dtype=torch.float32)
-    # A = taylor_A(theta)
     B = taylor_B(theta)
     C = taylor_C(theta)
-    # R = I + A * wx + B * wx @ wx
     V = I + B * wx + C * wx @ wx
     t = V @ u[..., None]
     q = exp_r2q_parallel(w)
@@ -116,7 +112,7 @@ def exp_r2q_taylor_(x, y, z, theta):
     return torch.stack([qx, qy, qz, qw], -1)
 
 
-def q_to_R(q):  # xyzw    四元数转化为旋转矩阵
+def q_to_R(q):
     qb, qc, qd, qa = q.unbind(dim=-1)
     R = torch.stack(
         [torch.stack([1 - 2 * (qc ** 2 + qd ** 2), 2 * (qb * qc - qa * qd), 2 * (qa * qc + qb * qd)], dim=-1),
@@ -126,7 +122,7 @@ def q_to_R(q):  # xyzw    四元数转化为旋转矩阵
     return R
 
 
-def q_to_R_parallel(q):  # xyzw    四元数转化为旋转矩阵
+def q_to_R_parallel(q):
     qb, qc, qd, qa = q.unbind(dim=-1)
     R = torch.stack(
         [torch.stack([1 - 2 * (qc ** 2 + qd ** 2), 2 * (qb * qc - qa * qd), 2 * (qa * qc + qb * qd)], dim=-1),
@@ -216,9 +212,9 @@ def log_q2r_parallel(q, eps_theta=1e-20, eps_w=1e-10):
     return r_
 
 
-def SE3_to_se3(Rt, eps=1e-8):  # [...,3,4]    pose->旋转角速度+平移速度 6维变量
+def SE3_to_se3(Rt, eps=1e-8):
     R, t = Rt.split([3, 1], dim=-1)
-    w = SO3_to_so3(R)  # rotation matrix to 旋转角速度
+    w = SO3_to_so3(R)
     wx = skew_symmetric(w)
     theta = w.norm(dim=-1)[..., None, None]
     I = torch.eye(3, device=w.device, dtype=torch.float32)
@@ -230,7 +226,7 @@ def SE3_to_se3(Rt, eps=1e-8):  # [...,3,4]    pose->旋转角速度+平移速度
     return wu
 
 
-def SO3_to_so3(R, eps=1e-7):  # [...,3,3]
+def SO3_to_so3(R, eps=1e-7):
     trace = R[..., 0, 0] + R[..., 1, 1] + R[..., 2, 2]
     theta = ((trace - 1) / 2).clamp(-1 + eps, 1 - eps).acos_()[
                 ..., None, None] % np.pi  # ln(R) will explode if theta==pi
@@ -250,10 +246,10 @@ def SE3_to_se3_N(poses_rt):
     return poses
 
 
-def se3_to_SE3(wu):  # [...,3]
+def se3_to_SE3(wu):
     w, u = wu.split([3, 3], dim=-1)
-    wx = skew_symmetric(w)  # wx=[0 -w(2) w(1);w(2) 0 -w(0);-w(1) w(0) 0]
-    theta = w.norm(dim=-1)[..., None, None]  # theta=sqrt(w'*w)
+    wx = skew_symmetric(w)
+    theta = w.norm(dim=-1)[..., None, None]
     I = torch.eye(3, device=w.device, dtype=torch.float32)
     A = taylor_A(theta)
     B = taylor_B(theta)
@@ -277,12 +273,10 @@ def se3_to_SE3_N(poses_wu):
 def spline_event_cubic(pose0, pose1, pose2, pose3, tau, period, delay_time=0):
     sample_time = tau / (period + delay_time)
     # parallel
-
     pos_0 = torch.where(sample_time == 0)
     sample_time[pos_0] = sample_time[pos_0] + 0.000001
     pos_1 = torch.where(sample_time == 1)
     sample_time[pos_1] = sample_time[pos_1] - 0.000001
-
     sample_time = sample_time.unsqueeze(-1)
 
     q0, t0 = se3_2_qt_parallel(pose0)
@@ -339,12 +333,10 @@ def spline_event_cubic(pose0, pose1, pose2, pose3, tau, period, delay_time=0):
 def spline_cubic(pose0, pose1, pose2, pose3, poses_number, NUM):
     sample_time = poses_number / (NUM - 1)
     # parallel
-
     pos_0 = torch.where(sample_time == 0)
     sample_time[pos_0] = sample_time[pos_0] + 0.000001
     pos_1 = torch.where(sample_time == 1)
     sample_time[pos_1] = sample_time[pos_1] - 0.000001
-
     sample_time = sample_time.unsqueeze(-1)
 
     q0, t0 = se3_2_qt_parallel(pose0)
@@ -400,11 +392,9 @@ def spline_cubic(pose0, pose1, pose2, pose3, poses_number, NUM):
 
 def spline_event_linear(se3_start, se3_end, t_tau, period, delay_time=0):
     # start_pose & end_pose are se3
-
     pose_time = t_tau / (period + delay_time)
 
     # parallel
-
     pos_0 = torch.where(pose_time == 0)
     pose_time[pos_0] = pose_time[pos_0] + 1e-6
     pos_1 = torch.where(pose_time == 1)
@@ -438,8 +428,6 @@ def spline_event_linear(se3_start, se3_end, t_tau, period, delay_time=0):
     return poses
 
 
-# a = exp_r2q(torch.tensor([0.1, 0.1, 0.1]))
-# print(a)
 def spline_linear(start_pose, end_pose, poses_number, NUM, device=None):
     pose_time = poses_number / (NUM - 1)
 
