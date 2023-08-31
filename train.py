@@ -148,9 +148,12 @@ def train(args):
         target_s = events_accu.reshape(-1, 1)[ray_idx_event]
 
         # zero grad
-        optimizer_pose.zero_grad()
-        optimizer_trans.zero_grad()
-        optimizer.zero_grad()
+        if optimizer_pose is not None:
+            optimizer_pose.zero_grad()
+        if optimizer_trans is not None:
+            optimizer_trans.zero_grad()
+        if optimizer is not None:
+            optimizer.zero_grad()
 
         # compute loss
         loss = 0

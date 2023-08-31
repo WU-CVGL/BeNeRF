@@ -35,6 +35,7 @@ w_event = 640
 h_event = 480
 event_shift_start = 5
 event_shift_end = 5
+event_time_shift = 0
 dataset_event_split = 500
 
 i_print = 100

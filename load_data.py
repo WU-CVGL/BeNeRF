@@ -206,7 +206,7 @@ def load_data(datadir, args, load_pose=False):
         ed = min(args.idx + args.event_shift_end, len(ts_end) - 1)
         poses_ts = np.array((ts_start[st], ts_end[ed]))
         events = np.load(os.path.join(eventdir, "events.npy"))
-        delta = (poses_ts[1] - poses_ts[0]) * 0.01
+        delta = (poses_ts[1] - poses_ts[0]) * args.event_time_shift
         poses_ts = np.array([poses_ts[0] - delta, poses_ts[1] + delta])
         events = np.array([event for event in events if poses_ts[0] <= event[2] <= poses_ts[1]])
     else:

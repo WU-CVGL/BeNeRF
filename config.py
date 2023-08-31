@@ -184,6 +184,9 @@ def config_parser():
                         help='tv')
     parser.add_argument("--event_shift_end", type=int, default=5,
                         help='tv')
+    parser.add_argument("--event_time_shift", type=float, default=.0,
+                        help='tv')
+
     # window
     parser.add_argument("--window_percent", type=float, default=0.1,
                         help='the percentage of the window')
