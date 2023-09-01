@@ -1,81 +1,26 @@
+import abc
+
 import numpy as np
 import torch
 import torch.nn.functional as F
 from torch import nn
 
+from model import embedder
 from run_nerf_helpers import get_specific_rays, get_rays, ndc_rays, sample_pdf
 from utils.eventutils import accumulate_events
-
-max_iter = 200000
-
-
-class Embedder:
-    def __init__(self, **kwargs):
-        self.kwargs = kwargs
-        self.create_embedding_fn()
-
-    def create_embedding_fn(self):
-        embed_fns = []
-        d = self.kwargs['input_dims']
-        out_dim = 0
-        if self.kwargs['include_input']:
-            embed_fns.append(lambda x: x)
-            out_dim += d
-
-        max_freq = self.kwargs['max_freq_log2']
-        N_freqs = self.kwargs['num_freqs']
-
-        if self.kwargs['log_sampling']:
-            freq_bands = 2. ** torch.linspace(0., max_freq, steps=N_freqs)
-        else:
-            freq_bands = torch.linspace(2. ** 0., 2. ** max_freq, steps=N_freqs)
-
-        for freq in freq_bands:
-            for p_fn in self.kwargs['periodic_fns']:
-                embed_fns.append(lambda x, p_fn=p_fn, freq=freq: p_fn(x * freq))
-                out_dim += d
-
-        self.embed_fns = embed_fns
-        self.out_dim = out_dim
-
-    def embed(self, inputs):
-        return torch.cat([fn(inputs) for fn in self.embed_fns], -1)
-
-
-def get_embedder(args, multires, i=0):
-    if i == -1:
-        return nn.Identity(), 3
-
-    embed_kwargs = {
-        'include_input': True,
-        'input_dims': 3,
-        'max_freq_log2': multires - 1,
-        'num_freqs': multires,
-        'log_sampling': True,
-        'periodic_fns': [torch.sin, torch.cos],
-    }
-
-    embedder_obj = Embedder(**embed_kwargs)
-    embed = lambda x, eo=embedder_obj: eo.embed(x)
-    return embed, embedder_obj.out_dim
 
 
 class Model:
     def __init__(self):
         super().__init__()
 
-    def build_network(self, args):
-        self.graph = Graph(args, D=8, W=256, input_ch=63, input_ch_views=27, output_ch=4, skips=[4], use_viewdirs=True)
+    @abc.abstractmethod
+    def build_network(self, args, poses=None, event_poses=None, pose_ts=None, events=None):
+        pass
 
-        return self.graph
-
+    @abc.abstractmethod
     def setup_optimizer(self, args):
-        grad_vars = list(self.graph.nerf.parameters())
-        if args.N_importance > 0:
-            grad_vars += list(self.graph.nerf_fine.parameters())
-        self.optim = torch.optim.Adam(params=grad_vars, lr=args.lrate, betas=(0.9, 0.999))
-
-        return self.optim
+        pass
 
 
 class NeRF(nn.Module):
@@ -108,11 +53,11 @@ class NeRF(nn.Module):
     def forward(self, pts, viewdirs, args):
         # step1: positional encoding
         # create positional encoding
-        embed_fn, input_ch = get_embedder(args, args.multires, args.i_embed)  # xyz 公式4
+        embed_fn, input_ch = embedder.get_embedder(args.multires, args.i_embed)
         input_ch_views = 0
         embeddirs_fn = None
         if args.use_viewdirs:
-            embeddirs_fn, input_ch_views = get_embedder(args, args.multires_views, args.i_embed)
+            embeddirs_fn, input_ch_views = embedder.get_embedder(args.multires_views, args.i_embed)
         # forward positional encoding
         pts_flat = torch.reshape(pts, [-1, pts.shape[-1]])
         embedded = embed_fn(pts_flat)
@@ -287,20 +232,21 @@ class Graph(nn.Module):
         else:
             return ret_event, ret_rgb, ray_idx_event, ray_idx_rgb, events_accu
 
+    @abc.abstractmethod
     def get_pose(self, args, events_ts, poses_ts):
         pass
 
+    @abc.abstractmethod
     def get_pose_rgb(self, args, seg_num=None):
         pass
 
+    @abc.abstractmethod
     def get_pose_render(self):
         pass
 
+    @abc.abstractmethod
     def get_pose_i(self, pose_i, args, ray_idx_rgb):
         pass
-
-    def get_gt_pose(self, poses, args):
-        return poses
 
     def render(self, poses, ray_idx, H, W, K, args, near=0., far=1., training=False):
         if training:

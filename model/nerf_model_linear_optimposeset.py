@@ -9,7 +9,7 @@ class Model(nerf_model.Model):
     def __init__(self):
         super().__init__()
 
-    def build_network(self, args, poses=None, event_poses=None):
+    def build_network(self, args, poses=None, event_poses=None, pose_ts=None, events=None):
         self.graph = Graph(args, D=8, W=256, input_ch=63, input_ch_views=27, output_ch=4, skips=[4], use_viewdirs=True)
         self.graph.rgb_pose = CameraPose(2)
         self.graph.rgb_pose.params.weight.data = torch.nn.Parameter(torch.rand(2, 6) * 0.1)
