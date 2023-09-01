@@ -121,20 +121,8 @@ def train(args):
             init_nerf(graph.nerf)
             init_nerf(graph.nerf_fine)
 
-        if i % args.i_video == 0 and i > 0:
-            ret_event, ret_rgb, ray_idx_event, ray_idx_rgb, test_poses, events_accu = graph.forward(i, poses_ts,
-                                                                                                    events,
-                                                                                                    H, W, K, K_event,
-                                                                                                    args)
-
-        elif i % args.i_img == 0 and i > 0:
-            ret_event, ret_rgb, ray_idx_event, ray_idx_rgb, test_poses, events_accu = graph.forward(i, poses_ts,
-                                                                                                    events,
-                                                                                                    H, W, K, K_event,
-                                                                                                    args)
-        else:
-            ret_event, ret_rgb, ray_idx_event, ray_idx_rgb, events_accu = graph.forward(i, poses_ts, events,
-                                                                                        H, W, K, K_event, args)
+        ret_event, ret_rgb, ray_idx_event, ray_idx_rgb, events_accu = graph.forward(i, poses_ts, events,
+                                                                                    H, W, K, K_event, args)
 
         pixels_num = ray_idx_event.shape[0]
 
@@ -305,6 +293,9 @@ def train(args):
 
         # test
         if i % args.i_img == 0 and i > 0:
+            test_poses = graph.get_pose_rgb(args,
+                                            seg_num=args.deblur_images if args.deblur_images % 2 == 1 else args.deblur_images + 1)
+
             with torch.no_grad():
                 imgs, depth = render_image_test(i, graph, test_poses, H, W, K, args, logdir,
                                                 dir='images_test', need_depth=args.depth)

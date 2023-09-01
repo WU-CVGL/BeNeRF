@@ -216,20 +216,7 @@ class Graph(nn.Module):
         ret_rgb = self.render(spline_rgb_poses, ray_idx_rgb.reshape(-1, 1).squeeze(), H, W, K, args,
                               training=True)
 
-        if i % args.i_video == 0 and i > 0:
-            spline_poses_test = spline_rgb_poses
-            return ret_event, ret_rgb, ray_idx_event, ray_idx_rgb, spline_poses_test, events_accu
-
-        elif i % args.i_img == 0 and i > 0:
-            shape0 = spline_rgb_poses.shape[0]
-            if shape0 % 2 == 1:
-                spline_poses_test = spline_rgb_poses
-            else:
-                spline_poses_test = self.get_pose_rgb(args, args.deblur_images + 1)
-            return ret_event, ret_rgb, ray_idx_event, ray_idx_rgb, spline_poses_test, events_accu
-
-        else:
-            return ret_event, ret_rgb, ray_idx_event, ray_idx_rgb, events_accu
+        return ret_event, ret_rgb, ray_idx_event, ray_idx_rgb, events_accu
 
     def render(self, poses, ray_idx, H, W, K, args, near=0., far=1., training=False):
         if training:
