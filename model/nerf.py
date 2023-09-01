@@ -3,19 +3,17 @@ import abc
 import numpy as np
 import torch
 import torch.nn.functional as F
-from torch import nn
+from torch import nn as nn
 
+import spline
 from model import embedder
 from run_nerf_helpers import get_specific_rays, get_rays, ndc_rays, sample_pdf
 from utils.eventutils import accumulate_events
 
 
 class Model:
-    def __init__(self):
-        super().__init__()
-
     @abc.abstractmethod
-    def build_network(self, args, poses=None, event_poses=None, pose_ts=None, events=None):
+    def build_network(self, args, poses=None, event_poses=None):
         pass
 
     @abc.abstractmethod
@@ -138,6 +136,7 @@ class Graph(nn.Module):
         self.channels = args.channels
         if args.N_importance > 0:
             self.nerf_fine = NeRF(D, W, input_ch, input_ch_views, output_ch, skips, use_viewdirs, args.channels)
+        self.pose_eye = torch.eye(3, 4)
 
     def forward(self, i, poses_ts, events, H, W, K, K_event, args):
         N_pix_no_event = args.N_pix_no_event
@@ -203,7 +202,7 @@ class Graph(nn.Module):
 
         ray_idx_event = pixels_y * args.w_event + pixels_x
 
-        spline_poses = self.get_pose(args, events_ts, poses_ts)
+        spline_poses = self.get_pose(args, torch.tensor(events_ts, dtype=torch.float32))
         spline_rgb_poses = self.get_pose_rgb(args)
 
         # render event
@@ -231,22 +230,6 @@ class Graph(nn.Module):
 
         else:
             return ret_event, ret_rgb, ray_idx_event, ray_idx_rgb, events_accu
-
-    @abc.abstractmethod
-    def get_pose(self, args, events_ts, poses_ts):
-        pass
-
-    @abc.abstractmethod
-    def get_pose_rgb(self, args, seg_num=None):
-        pass
-
-    @abc.abstractmethod
-    def get_pose_render(self):
-        pass
-
-    @abc.abstractmethod
-    def get_pose_i(self, pose_i, args, ray_idx_rgb):
-        pass
 
     def render(self, poses, ray_idx, H, W, K, args, near=0., far=1., training=False):
         if training:
@@ -356,3 +339,22 @@ class Graph(nn.Module):
             k_sh = list([H, W]) + list(all_ret[k].shape[1:])
             all_ret[k] = torch.reshape(all_ret[k], k_sh)
         return all_ret
+
+    def get_pose_render(self):
+        spline_poses = spline.se3_to_SE3(self.se3.params.weight)
+        return spline_poses
+
+    def get_pose_i(self, pose_i, args, ray_idx):
+        ray_idx = ray_idx.reshape([1, -1])
+        spline_poses_ = spline.se3_to_SE3(self.se3.params.weight[pose_i])
+        spline_poses = spline_poses_.reshape([ray_idx.shape[0], 1, 3, 4]).repeat(1, ray_idx.shape[1], 1, 1).reshape(
+            [-1, 3, 4])
+        return spline_poses
+
+    @abc.abstractmethod
+    def get_pose(self, args, events_ts):
+        pass
+
+    @abc.abstractmethod
+    def get_pose_rgb(self, args, seg_num=None):
+        pass

@@ -5,12 +5,12 @@ import imageio
 import torch.nn
 from tqdm import trange, tqdm
 
-from model import nerf_model_cubic_optimtrans
-from model import nerf_model_cubic_optimposeset
-from model import nerf_model_linear_optimposeset
-from model import nerf_model_linear_optimtrans
-from model import nerf_model_cubic_optimpose
-from model import nerf_model_linear_optimpose
+from model import nerf_cubic_optimtrans
+from model import nerf_cubic_optimposeset
+from model import nerf_linear_optimposeset
+from model import nerf_linear_optimtrans
+from model import nerf_cubic_optimpose
+from model import nerf_linear_optimpose
 from config import config_parser
 from load_data import load_data
 from logger.wandb_logger import WandbLogger
@@ -68,17 +68,17 @@ def train(args):
 
     # choose model
     if args.model == "cubic_optimpose":
-        model = nerf_model_cubic_optimpose.Model()
+        model = nerf_cubic_optimpose.Model(args, poses_ts)
     elif args.model == "cubic_optimtrans":
-        model = nerf_model_cubic_optimtrans.Model()
+        model = nerf_cubic_optimtrans.Model(args, poses_ts)
     elif args.model == "cubic_optimposeset":
-        model = nerf_model_cubic_optimposeset.Model()
+        model = nerf_cubic_optimposeset.Model(args, poses_ts)
     elif args.model == "linear_optimpose":
-        model = nerf_model_linear_optimpose.Model()
+        model = nerf_linear_optimpose.Model(args, poses_ts)
     elif args.modle == "linear_optimtrans":
-        model = nerf_model_linear_optimtrans.Model()
+        model = nerf_linear_optimtrans.Model(args, poses_ts)
     elif args.modle == "linear_optimposeset":
-        model = nerf_model_linear_optimposeset.Model()
+        model = nerf_linear_optimposeset.Model(args, poses_ts)
     else:
         print("Unknown model type")
         return
@@ -103,7 +103,7 @@ def train(args):
 
         print('Model Load Done!')
     else:
-        graph = model.build_network(args, poses=poses, event_poses=ev_poses)  # nerf, nerf_fine, forward
+        graph = model.build_network(args, poses=poses, event_poses=ev_poses)
         optimizer, optimizer_pose, optimizer_trans = model.setup_optimizer(args)
         print('Not Load Model!')
 

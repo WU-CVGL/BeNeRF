@@ -10,8 +10,8 @@ def accumulate_events(out, xs, ys, ps):
 
 
 @numba.jit(nopython=True)
-def accumulate_events_range(out, xs, ys, ps, ts, low, high):
+def accumulate_events_range(out, xs, ys, ps, ts, ts_start, ts_end):
     for i in range(xs.shape[0]):
-        if low <= ts <= high:
+        if ts_start <= ts <= ts_end:
             x, y, p = xs[i], ys[i], ps[i]
             out[y, x] += p

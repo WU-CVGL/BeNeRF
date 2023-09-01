@@ -1,16 +1,19 @@
 import torch
 
-from model import nerf_model
+from model import nerf
 import spline
-from model.nerf_model import CameraPose, EventPose
+from model.component import CameraPose, EventPose, ExposureTime
 
 
-class Model(nerf_model.Model):
-    def __init__(self):
-        super().__init__()
-
-    def build_network(self, args, poses=None, event_poses=None, pose_ts=None, events=None):
+class Model(nerf.Model):
+    def __init__(self, args, pose_ts):
         self.graph = Graph(args, D=8, W=256, input_ch=63, input_ch_views=27, output_ch=4, skips=[4], use_viewdirs=True)
+        self.graph.exposure_time = ExposureTime()
+        self.graph.exposure_time.params.weight.data = torch.concatenate(
+            (torch.nn.Parameter(torch.tensor(pose_ts[0], dtype=torch.float32).reshape((1, 1))),
+             torch.nn.Parameter(torch.tensor(pose_ts[1], dtype=torch.float32).reshape((1, 1)))))
+
+    def build_network(self, args, poses=None, event_poses=None):
         self.graph.rgb_pose = CameraPose(4)
         self.graph.event = EventPose(1)
 
@@ -43,10 +46,12 @@ class Model(nerf_model.Model):
         return self.optim, self.optim_pose, self.optim_transform
 
 
-class Graph(nerf_model.Graph):
-    def get_pose(self, args, events_ts, poses_ts):
-        period = torch.tensor((poses_ts[1] - poses_ts[0])).float()
-        t_tau = torch.tensor((events_ts - poses_ts[0])).float()
+class Graph(nerf.Graph):
+    def get_pose(self, args, events_ts):
+        start = self.exposure_time.params.weight[0]
+        end = self.exposure_time.params.weight[1]
+        period = end - start
+        t_tau = events_ts - start
 
         i_0 = torch.tensor((.0, .0, .0, 1.)).reshape(1, 4)
         SE3_0_from = spline.se3_to_SE3(self.rgb_pose.params.weight[0].reshape(1, 1, 6)).squeeze()
