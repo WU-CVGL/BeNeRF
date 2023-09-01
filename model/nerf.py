@@ -178,20 +178,8 @@ class Graph(nn.Module):
         else:
             events_ts = ts_window[np.array([0, int(N_window) - 1])]
 
-        # pixels events spiking and not spiking
-        pixels_event = torch.where(events_accu != 0)
-        pixels_no_event = torch.where(events_accu == 0)
 
-        # selected pixels where no spiked events
-        bg_pixels_id = torch.randperm(pixels_no_event[0].shape[0])[:N_pix_no_event]
-
-        # selected pixels where with spiked events
-        event_pixel_id = torch.randperm(pixels_event[0].shape[0])[:N_pix_event]
-        # all selected pixels
-        pixels_y = torch.concatenate([pixels_event[0][event_pixel_id], pixels_no_event[0][bg_pixels_id]], 0)
-        pixels_x = torch.concatenate([pixels_event[1][event_pixel_id], pixels_no_event[1][bg_pixels_id]], 0)
-
-        ray_idx_event = pixels_y * args.w_event + pixels_x
+        ray_idx_event = torch.randperm(args.h_event * args.w_event)[:N_pix_no_event + N_pix_event]
 
         spline_poses = self.get_pose(args, torch.tensor(events_ts, dtype=torch.float32))
         spline_rgb_poses = self.get_pose_rgb(args)
