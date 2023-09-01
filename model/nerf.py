@@ -5,7 +5,6 @@ import torch
 import torch.nn.functional as F
 from torch import nn as nn
 
-import spline
 from model import embedder
 from run_nerf_helpers import get_specific_rays, get_rays, ndc_rays, sample_pdf
 from utils.eventutils import accumulate_events
@@ -49,7 +48,6 @@ class NeRF(nn.Module):
 
     # positional encoding和nerf的mlp
     def forward(self, pts, viewdirs, args):
-        # step1: positional encoding
         # create positional encoding
         embed_fn, input_ch = embedder.get_embedder(args.multires, args.i_embed)
         input_ch_views = 0
@@ -67,7 +65,6 @@ class NeRF(nn.Module):
             embedded_dirs = embeddirs_fn(input_dirs_flat)
             embedded = torch.cat([embedded, embedded_dirs], -1)
 
-        # step2: 将positional encoding后的编码送入到nerf的mlp
         input_pts, input_views = torch.split(embedded, [self.input_ch, self.input_ch_views], dim=-1)
         h = input_pts
         for i, l in enumerate(self.pts_linears):
@@ -90,39 +87,33 @@ class NeRF(nn.Module):
         else:
             outputs = self.output_linear(h)
 
-        # [1024, 64, 4]
         outputs = torch.reshape(outputs, list(pts.shape[:-1]) + [outputs.shape[-1]])
 
-        return outputs  # [N, 4(RGBA A is sigma)]
+        return outputs
 
     def raw2output(self, raw, z_vals, rays_d, raw_noise_std=1.0):
         raw2alpha = lambda raw, dists, act_fn=F.relu: 1. - torch.exp(-act_fn(raw) * dists)
 
         dists = z_vals[..., 1:] - z_vals[..., :-1]
-        dists = torch.cat([dists, torch.Tensor([1e10]).expand(dists[..., :1].shape)], -1)  # [N_rays, N_samples]
+        dists = torch.cat([dists, torch.Tensor([1e10]).expand(dists[..., :1].shape)], -1)
 
         dists = dists * torch.norm(rays_d[..., None, :], dim=-1)
 
-        # rgb = torch.sigmoid(raw[..., :3])  # [N_rays, N_samples, 3]
-        rgb = torch.sigmoid(raw[..., :self.channels])  # [N_rays, N_samples, self.channels]
+        rgb = torch.sigmoid(raw[..., :self.channels])
 
         noise = 0.
         if raw_noise_std > 0.:
-            # noise = torch.randn(raw[..., 3].shape) * raw_noise_std
             noise = torch.randn(raw[..., self.channels].shape) * raw_noise_std
 
-        # alpha = raw2alpha(raw[..., 3] + noise, dists)  # [N_rays, N_samples]
-        alpha = raw2alpha(raw[..., self.channels] + noise, dists)  # [N_rays, N_samples]
+        alpha = raw2alpha(raw[..., self.channels] + noise, dists)
         weights = alpha * torch.cumprod(torch.cat([torch.ones((alpha.shape[0], 1)), 1. - alpha + 1e-10], -1), -1)[:,
                           :-1]
-        rgb_map = torch.sum(weights[..., None] * rgb, -2)  # [N_rays, 3]
+        rgb_map = torch.sum(weights[..., None] * rgb, -2)
 
         depth_map = torch.sum(weights * z_vals, -1)
         disp_map = 1. / torch.max(1e-10 * torch.ones_like(depth_map), depth_map / torch.sum(weights, -1))
-        # disp_map = torch.max(1e-6 * torch.ones_like(depth_map), depth_map / (torch.sum(weights, -1) + 1e-6))
         acc_map = torch.sum(weights, -1)
 
-        # sigma = F.relu(raw[..., 3] + noise)
         sigma = F.relu(raw[..., self.channels] + noise)
 
         return rgb_map, disp_map, acc_map, weights, depth_map, sigma
@@ -326,17 +317,6 @@ class Graph(nn.Module):
             k_sh = list([H, W]) + list(all_ret[k].shape[1:])
             all_ret[k] = torch.reshape(all_ret[k], k_sh)
         return all_ret
-
-    def get_pose_render(self):
-        spline_poses = spline.se3_to_SE3(self.se3.params.weight)
-        return spline_poses
-
-    def get_pose_i(self, pose_i, args, ray_idx):
-        ray_idx = ray_idx.reshape([1, -1])
-        spline_poses_ = spline.se3_to_SE3(self.se3.params.weight[pose_i])
-        spline_poses = spline_poses_.reshape([ray_idx.shape[0], 1, 3, 4]).repeat(1, ray_idx.shape[1], 1, 1).reshape(
-            [-1, 3, 4])
-        return spline_poses
 
     @abc.abstractmethod
     def get_pose(self, args, events_ts):
