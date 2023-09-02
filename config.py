@@ -162,11 +162,9 @@ def config_parser():
                         help='')
     parser.add_argument("--channels", type=int, default=3,
                         help='whether to use 3-channel or single-channel images')
-    parser.add_argument("--N_pix_no_event", type=int, default=1024,
-                        help='number of sampled rays where no events spiking')
-    parser.add_argument("--N_pix_event", type=int, default=2048,
+    parser.add_argument("--pix_event", type=int, default=2048,
                         help='number of sampled rays where with events spiking')
-    parser.add_argument("--N_pix_rgb", type=int, default=1024,
+    parser.add_argument("--pix_rgb", type=int, default=1024,
                         help='number of sampled rays for computation of image loss function')
     parser.add_argument("--h_event", type=int, default=480,
                         help='whether to use 3-channel or single-channel images')

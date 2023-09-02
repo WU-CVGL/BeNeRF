@@ -49,9 +49,8 @@ rgb_blur_loss = False
 
 channels = 3
 
-N_pix_no_event = 512
-N_pix_event = 1536
-N_pix_rgb = 5120
+pix_event = 2048
+pix_rgb = 5120
 
 window_desc = False
 window_percent = 0.1

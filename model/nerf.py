@@ -130,9 +130,6 @@ class Graph(nn.Module):
         self.pose_eye = torch.eye(3, 4)
 
     def forward(self, i, poses_ts, events, H, W, K, K_event, args):
-        N_pix_no_event = args.N_pix_no_event
-        N_pix_event = args.N_pix_event
-
         if args.time_window:
             delta_t = poses_ts[1] - poses_ts[0]
             window_t = delta_t * args.window_percent
@@ -178,9 +175,7 @@ class Graph(nn.Module):
         else:
             events_ts = ts_window[np.array([0, int(N_window) - 1])]
 
-
-        ray_idx_event = torch.randperm(args.h_event * args.w_event)[:N_pix_no_event + N_pix_event]
-
+        ray_idx_event = torch.randperm(args.h_event * args.w_event)[:args.pix_event]
         spline_poses = self.get_pose(args, torch.tensor(events_ts, dtype=torch.float32))
         spline_rgb_poses = self.get_pose_rgb(args)
 
@@ -191,7 +186,7 @@ class Graph(nn.Module):
                                 training=True)
 
         # render rgb
-        ray_idx_rgb = torch.randperm(H * W)[:args.N_pix_rgb // args.deblur_images]
+        ray_idx_rgb = torch.randperm(H * W)[:args.pix_rgb // args.deblur_images]
         ret_rgb = self.render(spline_rgb_poses, ray_idx_rgb.reshape(-1, 1).squeeze(), H, W, K, args,
                               training=True)
 
