@@ -41,67 +41,6 @@ class Model(nerf.Model):
 
 class Graph(nerf.Graph):
 
-    def forward(self, i, poses_ts, events, H, W, K, K_event, args):
-        start = self.exposure_time.params.weight[0]
-        end = self.exposure_time.params.weight[1]
-        N_pix_no_event = args.N_pix_no_event
-        N_pix_event = args.N_pix_event
-
-        # only support time window sampling
-        # do not supprot sampling by event num
-        delta_t = start - end
-        window_t = delta_t * args.window_percent
-        low_t = np.random.rand(1) * (1 - args.window_percent) * delta_t + poses_ts[0]
-        upper_t = low_t + window_t
-        idx_a = low_t <= events["ts"]
-        idx_b = events["ts"] <= upper_t
-        idx = idx_a * idx_b
-        indices = np.where(idx)
-        pol_window = events['pol'][indices]
-        x_window = events['x'][indices]
-        y_window = events['y'][indices]
-        ts_window = events['ts'][indices]
-
-
-        out = np.zeros((args.h_event, args.w_event))
-        accumulate_events_range(out, x_window, y_window, pol_window, start, end)
-        out *= args.threshold
-        events_accu = torch.tensor(out)
-
-        # timestamps of event windows begin and end
-        events_ts = np.stack((low_t, upper_t)).reshape(2)
-
-        # pixels events spiking and not spiking
-        pixels_event = torch.where(events_accu != 0)
-        pixels_no_event = torch.where(events_accu == 0)
-
-        # selected pixels where no spiked events
-        bg_pixels_id = torch.randperm(pixels_no_event[0].shape[0])[:N_pix_no_event]
-
-        # selected pixels where with spiked events
-        event_pixel_id = torch.randperm(pixels_event[0].shape[0])[:N_pix_event]
-        # all selected pixels
-        pixels_y = torch.concatenate([pixels_event[0][event_pixel_id], pixels_no_event[0][bg_pixels_id]], 0)
-        pixels_x = torch.concatenate([pixels_event[1][event_pixel_id], pixels_no_event[1][bg_pixels_id]], 0)
-
-        ray_idx_event = pixels_y * args.w_event + pixels_x
-
-        spline_poses = self.get_pose(args, torch.tensor(events_ts, dtype=torch.float32))
-        spline_rgb_poses = self.get_pose_rgb(args)
-
-        # render event
-        ret_event = self.render(spline_poses, ray_idx_event.reshape(-1, 1).squeeze(), args.h_event, args.w_event,
-                                K_event,
-                                args,
-                                training=True)
-
-        # render rgb
-        ray_idx_rgb = torch.randperm(H * W)[:args.N_pix_rgb // args.deblur_images]
-        ret_rgb = self.render(spline_rgb_poses, ray_idx_rgb.reshape(-1, 1).squeeze(), H, W, K, args,
-                              training=True)
-
-        return ret_event, ret_rgb, ray_idx_event, ray_idx_rgb, events_accu
-
     def get_pose(self, args, events_ts):
         start = self.exposure_time.params.weight[0]
         end = self.exposure_time.params.weight[1]
@@ -132,3 +71,7 @@ class Graph(nerf.Graph):
             spline_poses = spline.spline_cubic(pose0, pose1, pose2, pose3, pose_nums, seg_num)
 
         return spline_poses
+
+    def get_exposure_time(self):
+        return self.exposure_time.params.weight[0], self.exposure_time.params.weight[1]
+

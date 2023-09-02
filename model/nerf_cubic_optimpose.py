@@ -44,8 +44,7 @@ class Model(nerf.Model):
 
 class Graph(nerf.Graph):
     def get_pose(self, args, events_ts):
-        start = self.exposure_time.params.weight[0]
-        end = self.exposure_time.params.weight[1]
+        start, end = self.get_exposure_time()
         period = end - start
         t_tau = events_ts - start
 
@@ -73,3 +72,6 @@ class Graph(nerf.Graph):
             spline_poses = spline.spline_cubic(pose0, pose1, pose2, pose3, pose_nums, seg_num)
 
         return spline_poses
+
+    def get_exposure_time(self):
+        return self.exposure_time.params.weight[0], self.exposure_time.params.weight[1]

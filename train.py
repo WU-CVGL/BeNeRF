@@ -5,17 +5,17 @@ import imageio
 import torch.nn
 from tqdm import trange, tqdm
 
-from model import nerf_cubic_optimtrans
-from model import nerf_cubic_optimposeset
-from model import nerf_linear_optimposeset
-from model import nerf_linear_optimtrans
-from model import nerf_cubic_optimpose
-from model import nerf_linear_optimpose
 from config import config_parser
 from load_data import load_data
 from logger.wandb_logger import WandbLogger
 from loss import imgloss
 from metrics import compute_img_metric
+from model import nerf_cubic_optimpose
+from model import nerf_cubic_optimposeset
+from model import nerf_cubic_optimtrans
+from model import nerf_linear_optimpose
+from model import nerf_linear_optimposeset
+from model import nerf_linear_optimtrans
 from model.nerf import *
 from run_nerf_helpers import init_nerf, render_image_test, render_video_test
 from utils import imgutils
@@ -121,7 +121,7 @@ def train(args):
             init_nerf(graph.nerf)
             init_nerf(graph.nerf_fine)
 
-        ret_event, ret_rgb, ray_idx_event, ray_idx_rgb, events_accu = graph.forward(i, poses_ts, events,
+        ret_event, ret_rgb, ray_idx_event, ray_idx_rgb, events_accu = graph.forward(i, events,
                                                                                     H, W, K, K_event, args)
 
         pixels_num = ray_idx_event.shape[0]

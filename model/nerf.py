@@ -129,11 +129,12 @@ class Graph(nn.Module):
             self.nerf_fine = NeRF(D, W, input_ch, input_ch_views, output_ch, skips, use_viewdirs, args.channels)
         self.pose_eye = torch.eye(3, 4)
 
-    def forward(self, i, poses_ts, events, H, W, K, K_event, args):
+    def forward(self, i, events, H, W, K, K_event, args):
+        start, end = self.get_exposure_time()
         if args.time_window:
-            delta_t = poses_ts[1] - poses_ts[0]
+            delta_t = end - start
             window_t = delta_t * args.window_percent
-            low_t = np.random.rand(1) * (1 - args.window_percent) * delta_t + poses_ts[0]
+            low_t = np.random.rand(1) * (1 - args.window_percent) * delta_t + start
             upper_t = low_t + window_t
             idx_a = low_t <= events["ts"]
             idx_b = events["ts"] <= upper_t
@@ -307,4 +308,8 @@ class Graph(nn.Module):
 
     @abc.abstractmethod
     def get_pose_rgb(self, args, seg_num=None):
+        pass
+
+    @abc.abstractmethod
+    def get_exposure_time(self):
         pass
