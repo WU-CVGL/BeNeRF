@@ -7,7 +7,8 @@ def config_parser():
     # device
     parser.add_argument("--device", type=int, default=0,
                         help='cuda id to use')
-
+    parser.add_argument("--debug", action='store_true',
+                        help='random seed')
     # others
     parser.add_argument('--config', is_config_file=True, default='./configs/testconfig.txt',
                         help='config file path')

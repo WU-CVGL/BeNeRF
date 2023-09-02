@@ -330,16 +330,23 @@ def train(args):
 
 
 if __name__ == '__main__':
-    torch.set_default_tensor_type('torch.cuda.FloatTensor')
-    np.random.seed(0)
-    torch.cuda.manual_seed(0)
-    torch.random.manual_seed(0)
-    random.seed(0)
-
     # load config
     print("Loading config")
     parser = config_parser()
     args = parser.parse_args()
+
+    # setup seed (for exp)
+    torch.set_default_tensor_type('torch.cuda.FloatTensor')
+    os.environ['PYTHONHASHSEED'] = str(0)
+    random.seed(0)
+    np.random.seed(0)
+    torch.cuda.manual_seed(0)
+    torch.cuda.manual_seed_all(0)
+    torch.random.manual_seed(0)
+    if not args.debug:
+        # performance
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False
 
     # setup device
     print(f"Use device: {args.device}")
