@@ -2,16 +2,12 @@ import torch
 
 import spline
 from model import nerf
-from model.component import CameraPose, ExposureTime
+from model.component import CameraPose
 
 
 class Model(nerf.Model):
-    def __init__(self, args, pose_ts):
+    def __init__(self, args):
         self.graph = Graph(args, D=8, W=256, input_ch=63, input_ch_views=27, output_ch=4, skips=[4], use_viewdirs=True)
-        self.graph.exposure_time = ExposureTime()
-        self.graph.exposure_time.params.weight.data = torch.concatenate(
-            (torch.nn.Parameter(torch.tensor(pose_ts[0], dtype=torch.float32).reshape((1, 1))),
-             torch.nn.Parameter(torch.tensor(pose_ts[1], dtype=torch.float32).reshape((1, 1)))))
 
     def build_network(self, args, poses=None, event_poses=None):
         self.graph.rgb_pose = CameraPose(4)
@@ -38,16 +34,12 @@ class Model(nerf.Model):
 
 class Graph(nerf.Graph):
     def get_pose(self, args, events_ts):
-        start, end = self.get_exposure_time()
-        period = end - start
-        t_tau = events_ts - start
-
         pose0 = self.rgb_pose.params.weight[0].reshape(1, 1, 6)
         pose1 = self.rgb_pose.params.weight[1].reshape(1, 1, 6)
         pose2 = self.rgb_pose.params.weight[2].reshape(1, 1, 6)
         pose3 = self.rgb_pose.params.weight[3].reshape(1, 1, 6)
 
-        spline_poses = spline.spline_event_cubic(pose0, pose1, pose2, pose3, t_tau, period)
+        spline_poses = spline.spline_event_cubic(pose0, pose1, pose2, pose3, events_ts)
 
         return spline_poses
 
@@ -66,6 +58,3 @@ class Graph(nerf.Graph):
             spline_poses = spline.spline_cubic(pose0, pose1, pose2, pose3, pose_nums, seg_num)
 
         return spline_poses
-
-    def get_exposure_time(self):
-        return self.exposure_time.params.weight[0], self.exposure_time.params.weight[1]

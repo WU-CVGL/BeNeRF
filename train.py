@@ -68,17 +68,17 @@ def train(args):
 
     # choose model
     if args.model == "cubic_optimpose":
-        model = nerf_cubic_optimpose.Model(args, poses_ts)
+        model = nerf_cubic_optimpose.Model(args)
     elif args.model == "cubic_optimtrans":
-        model = nerf_cubic_optimtrans.Model(args, poses_ts)
+        model = nerf_cubic_optimtrans.Model(args)
     elif args.model == "cubic_optimposeset":
-        model = nerf_cubic_optimposeset.Model(args, poses_ts)
+        model = nerf_cubic_optimposeset.Model(args)
     elif args.model == "linear_optimpose":
-        model = nerf_linear_optimpose.Model(args, poses_ts)
+        model = nerf_linear_optimpose.Model(args)
     elif args.modle == "linear_optimtrans":
-        model = nerf_linear_optimtrans.Model(args, poses_ts)
+        model = nerf_linear_optimtrans.Model(args)
     elif args.modle == "linear_optimposeset":
-        model = nerf_linear_optimposeset.Model(args, poses_ts)
+        model = nerf_linear_optimposeset.Model(args)
     else:
         print("Unknown model type")
         return

@@ -2,7 +2,6 @@ import os
 
 import numpy as np
 import torch
-from imageio.v3 import imread
 
 from utils import imgutils
 
@@ -221,8 +220,9 @@ def load_data(datadir, args, load_pose=False):
 
     events = events[events[:, 2].argsort()]
     # create dictionary
-    events = {'x': events[:, 0].astype(int), 'y': events[:, 1].astype(int), 'ts': events[:, 2], 'pol': events[:, 3],
-              'num': events.shape[0]}
+    events = {'x': events[:, 0].astype(int), 'y': events[:, 1].astype(int),
+              # norm ts
+              'ts': (events[:, 2] - poses_ts[0]) / (poses_ts[1] - poses_ts[0]), 'pol': events[:, 3]}
 
     # process poses
     poses, ev_poses = None, None

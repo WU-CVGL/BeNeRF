@@ -130,11 +130,11 @@ class Graph(nn.Module):
         self.pose_eye = torch.eye(3, 4)
 
     def forward(self, i, events, H, W, K, K_event, args):
-        start, end = self.get_exposure_time()
         if args.time_window:
+            start, end = .1, .0
             delta_t = end - start
             window_t = delta_t * args.window_percent
-            low_t = np.random.rand(1) * (1 - args.window_percent) * delta_t + start
+            low_t = torch.rand(1) * (1 - args.window_percent) * delta_t + start
             upper_t = low_t + window_t
             idx_a = low_t <= events["ts"]
             idx_b = events["ts"] <= upper_t
@@ -145,19 +145,20 @@ class Graph(nn.Module):
             y_window = events['y'][indices]
             ts_window = events['ts'][indices]
         else:
+            num = len(events["pol"])
             if args.window_desc:
                 # linear desc
                 i_end = args.max_iter * args.window_desc_end
                 percent = args.window_percent - (args.window_percent - args.window_percent_end) * (
                         i / i_end) if i < i_end else args.window_percent_end
-                N_window = round(events['num'] * percent)
+                N_window = round(num * percent)
             else:
-                N_window = round(events['num'] * args.window_percent)
+                N_window = round(num * args.window_percent)
 
             if args.random_window:
-                window_low_bound = np.random.randint(events['num'] - N_window)
+                window_low_bound = np.random.randint(num - N_window)
             else:
-                window_low_bound = np.random.randint((events['num'] - N_window) // N_window) * N_window
+                window_low_bound = np.random.randint((num - N_window) // N_window) * N_window
 
             window_up_bound = int(window_low_bound + N_window)
             pol_window = events['pol'][window_low_bound:window_up_bound]
@@ -308,8 +309,4 @@ class Graph(nn.Module):
 
     @abc.abstractmethod
     def get_pose_rgb(self, args, seg_num=None):
-        pass
-
-    @abc.abstractmethod
-    def get_exposure_time(self):
         pass

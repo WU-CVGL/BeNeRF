@@ -270,8 +270,7 @@ def se3_to_SE3_N(poses_wu):
     return poses
 
 
-def spline_event_cubic(pose0, pose1, pose2, pose3, tau, period, delay_time=0):
-    sample_time = tau / (period + delay_time)
+def spline_event_cubic(pose0, pose1, pose2, pose3, sample_time):
     # parallel
     pos_0 = torch.where(sample_time == 0)
     sample_time[pos_0] = sample_time[pos_0] + 0.000001
@@ -390,10 +389,7 @@ def spline_cubic(pose0, pose1, pose2, pose3, poses_number, NUM):
     return poses
 
 
-def spline_event_linear(se3_start, se3_end, t_tau, period, delay_time=0):
-    # start_pose & end_pose are se3
-    pose_time = t_tau / (period + delay_time)
-
+def spline_event_linear(se3_start, se3_end, pose_time):
     # parallel
     pos_0 = torch.where(pose_time == 0)
     pose_time[pos_0] = pose_time[pos_0] + 1e-6
