@@ -1,19 +1,19 @@
 import numpy as np
 import torch
 
-from model import nerf
 import spline
+from model import nerf
 from model.component import CameraPose, ExposureTime
 from utils.eventutils import accumulate_events_range
 
 
 class Model(nerf.Model):
-    def __init__(self, args, pose_ts):
+    def __init__(self, args):
         self.graph = Graph(args, D=8, W=256, input_ch=63, input_ch_views=27, output_ch=4, skips=[4], use_viewdirs=True)
         self.graph.exposure_time = ExposureTime()
         self.graph.exposure_time.params.weight.data = torch.concatenate(
-            (torch.nn.Parameter(torch.tensor(pose_ts[0], dtype=torch.float32).reshape((1, 1))),
-             torch.nn.Parameter(torch.tensor(pose_ts[1], dtype=torch.float32).reshape((1, 1)))))
+            (torch.nn.Parameter(torch.tensor(.0, dtype=torch.float32).reshape((1, 1))),
+             torch.nn.Parameter(torch.tensor(.0, dtype=torch.float32).reshape((1, 1)))))
 
     def build_network(self, args, poses=None, event_poses=None):
         self.graph.rgb_pose = CameraPose(4)
@@ -42,17 +42,12 @@ class Model(nerf.Model):
 class Graph(nerf.Graph):
 
     def get_pose(self, args, events_ts):
-        start = self.exposure_time.params.weight[0]
-        end = self.exposure_time.params.weight[1]
-        period = end - start
-        t_tau = events_ts - start
-
         pose0 = self.rgb_pose.params.weight[0].reshape(1, 1, 6)
         pose1 = self.rgb_pose.params.weight[1].reshape(1, 1, 6)
         pose2 = self.rgb_pose.params.weight[2].reshape(1, 1, 6)
         pose3 = self.rgb_pose.params.weight[3].reshape(1, 1, 6)
 
-        spline_poses = spline.spline_event_cubic(pose0, pose1, pose2, pose3, t_tau, period)
+        spline_poses = spline.spline_event_cubic(pose0, pose1, pose2, pose3, events_ts)
 
         return spline_poses
 
@@ -72,6 +67,67 @@ class Graph(nerf.Graph):
 
         return spline_poses
 
-    def get_exposure_time(self):
-        return self.exposure_time.params.weight[0], self.exposure_time.params.weight[1]
+    def forward(self, i, events, H, W, K, K_event, args):
+        if args.time_window:
+            start, end = .1, .0
+            delta_t = end - start
+            window_t = delta_t * args.window_percent
+            low_t = torch.rand(1) * (1 - args.window_percent) * delta_t + start
+            upper_t = low_t + window_t
+            idx_a = low_t <= events["ts"]
+            idx_b = events["ts"] <= upper_t
+            idx = idx_a * idx_b
+            indices = np.where(idx)
+            pol_window = events['pol'][indices]
+            x_window = events['x'][indices]
+            y_window = events['y'][indices]
+            ts_window = events['ts'][indices]
+        else:
+            num = len(events["pol"])
+            if args.window_desc:
+                # linear desc
+                i_end = args.max_iter * args.window_desc_end
+                percent = args.window_percent - (args.window_percent - args.window_percent_end) * (
+                        i / i_end) if i < i_end else args.window_percent_end
+                N_window = round(num * percent)
+            else:
+                N_window = round(num * args.window_percent)
 
+            if args.random_window:
+                window_low_bound = np.random.randint(num - N_window)
+            else:
+                window_low_bound = np.random.randint((num - N_window) // N_window) * N_window
+
+            window_up_bound = int(window_low_bound + N_window)
+            pol_window = events['pol'][window_low_bound:window_up_bound]
+            x_window = events['x'][window_low_bound:window_up_bound]
+            y_window = events['y'][window_low_bound:window_up_bound]
+            ts_window = events['ts'][window_low_bound:window_up_bound]
+
+        out = np.zeros((args.h_event, args.w_event))
+        accumulate_events_range(out, x_window, y_window, pol_window)
+        out *= args.threshold
+        events_accu = torch.tensor(out)
+
+        # timestamps of event windows begin and end
+        if args.time_window:
+            events_ts = np.stack((low_t, upper_t)).reshape(2)
+        else:
+            events_ts = ts_window[np.array([0, int(N_window) - 1])]
+
+        ray_idx_event = torch.randperm(args.h_event * args.w_event)[:args.pix_event]
+        spline_poses = self.get_pose(args, torch.tensor(events_ts, dtype=torch.float32))
+        spline_rgb_poses = self.get_pose_rgb(args)
+
+        # render event
+        ret_event = self.render(spline_poses, ray_idx_event.reshape(-1, 1).squeeze(), args.h_event, args.w_event,
+                                K_event,
+                                args,
+                                training=True)
+
+        # render rgb
+        ray_idx_rgb = torch.randperm(H * W)[:args.pix_rgb // args.deblur_images]
+        ret_rgb = self.render(spline_rgb_poses, ray_idx_rgb.reshape(-1, 1).squeeze(), H, W, K, args,
+                              training=True)
+
+        return ret_event, ret_rgb, ray_idx_event, ray_idx_rgb, events_accu

@@ -1,8 +1,6 @@
 import numpy as np
 import torch
 
-delt = 0
-
 
 def se3_2_qt(wu):
     w, u = wu.split([3, 3], dim=-1)
@@ -78,7 +76,7 @@ def exp_r2q(r):
         qy = (1. / 2. - 1. / 12. * theta ** 2 - 1. / 240. * theta ** 4) * y
         qz = (1. / 2. - 1. / 12. * theta ** 2 - 1. / 240. * theta ** 4) * z
         qw = 1. - 1. / 2. * theta ** 2 + 1. / 24. * theta ** 4
-        q_ = torch.stack([qx + delt, qy + delt, qz + delt, qw - delt], 0)
+        q_ = torch.stack([qx, qy, qz, qw], 0)
     else:
         lambda_ = torch.sin(theta) / (2. * theta)
         q_ = torch.stack([lambda_ * x, lambda_ * y, lambda_ * z, torch.cos(theta)], 0)  # xyzw
@@ -229,7 +227,7 @@ def SE3_to_se3(Rt, eps=1e-8):
 def SO3_to_so3(R, eps=1e-7):
     trace = R[..., 0, 0] + R[..., 1, 1] + R[..., 2, 2]
     theta = ((trace - 1) / 2).clamp(-1 + eps, 1 - eps).acos_()[
-                ..., None, None] % np.pi  # ln(R) will explode if theta==pi
+                ..., None, None] % np.pi
     lnR = 1 / (2 * taylor_A(theta) + 1e-8) * (R - R.transpose(-2, -1))  # FIXME: wei-chiu finds it weird
     w0, w1, w2 = lnR[..., 2, 1], lnR[..., 0, 2], lnR[..., 1, 0]
     w = torch.stack([w0, w1, w2], dim=-1)
@@ -424,7 +422,7 @@ def spline_event_linear(se3_start, se3_end, pose_time):
     return poses
 
 
-def spline_linear(start_pose, end_pose, poses_number, NUM, device=None):
+def spline_linear(start_pose, end_pose, poses_number, NUM):
     pose_time = poses_number / (NUM - 1)
 
     # parallel

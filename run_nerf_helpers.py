@@ -2,7 +2,7 @@ import os
 
 import numpy as np
 import torch
-from imageio.v3 import imread, imwrite
+from imageio.v3 import imwrite
 from tqdm import tqdm
 
 from utils import imgutils
@@ -11,13 +11,12 @@ from utils import imgutils
 # Ray helpers
 def get_rays(H, W, K, c2w):
     i, j = torch.meshgrid(torch.linspace(0, W - 1, W),
-                          torch.linspace(0, H - 1, H))  # pytorch's meshgrid has indexing='ij'
-    i = i.t()  # i: [768, 480] value [[n*0],[n*1],...,[n*768]]
-    j = j.t()  # j: [768, 480] 每列值相等
+                          torch.linspace(0, H - 1, H))
+    i = i.t()
+    j = j.t()
     dirs = torch.stack([(i - K[0][2]) / K[0][0], -(j - K[1][2]) / K[1][1], -torch.ones_like(i)], -1)
     # Rotate ray directions from camera frame to the world frame
-    rays_d = torch.sum(dirs[..., np.newaxis, :] * c2w[:3, :3],
-                       -1)  # dot product, equals to: [c2w.dot(dir) for dir in dirs]
+    rays_d = torch.sum(dirs[..., np.newaxis, :] * c2w[:3, :3], -1)
     # Translate camera frame's origin to the world frame. It is the origin of all rays.
     rays_o = c2w[:3, -1].expand(rays_d.shape)
     return rays_o, rays_d
@@ -25,13 +24,9 @@ def get_rays(H, W, K, c2w):
 
 # Ray helpers only get specific rays
 def get_specific_rays(i, j, K, c2w):
-    # i, j = torch.meshgrid(torch.linspace(0, W - 1, W),
-    #                       torch.linspace(0, H - 1, H))  # pytorch's meshgrid has indexing='ij'
-    # i = i.t()
-    # j = j.t()
     dirs = torch.stack([(i - K[0][2]) / K[0][0], -(j - K[1][2]) / K[1][1], -torch.ones_like(i)], -1)
     # Rotate ray directions from camera frame to the world frame
-    rays_d = torch.sum(dirs[..., np.newaxis, :] * c2w[..., :3, :3], -1)  # 每一个坐标对应一个 Rotation matrix
+    rays_d = torch.sum(dirs[..., np.newaxis, :] * c2w[..., :3, :3], -1)
     # dot product, equals to: [c2w.dot(dir) for dir in dirs]
     # Translate camera frame's origin to the world frame. It is the origin of all rays.
     rays_o = c2w[..., :3, -1]
@@ -91,8 +86,6 @@ def sample_pdf(bins, weights, N_samples, det=False, pytest=False):
     above = torch.min((cdf.shape[-1] - 1) * torch.ones_like(inds), inds)
     inds_g = torch.stack([below, above], -1)  # (batch, N_samples, 2)
 
-    # cdf_g = tf.gather(cdf, inds_g, axis=-1, batch_dims=len(inds_g.shape)-2)
-    # bins_g = tf.gather(bins, inds_g, axis=-1, batch_dims=len(inds_g.shape)-2)
     matched_shape = [inds_g.shape[0], inds_g.shape[1], cdf.shape[-1]]
     cdf_g = torch.gather(cdf.unsqueeze(1).expand(matched_shape), 2, inds_g)
     bins_g = torch.gather(bins.unsqueeze(1).expand(matched_shape), 2, inds_g)

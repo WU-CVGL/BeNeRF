@@ -9,9 +9,6 @@ from utils import imgutils
 def load_img_data(datadir, gray=False):
     print("Loading images...")
     # Load images
-    img0 = [os.path.join(datadir, 'images', f) for f in sorted(os.listdir(os.path.join(datadir, 'images')))
-            if f.lower().endswith(("jpg", "png"))][0]
-
     imgdir = os.path.join(datadir, 'images')
     testdir = os.path.join(datadir, 'images' + "_test")
 
@@ -34,7 +31,6 @@ def load_camera_pose(basedir, H, W):
     poses = poses_arr[:, :-2].reshape([-1, 3, 5]).transpose([1, 2, 0])  # 3x5xN
     poses[:2, 4, :] = np.array(sh[:2]).reshape([2, 1])
     poses = np.concatenate([poses[:, 1:2, :], -poses[:, 0:1, :], poses[:, 2:, :]], 1)  # 列的转换    -y x z : x y z
-    # poses: [3, 5, N]->[N, 3, 5] imgs: [HWCN]->[NHWC] bds: [2, N]->[N, 2]
     poses = np.moveaxis(poses, -1, 0).astype(np.float32)
 
     ev_poses_arr = np.load(os.path.join(basedir, 'poses_bounds_events.npy'))

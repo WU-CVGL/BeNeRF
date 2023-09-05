@@ -1,6 +1,6 @@
 project = eb-nerf-test
 expname = 9
-datadir = ./data/synthetic_unreal/livingroom
+datadir = ~/data/synthetic_unreal/livingroom
 logdir = ./logs/livingroom
 dataset_type = llff
 idx = 9
