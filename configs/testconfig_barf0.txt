@@ -2,11 +2,10 @@ project = eb-nerf-test
 expname = 9
 datadir = ~/data/synthetic_unreal/livingroom
 logdir = ./logs/livingroom
-dataset_type = llff
 idx = 9
 viewer = wandb
 model = cubic_optimposeset
-depth = False
+depth = True
 debug = True
 
 # training parameters
@@ -40,7 +39,7 @@ event_time_shift = 0
 dataset_event_split = 500
 
 i_print = 100
-i_img = 2500
+i_img = 5000
 i_video = 50000
 i_weights = 50000
 max_iter = 50000

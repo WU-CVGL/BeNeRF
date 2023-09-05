@@ -26,10 +26,6 @@ def config_parser():
                         help='model type to use')
     parser.add_argument("--deblur_images", type=int, default=7,
                         help='the number of sharp images one blur image corresponds to')
-    parser.add_argument("--pixels", type=int, default=320,
-                        help='like N_rand')
-    parser.add_argument("--skip", type=int, default=8,
-                        help='original llffhold before concatenate images')
     parser.add_argument("--netdepth", type=int, default=8,
                         help='layers in network')
     parser.add_argument("--netwidth", type=int, default=256,
@@ -38,9 +34,6 @@ def config_parser():
                         help='layers in fine network')
     parser.add_argument("--netwidth_fine", type=int, default=256,
                         help='channels per layer in fine network')
-    parser.add_argument("--N_rand", type=int, default=32 * 32 * 4,
-                        help='batch size (number of random rays per gradient step) = deblur_images x pixels')
-
     parser.add_argument("--lrate", type=float, default=5e-4,
                         help='learning rate of NeRF')
     parser.add_argument("--pose_lrate", type=float, default=1e-3,
@@ -62,12 +55,6 @@ def config_parser():
                         help='number of rays processed in parallel, decrease if running out of memory')
     parser.add_argument("--netchunk", type=int, default=1024 * 32,
                         help='number of pts sent through network in parallel, decrease if running out of memory')
-    parser.add_argument("--no_batching", action='store_true',
-                        help='only take random rays from 1 image at a time')
-    parser.add_argument("--no_reload", action='store_true',
-                        help='do not reload weights from saved ckpt')
-    parser.add_argument("--ft_path", type=str, default=None,
-                        help='specific weights npy file to reload for coarse network')
 
     # rendering options
     parser.add_argument("--N_samples", type=int, default=64,
@@ -96,27 +83,10 @@ def config_parser():
     parser.add_argument("--ndc", type=bool, default=True,
                         help='downsampling factor to speed up rendering, set 4 or 8 for fast preview')
 
-    # training options
-    parser.add_argument("--precrop_iters", type=int, default=0,
-                        help='number of steps to train on central crops')
-    parser.add_argument("--precrop_frac", type=float,
-                        default=.5, help='fraction of img taken for central crops')
-
-    # dataset options
-    parser.add_argument("--dataset_type", type=str, default='llff',
-                        help='options: llff / blender / deepvoxels')
-    parser.add_argument("--testskip", type=int, default=8,
-                        help='will load 1/N images from test/val sets, useful for large datasets like deepvoxels')
-
-    ## deepvoxels flags
-    parser.add_argument("--shape", type=str, default='greek',
-                        help='options : armchair / cube / greek / vase')
-
     # idx
     parser.add_argument("--idx", type=int, default=0,
                         help='idx in the dataset to deblur')
 
-    ## llff flags
     parser.add_argument("--focal_x", type=float, default=548.409,
                         help='focal length of images')
     parser.add_argument("--focal_y", type=float, default=548.409,
@@ -135,8 +105,6 @@ def config_parser():
                         help='frequency of tensorboard image logging')
     parser.add_argument("--i_weights", type=int, default=10000,
                         help='frequency of weight ckpt saving')
-    parser.add_argument("--i_testset", type=int, default=500000,
-                        help='frequency of testset saving')
     parser.add_argument("--i_video", type=int, default=50000,
                         help='frequency of render_poses video saving')
     parser.add_argument("--load_weights", action='store_true',
