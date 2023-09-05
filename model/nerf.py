@@ -1,4 +1,5 @@
 import abc
+from datetime import datetime
 
 import numpy as np
 import torch
@@ -18,6 +19,9 @@ class Model:
     @abc.abstractmethod
     def setup_optimizer(self, args):
         pass
+
+    def after_train(self):
+        print(f"Successfully finished model on {datetime.now()}")
 
 
 class NeRF(nn.Module):

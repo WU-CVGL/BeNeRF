@@ -182,7 +182,7 @@ def train(args):
                 rgb_ += ray_rgb
 
                 # loss for blur image
-                if args.rgb_blur_loss:
+                if args.rgb_blur_loss and j % (args.deblur_images // 2) == 0:
                     blur_loss += mse_loss(ray_rgb, target_s)
 
                 if 'rgb0' in ret_rgb:
@@ -190,7 +190,7 @@ def train(args):
                     extras_ += ray_extras
 
                     # loss for blur image
-                    if args.rgb_blur_loss:
+                    if args.rgb_blur_loss and j % (args.deblur_images // 2) == 0:
                         extras_blur_loss += mse_loss(ray_extras, target_s)
 
                 if (j + 1) % args.deblur_images == 0:
@@ -327,6 +327,9 @@ def train(args):
 
         logger.update_buffer()
         global_step += 1
+
+    # after train callback
+    model.after_train()
 
 
 if __name__ == '__main__':
