@@ -135,10 +135,8 @@ class Graph(nn.Module):
 
     def forward(self, i, events, H, W, K, K_event, args):
         if args.time_window:
-            start, end = .1, .0
-            delta_t = end - start
-            window_t = delta_t * args.window_percent
-            low_t = torch.rand(1) * (1 - args.window_percent) * delta_t + start
+            window_t = args.window_percent
+            low_t = np.random.rand(1) * (1 - args.window_percent)
             upper_t = low_t + window_t
             idx_a = low_t <= events["ts"]
             idx_b = events["ts"] <= upper_t
