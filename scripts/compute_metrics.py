@@ -82,8 +82,8 @@ if __name__ == '__main__':
 
     metrics.close()
 
-    print(f"AVG MSE: {avg_mse:.4f} AVG PSNR: {avg_psnr:.2f} AVG SSIM: {avg_ssim:.2f} AVG LPIPS: {avg_lpips:.3f}")
+    print(f"AVG MSE: {avg_mse:.4f} AVG PSNR: {avg_psnr:.2f} AVG SSIM: {avg_ssim:.4f} AVG LPIPS: {avg_lpips:.4f}")
     with open(result, "w") as f:
         f.write(
-            f"AVG MSE: {avg_mse:.4f}\nAVG PSNR: {avg_psnr:.2f}\nAVG SSIM: {avg_ssim:.2f}\nAVG LPIPS: {avg_lpips:.3f}")
+            f"AVG MSE: {avg_mse:.4f}\nAVG PSNR: {avg_psnr:.2f}\nAVG SSIM: {avg_ssim:.4f}\nAVG LPIPS: {avg_lpips:.4f}")
     print("Finished")
