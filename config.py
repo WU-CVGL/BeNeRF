@@ -157,12 +157,6 @@ def config_parser():
     # window
     parser.add_argument("--window_percent", type=float, default=0.1,
                         help='the percentage of the window')
-    parser.add_argument("--window_desc", action='store_true',
-                        help='turn on windows desc/not')
-    parser.add_argument("--window_percent_end", type=float, default=0.05,
-                        help='the percentage of the window end (when window_dec enabled)')
-    parser.add_argument("--window_desc_end", type=float, default=0.6,
-                        help='when iter reach window_desc_end * max_iter, it will maintain window_percent_end')
     parser.add_argument("--random_window", action='store_true',
                         help='whether to use fixed windows or sliding window')
     parser.add_argument("--time_window", action='store_true',

@@ -136,8 +136,12 @@ class Graph(nn.Module):
     def forward(self, i, events, H, W, K, K_event, args):
         if args.time_window:
             window_t = args.window_percent
-            low_t = np.random.rand(1) * (1 - args.window_percent)
-            upper_t = low_t + window_t
+            if args.random_window:
+                low_t = np.random.rand(1) * (1 - window_t)
+                upper_t = low_t + window_t
+            else:
+                low_t = np.random.randint((1 - window_t) // window_t) * window_t
+                upper_t = np.min((low_t + window_t, 1.0))
             idx_a = low_t <= events["ts"]
             idx_b = events["ts"] <= upper_t
             idx = idx_a * idx_b
@@ -148,21 +152,13 @@ class Graph(nn.Module):
             ts_window = events['ts'][indices]
         else:
             num = len(events["pol"])
-            if args.window_desc:
-                # linear desc
-                i_end = args.max_iter * args.window_desc_end
-                percent = args.window_percent - (args.window_percent - args.window_percent_end) * (
-                        i / i_end) if i < i_end else args.window_percent_end
-                N_window = round(num * percent)
-            else:
-                N_window = round(num * args.window_percent)
-
+            N_window = round(num * args.window_percent)
             if args.random_window:
                 window_low_bound = np.random.randint(num - N_window)
+                window_up_bound = int(window_low_bound + N_window)
             else:
                 window_low_bound = np.random.randint((num - N_window) // N_window) * N_window
-
-            window_up_bound = int(window_low_bound + N_window)
+                window_up_bound = int(window_low_bound + N_window)
             pol_window = events['pol'][window_low_bound:window_up_bound]
             x_window = events['x'][window_low_bound:window_up_bound]
             y_window = events['y'][window_low_bound:window_up_bound]

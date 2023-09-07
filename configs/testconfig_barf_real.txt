@@ -52,10 +52,7 @@ channels = 3
 pix_event = 2048
 pix_rgb = 5120
 
-window_desc = False
 window_percent = 0.1
-window_percent_end = 0.05
-window_desc_end = 0.8
 random_window = False
 time_window = False
 
