@@ -40,9 +40,9 @@ dataset_event_split = 500
 
 i_print = 100
 i_img = 5000
-i_video = 60000
-i_weights = 60000
-max_iter = 60000
+i_video = 80000
+i_weights = 80000
+max_iter = 80000
 
 rgb_loss = True
 rgb_blur_loss = False

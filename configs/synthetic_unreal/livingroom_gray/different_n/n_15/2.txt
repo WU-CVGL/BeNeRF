@@ -1,12 +1,12 @@
-project = eb-nerf-test
-expname = 9
-datadir = ~/data/synthetic_unreal/livingroom
-logdir = ./logs/livingroom
-idx = 9
+project = different_n_15
+expname = 2
+datadir = ~/data/synthetic_unreal/livingroom_gray
+logdir = ~/logs/livingroom_gray/different_n/n_15/
+idx = 2
 viewer = wandb
 model = cubic_optimposeset
 depth = True
-debug = True
+debug = False
 
 # training parameters
 optimize_nerf = True
@@ -47,7 +47,7 @@ max_iter = 80000
 rgb_loss = True
 rgb_blur_loss = False
 
-channels = 3
+channels = 1
 
 pix_event = 2048
 pix_rgb = 5120
