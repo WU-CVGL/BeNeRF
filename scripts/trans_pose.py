@@ -16,7 +16,18 @@ if __name__ == '__main__':
     R_t = np.array([[1., 0., 0.],
                     [0., 1., 0.],
                     [0., 0., 1.]], dtype=np.float64)
-    t_t = np.array([0.05, 0.05, 0.05], dtype=np.float64)
+    # x_5cm
+    t_t = np.array([0.05, 0., 0.], dtype=np.float64)
+    # x_10cm
+    t_t = np.array([0.1, 0., 0.], dtype=np.float64)
+    # y_5cm
+    t_t = np.array([0., 0.05, 0.], dtype=np.float64)
+    # y_10cm
+    t_t = np.array([0., 0.1, 0.], dtype=np.float64)
+    # z_5cm
+    t_t = np.array([0., 0., 0.05], dtype=np.float64)
+    # z_10cm
+    t_t = np.array([0., 0., 0.1], dtype=np.float64)
     T = np.concatenate((R_t, t_t.reshape(3, 1)), axis=1)
     trans = pp.mat2SE3(T)
 
