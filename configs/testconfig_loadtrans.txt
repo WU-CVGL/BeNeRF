@@ -1,11 +1,11 @@
 project = eb-nerf-test
 expname = 9
 datadir = ~/data/synthetic_unreal/livingroom_x_5cm
-logdir = ./logs/livingroom
+logdir = ./logs/livingroom_x_5cm
 idx = 9
 viewer = wandb
 model = cubic_rigidtrans
-depth = True
+depth = False
 debug = True
 
 # training parameters
@@ -22,7 +22,7 @@ focal_y = 548.409
 cx = 384
 cy = 240
 
-optimize_event = True
+optimize_event = False
 loadtrans = True
 threshold = 0.1
 transform_lrate = 5e-4
