@@ -1,6 +1,6 @@
 project = eb-nerf-test
 expname = 9
-datadir = ~/data/synthetic_unreal/livingroom_x_5cm
+datadir = ~/data/synthetic_unreal_rigid/livingroom_x_5cm
 logdir = ./logs/livingroom_x_5cm
 idx = 9
 viewer = wandb
