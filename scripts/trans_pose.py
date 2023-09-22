@@ -4,7 +4,9 @@ import pypose as pp
 import numpy as np
 import torch
 
-transdir = os.path.expanduser(r"C:/Users/User/Desktop/Test/trans.npy")
+import spline
+
+transdir = os.path.expanduser(r"../logs/trans.npy")
 
 if __name__ == '__main__':
     # Origin c1->w
@@ -17,15 +19,15 @@ if __name__ == '__main__':
                     [0., 1., 0.],
                     [0., 0., 1.]], dtype=np.float64)
     # x_5cm
-    t_t = np.array([0.05, 0., 0.], dtype=np.float64)
+    # t_t = np.array([0.05, 0., 0.], dtype=np.float64)
     # x_10cm
-    t_t = np.array([0.1, 0., 0.], dtype=np.float64)
+    # t_t = np.array([0.1, 0., 0.], dtype=np.float64)
     # y_5cm
-    t_t = np.array([0., 0.05, 0.], dtype=np.float64)
+    # t_t = np.array([0., 0.05, 0.], dtype=np.float64)
     # y_10cm
-    t_t = np.array([0., 0.1, 0.], dtype=np.float64)
+    # t_t = np.array([0., 0.1, 0.], dtype=np.float64)
     # z_5cm
-    t_t = np.array([0., 0., 0.05], dtype=np.float64)
+    # t_t = np.array([0., 0., 0.05], dtype=np.float64)
     # z_10cm
     t_t = np.array([0., 0., 0.1], dtype=np.float64)
     T = np.concatenate((R_t, t_t.reshape(3, 1)), axis=1)
@@ -34,6 +36,9 @@ if __name__ == '__main__':
     result = origin @ trans
     print("tx ty tz qx qy qz qw")
     print(result.tensor().numpy())
-    output = pp.Log(result).tensor().numpy()
+    output = pp.Log(result).tensor()
+    output = spline.se3_to_SE3(output).numpy()
     np.save(transdir, output)
+    print("===== SE3 for trans =====")
+    print(output)
 

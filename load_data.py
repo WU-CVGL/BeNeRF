@@ -42,6 +42,12 @@ def load_camera_pose(basedir, H, W):
     return poses, ev_poses
 
 
+def load_camera_trans(basedir):
+    # load trans
+    trans_arr = np.load(os.path.join(basedir, 'trans.npy'))
+    return trans_arr
+
+
 def load_timestamps(basedir):
     poses_ts_path = os.path.join(basedir, 'poses_ts.txt')
     poses_start_path = os.path.join(basedir, "poses_start_ts.txt")
@@ -173,7 +179,7 @@ def spherify_poses(poses, bds):
     return poses_reset, new_poses, bds
 
 
-def load_data(datadir, args, load_pose=False):
+def load_data(datadir, args, load_pose=False, load_trans=False):
     datadir = os.path.expanduser(datadir)
     gray = args.channels == 1
 
@@ -221,7 +227,7 @@ def load_data(datadir, args, load_pose=False):
               'ts': (events[:, 2] - poses_ts[0]) / (poses_ts[1] - poses_ts[0]), 'pol': events[:, 3]}
 
     # process poses
-    poses, ev_poses = None, None
+    poses, ev_poses, trans = None, None, None
     if load_pose:
         poses, ev_poses = load_camera_pose(datadir, imgs.shape[0], imgs.shape[1])
         # recenter for rgb
@@ -231,8 +237,11 @@ def load_data(datadir, args, load_pose=False):
 
         # recenter for event
         ev_poses = poses_all[2:4]
+    elif load_trans:
+        trans_arr = load_camera_trans(datadir)
+        trans = recenter_poses(trans_arr)
 
-    return events, imgs, imgtests, poses_ts, poses, ev_poses
+    return events, imgs, imgtests, poses_ts, poses, ev_poses, trans
 
 
 def regenerate_pose(poses, bds, recenter=True, bd_factor=.75, spherify=False, path_zflat=False):

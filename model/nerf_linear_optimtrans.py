@@ -21,13 +21,9 @@ class Model(nerf.Model):
 
         self.graph.rgb_pose.params.weight.data = parm_rgb
 
-        if args.loadtrans:
-            se3_trans = spline.SE3_to_se3(torch.tensor(event_poses[..., :4]))
-            parm_e = torch.nn.Parameter(se3_trans)
-        else:
-            parm_e = torch.nn.Parameter(torch.zeros(1, 6))
+        parm_e = torch.nn.Parameter(torch.zeros(1, 6))
 
-        self.graph.event.params.weight.data = parm_e
+        self.graph.transform.params.weight.data = parm_e
 
         return self.graph
 
@@ -40,7 +36,7 @@ class Model(nerf.Model):
         grad_vars_pose = list(self.graph.rgb_pose.parameters())
         self.optim_pose = torch.optim.Adam(params=grad_vars_pose, lr=args.pose_lrate)
 
-        grad_vars_transform = list(self.graph.event.parameters())
+        grad_vars_transform = list(self.graph.transform.parameters())
         self.optim_transform = torch.optim.Adam(params=grad_vars_transform, lr=args.transform_lrate)
 
         return self.optim, self.optim_pose, self.optim_transform

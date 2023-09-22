@@ -11,6 +11,7 @@ from logger.wandb_logger import WandbLogger
 from loss import imgloss
 from metrics import compute_img_metric
 from model import nerf_cubic_optimpose
+from model import nerf_cubic_rigidtrans
 from model import nerf_cubic_optimposeset
 from model import nerf_cubic_optimtrans
 from model import nerf_linear_optimpose
@@ -31,8 +32,15 @@ def train(args):
     rgb2gray = imgutils.RGB2Gray()
 
     print("Loading data")
-    events, images, imgtests, poses_ts, poses, ev_poses = load_data(args.datadir, args, load_pose=False)
+    events, images, imgtests, poses_ts, poses, ev_poses, trans = load_data(args.datadir, args, load_pose=args.loadpose,
+                                                                           load_trans=args.loadtrans)
     print(f"Loaded data {args.datadir} {args.idx} {images.shape}")
+
+    print(f"Camera Pose: {poses}")
+    print(f"Event Camera Pose: {ev_poses}")
+    print(f"Camera Trans: {trans}")
+    if trans is not None and ev_poses is None:
+        ev_poses = trans
 
     # Cast intrinsics to right types
     H, W = images[0].shape[0], images[0].shape[1]
@@ -73,6 +81,8 @@ def train(args):
         model = nerf_cubic_optimtrans.Model(args)
     elif args.model == "cubic_optimposeset":
         model = nerf_cubic_optimposeset.Model(args)
+    elif args.model == "cubic_rigidtrans":
+        model = nerf_cubic_rigidtrans.Model(args)
     elif args.model == "linear_optimpose":
         model = nerf_linear_optimpose.Model(args)
     elif args.modle == "linear_optimtrans":
