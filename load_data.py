@@ -239,7 +239,9 @@ def load_data(datadir, args, load_pose=False, load_trans=False):
         ev_poses = poses_all[2:4]
     elif load_trans:
         trans_arr = load_camera_trans(datadir)
-        trans = recenter_poses(trans_arr)
+        # trans_arr = np.expand_dims(trans_arr, axis=0)
+        # trans = recenter_poses(trans_arr)[0]
+        trans = trans_arr.astype(np.float32)
 
     return events, imgs, imgtests, poses_ts, poses, ev_poses, trans
 
