@@ -19,7 +19,7 @@ if __name__ == '__main__':
                     [0., 1., 0.],
                     [0., 0., 1.]], dtype=np.float64)
     # x_5cm
-    # t_t = np.array([0.05, 0., 0.], dtype=np.float64)
+    t_t = np.array([0.05, 0., 0.], dtype=np.float64)
     # x_10cm
     # t_t = np.array([0.1, 0., 0.], dtype=np.float64)
     # y_5cm
@@ -29,16 +29,16 @@ if __name__ == '__main__':
     # z_5cm
     # t_t = np.array([0., 0., 0.05], dtype=np.float64)
     # z_10cm
-    t_t = np.array([0., 0., 0.1], dtype=np.float64)
+    # t_t = np.array([0., 0., 0.1], dtype=np.float64)
     T = np.concatenate((R_t, t_t.reshape(3, 1)), axis=1)
     trans = pp.mat2SE3(T)
 
     result = origin @ trans
     print("tx ty tz qx qy qz qw")
     print(result.tensor().numpy())
-    output = pp.Log(result).tensor()
-    output = spline.se3_to_SE3(output).numpy()
-    np.save(transdir, output)
+
+    # output trans
+    np.save(transdir, T)
     print("===== SE3 for trans =====")
-    print(output)
+    print(T)
 
