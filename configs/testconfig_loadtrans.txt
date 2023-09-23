@@ -10,12 +10,12 @@ debug = True
 
 # training parameters
 optimize_nerf = True
-lrate = 5e-4
+lrate = 1e-3
 decay_rate = 0.1
 
 optimize_se3 = True
 loadpose = False
-pose_lrate = 5e-4
+pose_lrate = 1e-3
 decay_rate_pose = 0.01
 focal_x = 548.409
 focal_y = 548.409
@@ -25,7 +25,7 @@ cy = 240
 optimize_event = False
 loadtrans = True
 threshold = 0.1
-transform_lrate = 5e-4
+transform_lrate = 1e-3
 decay_rate_transform = 0.01
 focal_event_x = 548.409
 focal_event_y = 548.409

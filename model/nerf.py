@@ -192,7 +192,7 @@ class Graph(nn.Module):
 
         return ret_event, ret_rgb, ray_idx_event, ray_idx_rgb, events_accu
 
-    def render(self, poses, ray_idx, H, W, K, args, near=0., far=1., training=False):
+    def render(self, poses, ray_idx, H, W, K, args, near=0., far=10., training=False):
         if training:
             ray_idx_ = ray_idx.repeat(poses.shape[0])
             poses = poses.unsqueeze(1).repeat(1, ray_idx.shape[0], 1, 1).reshape(-1, 3, 4)
