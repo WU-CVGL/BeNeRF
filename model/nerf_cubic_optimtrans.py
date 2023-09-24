@@ -11,7 +11,7 @@ class Model(nerf.Model):
 
     def build_network(self, args, poses=None, event_poses=None):
         self.graph.rgb_pose = CameraPose(4)
-        self.graph.event = EventPose(1)
+        self.graph.transform = EventPose(1)
 
         parm_rgb = torch.concatenate(
             (torch.rand(1, 6) * 0.01, torch.rand(1, 6) * 0.01, torch.rand(1, 6) * 0.01, torch.rand(1, 6) * 0.01))
@@ -54,13 +54,13 @@ class Graph(nerf.Graph):
         SE3_trans = torch.cat((SE3_trans, i_0), dim=0)
 
         SE3_0 = SE3_0_from @ SE3_trans
-        se3_0 = spline.SE3_to_se3(SE3_0[:3, :4].reshape(1, 3, 4))
+        se3_0 = torch.unsqueeze(spline.SE3_to_se3(SE3_0[:3, :4].reshape(1, 3, 4)))
         SE3_1 = SE3_1_from @ SE3_trans
-        se3_1 = spline.SE3_to_se3(SE3_1[:3, :4].reshape(1, 3, 4))
+        se3_1 = torch.unsqueeze(spline.SE3_to_se3(SE3_1[:3, :4].reshape(1, 3, 4)))
         SE3_2 = SE3_2_from @ SE3_trans
-        se3_2 = spline.SE3_to_se3(SE3_2[:3, :4].reshape(1, 3, 4))
+        se3_2 = torch.unsqueeze(spline.SE3_to_se3(SE3_2[:3, :4].reshape(1, 3, 4)))
         SE3_3 = SE3_3_from @ SE3_trans
-        se3_3 = spline.SE3_to_se3(SE3_3[:3, :4].reshape(1, 3, 4))
+        se3_3 = torch.unsqueeze(spline.SE3_to_se3(SE3_3[:3, :4].reshape(1, 3, 4)))
 
         spline_poses = spline.spline_event_cubic(se3_0, se3_1, se3_2, se3_3, events_ts)
 
