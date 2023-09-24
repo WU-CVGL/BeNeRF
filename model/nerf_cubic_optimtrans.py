@@ -54,13 +54,13 @@ class Graph(nerf.Graph):
         SE3_trans = torch.cat((SE3_trans, i_0), dim=0)
 
         SE3_0 = SE3_0_from @ SE3_trans
-        se3_0 = torch.unsqueeze(spline.SE3_to_se3(SE3_0[:3, :4].reshape(1, 3, 4)))
+        se3_0 = torch.unsqueeze(spline.SE3_to_se3(SE3_0[:3, :4].reshape(1, 3, 4)), dim=0)
         SE3_1 = SE3_1_from @ SE3_trans
-        se3_1 = torch.unsqueeze(spline.SE3_to_se3(SE3_1[:3, :4].reshape(1, 3, 4)))
+        se3_1 = torch.unsqueeze(spline.SE3_to_se3(SE3_1[:3, :4].reshape(1, 3, 4)), dim=0)
         SE3_2 = SE3_2_from @ SE3_trans
-        se3_2 = torch.unsqueeze(spline.SE3_to_se3(SE3_2[:3, :4].reshape(1, 3, 4)))
+        se3_2 = torch.unsqueeze(spline.SE3_to_se3(SE3_2[:3, :4].reshape(1, 3, 4)), dim=0)
         SE3_3 = SE3_3_from @ SE3_trans
-        se3_3 = torch.unsqueeze(spline.SE3_to_se3(SE3_3[:3, :4].reshape(1, 3, 4)))
+        se3_3 = torch.unsqueeze(spline.SE3_to_se3(SE3_3[:3, :4].reshape(1, 3, 4)), dim=0)
 
         spline_poses = spline.spline_event_cubic(se3_0, se3_1, se3_2, se3_3, events_ts)
 
