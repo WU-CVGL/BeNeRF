@@ -85,9 +85,9 @@ def train(args):
         model = nerf_cubic_rigidtrans.Model(args)
     elif args.model == "linear_optimpose":
         model = nerf_linear_optimpose.Model(args)
-    elif args.modle == "linear_optimtrans":
+    elif args.model == "linear_optimtrans":
         model = nerf_linear_optimtrans.Model(args)
-    elif args.modle == "linear_optimposeset":
+    elif args.model == "linear_optimposeset":
         model = nerf_linear_optimposeset.Model(args)
     else:
         print("Unknown model type")
