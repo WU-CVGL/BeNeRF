@@ -9,6 +9,8 @@ def config_parser():
                         help='cuda id to use')
     parser.add_argument("--debug", action='store_true',
                         help='random seed')
+    parser.add_argument("--seed", type=int, default=0,
+                        help='cuda id to use')
     # others
     parser.add_argument('--config', is_config_file=True, default='./configs/testconfig.txt',
                         help='config file path')

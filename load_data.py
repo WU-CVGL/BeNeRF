@@ -24,16 +24,21 @@ def load_img_data(datadir, gray=False):
     return imgs, imgtests
 
 
-def load_camera_pose(basedir, H, W):
+def load_camera_pose(basedir, H, W, cubic):
     sh = H, W
     # load poses
-    poses_arr = np.load(os.path.join(basedir, 'poses_bounds.npy'))
+    if cubic:
+        poses_arr = np.load(os.path.join(basedir, 'poses_bounds_cubic.npy'))
+        ev_poses_arr = np.load(os.path.join(basedir, 'poses_bounds_cubic_events.npy'))
+    else:
+        poses_arr = np.load(os.path.join(basedir, 'poses_bounds.npy'))
+        ev_poses_arr = np.load(os.path.join(basedir, 'poses_bounds_events.npy'))
+
     poses = poses_arr[:, :-2].reshape([-1, 3, 5]).transpose([1, 2, 0])  # 3x5xN
     poses[:2, 4, :] = np.array(sh[:2]).reshape([2, 1])
     poses = np.concatenate([poses[:, 1:2, :], -poses[:, 0:1, :], poses[:, 2:, :]], 1)  # 列的转换    -y x z : x y z
     poses = np.moveaxis(poses, -1, 0).astype(np.float32)
 
-    ev_poses_arr = np.load(os.path.join(basedir, 'poses_bounds_events.npy'))
     ev_poses = ev_poses_arr[:, :-2].reshape([-1, 3, 5]).transpose([1, 2, 0])
     ev_poses[:2, 4, :] = np.array(sh[:2]).reshape([2, 1])
     ev_poses = np.concatenate([ev_poses[:, 1:2, :], -ev_poses[:, 0:1, :], ev_poses[:, 2:, :]], 1)
@@ -179,7 +184,7 @@ def spherify_poses(poses, bds):
     return poses_reset, new_poses, bds
 
 
-def load_data(datadir, args, load_pose=False, load_trans=False):
+def load_data(datadir, args, load_pose=False, load_trans=False, cubic=False):
     datadir = os.path.expanduser(datadir)
     gray = args.channels == 1
 
@@ -229,14 +234,15 @@ def load_data(datadir, args, load_pose=False, load_trans=False):
     # process poses
     poses, ev_poses, trans = None, None, None
     if load_pose:
-        poses, ev_poses = load_camera_pose(datadir, imgs.shape[0], imgs.shape[1])
+        poses, ev_poses = load_camera_pose(datadir, imgs.shape[0], imgs.shape[1], cubic)
         # recenter for rgb
+        poses_num = 4 if cubic else 2
         poses_all = np.concatenate((poses[args.idx: args.idx + 2], ev_poses[args.idx: args.idx + 2]), axis=0)
         poses_all = recenter_poses(poses_all)
-        poses = poses_all[0:2]
+        poses = poses_all[0:poses_num]
 
         # recenter for event
-        ev_poses = poses_all[2:4]
+        ev_poses = poses_all[poses_num:2 * poses_num]
     elif load_trans:
         trans_arr = load_camera_trans(datadir)
         # trans_arr = np.expand_dims(trans_arr, axis=0)

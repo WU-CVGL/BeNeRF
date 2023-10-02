@@ -11,9 +11,9 @@ from logger.wandb_logger import WandbLogger
 from loss import imgloss
 from metrics import compute_img_metric
 from model import nerf_cubic_optimpose
-from model import nerf_cubic_rigidtrans
 from model import nerf_cubic_optimposeset
 from model import nerf_cubic_optimtrans
+from model import nerf_cubic_rigidtrans
 from model import nerf_linear_optimpose
 from model import nerf_linear_optimposeset
 from model import nerf_linear_optimtrans
@@ -33,7 +33,8 @@ def train(args):
 
     print("Loading data")
     events, images, imgtests, poses_ts, poses, ev_poses, trans = load_data(args.datadir, args, load_pose=args.loadpose,
-                                                                           load_trans=args.loadtrans)
+                                                                           load_trans=args.loadtrans,
+                                                                           cubic="cubic" in args.model)
     print(f"Loaded data {args.datadir} {args.idx} {images.shape}")
 
     print(f"Camera Pose: {poses}")
@@ -351,11 +352,11 @@ if __name__ == '__main__':
     # setup seed (for exp)
     torch.set_default_tensor_type('torch.cuda.FloatTensor')
     os.environ['PYTHONHASHSEED'] = str(0)
-    random.seed(0)
-    np.random.seed(0)
-    torch.cuda.manual_seed(0)
-    torch.cuda.manual_seed_all(0)
-    torch.random.manual_seed(0)
+    random.seed(args.seed)
+    np.random.seed(args.seed)
+    torch.cuda.manual_seed(args.seed)
+    torch.cuda.manual_seed_all(args.seed)
+    torch.random.manual_seed(args.seed)
     if not args.debug:
         # performance
         torch.backends.cudnn.deterministic = True
