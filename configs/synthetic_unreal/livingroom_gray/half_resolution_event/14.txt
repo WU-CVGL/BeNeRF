@@ -1,6 +1,6 @@
 project = livingroom_gray_half_resolution_event
 expname = 14
-datadir = ~/data/synthetic_unreal/livingroom_gray
+datadir = ~/data/synthetic_unreal_halfresolution_event/livingroom_gray
 logdir = ~/logs/livingroom_gray/livingroom_gray_half_resolution_event
 idx = 14
 viewer = wandb
