@@ -1,6 +1,8 @@
 import os
 import shutil
 
+import configargparse
+
 
 def extract_result_from_log(dir, outdir):
     """Extract result from a experiment set"""
@@ -24,6 +26,12 @@ def extract_result_from_log(dir, outdir):
 
 
 if __name__ == '__main__':
-    input_dir = os.path.expanduser("../logs/compare")
-    output_dir = os.path.expanduser("../logs/compare_out")
+    parser = configargparse.ArgumentParser()
+    parser.add_argument("--input_dir", type=str, default="./logs/compare")
+    parser.add_argument("--output_dir", type=str, default="./logs/compare_out")
+
+    args = parser.parse_args()
+
+    input_dir = os.path.expanduser(args.input_dir)
+    output_dir = os.path.expanduser(args.output_dir)
     extract_result_from_log(input_dir, output_dir)
