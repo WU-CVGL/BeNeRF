@@ -1,0 +1,71 @@
+project = tanabata_1_gray_quarter_resolution_image
+expname = 13
+datadir = ~/data/synthetic_blender_quarterresolution_image/tanabata_1_gray
+logdir = ~/logs/tanabata_1_gray/tanabata_1_gray_quarter_resolution_image
+idx = 13
+viewer = wandb
+model = cubic_optimposeset
+depth = True
+debug = False
+
+# training parameters
+optimize_nerf = True
+lrate = 5e-4
+decay_rate = 0.1
+
+optimize_se3 = True
+loadpose = False
+pose_lrate = 5e-4
+decay_rate_pose = 0.01
+focal_x = 406.387674
+focal_y = 406.387674
+cx = 225
+cy = 150
+
+optimize_event = True
+loadtrans = False
+threshold = 0.1
+transform_lrate = 5e-4
+decay_rate_transform = 0.01
+focal_event_x = 541.850232
+focal_event_y = 541.850232
+event_cx = 300
+event_cy = 200
+w_event = 600
+h_event = 400
+event_shift_start = 0
+event_shift_end = 0
+event_time_shift = 0
+dataset_event_split = 500
+
+i_print = 100
+i_img = 5000
+i_video = 80000
+i_weights = 80000
+max_iter = 80000
+
+rgb_loss = True
+rgb_blur_loss = False
+
+channels = 1
+
+pix_event = 2048
+pix_rgb = 5120
+
+window_percent = 0.1
+random_window = True
+time_window = True
+
+N_samples = 64
+N_importance = 64
+
+use_viewdirs = True
+raw_noise_std = 0
+
+load_weights = False
+weight_iter = 10000
+
+deblur_images = 19
+event_coefficient = 0.1
+rgb_coefficient = 1.0
+rgb_blur_coefficient = 0.3
