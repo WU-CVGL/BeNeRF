@@ -100,6 +100,18 @@ def config_parser():
     parser.add_argument("--dataset_event_split", type=int, default=500,
                         help='tv')
 
+    parser.add_argument("--render_h", type=int, default=0,
+                        help='channels per layer')
+    parser.add_argument("--render_w", type=int, default=0,
+                        help='channels per layer')
+    parser.add_argument("--render_focal_x", type=float, default=0,
+                        help='channels per layer')
+    parser.add_argument("--render_focal_y", type=float, default=0,
+                        help='channels per layer')
+    parser.add_argument("--render_cx", type=float, default=0,
+                        help='channels per layer')
+    parser.add_argument("--render_cy", type=float, default=0,
+                        help='channels per layer')
     # logging/saving options
     parser.add_argument("--i_print", type=int, default=100,
                         help='frequency of console printout and metric logging')

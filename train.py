@@ -44,6 +44,7 @@ def train(args):
         ev_poses = trans
 
     # Cast intrinsics to right types
+    # rgb camera
     H, W = images[0].shape[0], images[0].shape[1]
     H, W = int(H), int(W)
 
@@ -53,14 +54,31 @@ def train(args):
         [0, 0, 1]
     ])
 
+    # event camera
     K_event = torch.Tensor([
         [args.focal_event_x, 0, args.event_cx],
         [0, args.focal_event_y, args.event_cy],
         [0, 0, 1]
     ])
 
+    # camera for rendering
+    K_render = torch.Tensor([
+        [args.render_focal_x, 0, args.render_cx],
+        [0, args.render_focal_y, args.render_cy],
+        [0, 0, 1]
+    ])
+
+    H_render = args.render_h
+    W_render = args.render_w
+    if args.render_h == 0 and args.render_w == 0:
+        K_render = K
+        H_render = H
+        W_render = W
+
+
     print(f"camera intrinsic parameters: \n{K}\n")
     print(f"event camera intrinsic parameters: \n{K_event}\n")
+    print(f"render camera intrinsic parameters: \n{K_render}\n")
 
     # Create log dir and copy the config file
     logdir = os.path.join(os.path.expanduser(args.logdir), args.expname)
@@ -308,7 +326,7 @@ def train(args):
                                             seg_num=args.deblur_images if args.deblur_images % 2 == 1 else args.deblur_images + 1)
 
             with torch.no_grad():
-                imgs, depth = render_image_test(i, graph, test_poses, H, W, K, args, logdir,
+                imgs, depth = render_image_test(i, graph, test_poses, H_render, W_render, K_render, args, logdir,
                                                 dir='images_test', need_depth=args.depth)
                 if len(imgs) > 0:
                     logger.write_img("test_img_mid", imgs[len(imgs) // 2])
@@ -330,7 +348,7 @@ def train(args):
             render_poses = graph.get_pose_rgb(args, 90)
 
             with torch.no_grad():
-                rgbs, disps = render_video_test(graph, render_poses, H, W, K, args)
+                rgbs, disps = render_video_test(graph, render_poses, H_render, W_render, K_render, args)
             print('Done, saving', rgbs.shape, disps.shape)
             moviebase = os.path.join(logdir, '{}_spiral_{:06d}_'.format(args.expname, i))
             imageio.mimsave(moviebase + 'rgb.mp4', imgutils.to8bit(rgbs), fps=30, quality=8)
