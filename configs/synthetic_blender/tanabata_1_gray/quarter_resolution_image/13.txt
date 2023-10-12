@@ -69,3 +69,10 @@ deblur_images = 19
 event_coefficient = 0.1
 rgb_coefficient = 1.0
 rgb_blur_coefficient = 0.3
+
+render_h = 400
+render_w = 600
+render_focal_x = 541.850232
+render_focal_y = 541.850232
+render_cx = 300
+render_cy = 200
