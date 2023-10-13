@@ -4,7 +4,20 @@ import os
 
 import cv2
 import numpy as np
+import pandas as pd
 import tqdm
+
+
+def process_timestamp(dir, imgdir):
+    csv_file = os.path.join(imgdir, "ts_frame.csv")
+    ts_start_file = os.path.join(dir, "poses_start_ts.txt")
+    ts_end_file = os.path.join(dir, "poses_end_ts.txt")
+    timestamp_csv = pd.read_csv(csv_file, sep=" ", header=None)
+    ts = timestamp_csv[1].values
+    ts_start = np.insert(ts, 0, ts[0])[:-1]
+    ts_end = np.insert(ts, len(ts), ts[-1])[1:]
+    np.savetxt(ts_start_file, ts_start)
+    np.savetxt(ts_end_file, ts_end)
 
 
 def main():
@@ -34,8 +47,11 @@ def main():
     evdir = os.path.join(args.indir, "events")
     imgdir = os.path.join(args.indir, "rgb")
     imgdirout = os.path.join(args.indir, f"images_undistorted_{datastr}")
-    os.makedirs(imgdirout, exist_ok=True)
+    print("Process timestamps...")
+    process_timestamp(args.indir, imgdir)
 
+    print("Undistorting...")
+    os.makedirs(imgdirout, exist_ok=True)
     img_list = sorted(os.listdir(os.path.join(args.indir, imgdir)))
     img_list = [os.path.join(args.indir, imgdir, im) for im in img_list if im.endswith(".png")]
 
@@ -105,11 +121,12 @@ def main():
     y_rect = ev_mapy[y, x]
     events = np.stack((x_rect, y_rect, events[0], events[3]))
     events = np.moveaxis(events, 0, 1)
-    idx = np.where((events[:, 0] <= args.w_ev) & (events[:, 0] >= 0) & (events[:, 1] <= args.h_ev) & (events[:, 1] >= 0))
+    idx = np.where(
+        (events[:, 0] <= args.w_ev) & (events[:, 0] >= 0) & (events[:, 1] <= args.h_ev) & (events[:, 1] >= 0))
     events = events[idx]
 
     np.save(os.path.join(args.indir, "events", "events.npy"), events)
 
 
 if __name__ == "__main__":
-    main()
+    process_timestamp()
