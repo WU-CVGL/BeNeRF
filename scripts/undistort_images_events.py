@@ -129,4 +129,4 @@ def main():
 
 
 if __name__ == "__main__":
-    process_timestamp()
+    main()
