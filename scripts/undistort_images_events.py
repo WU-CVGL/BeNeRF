@@ -10,7 +10,7 @@ import tqdm
 def main():
     parser = argparse.ArgumentParser(description="Resizes images in dir")
     parser.add_argument(
-        "--indir", help="Input image directory.", default="D:\\EXP_ORIGINAL\\REAL\\blur_demo"
+        "--indir", help="Input image directory.", default=r"D:\real\temp\outdoor_1010\extracted\2023-10-10-16-14-32"
     )
     parser.add_argument(
         "--h_rgb", type=int, default=1080
@@ -32,7 +32,7 @@ def main():
     W_ev, H_ev = args.w_ev, args.h_ev
 
     evdir = os.path.join(args.indir, "events")
-    imgdir = os.path.join(args.indir, "images")
+    imgdir = os.path.join(args.indir, "rgb")
     imgdirout = os.path.join(args.indir, f"images_undistorted_{datastr}")
     os.makedirs(imgdirout, exist_ok=True)
 
@@ -41,7 +41,7 @@ def main():
 
     event_list = sorted(os.listdir(os.path.join(args.indir, evdir)))
     event_list = [np.loadtxt(os.path.join(args.indir, evdir, f)) for f in event_list if f.endswith("txt")]
-    event_list = np.concatenate(event_list)
+    event_list = np.vstack(event_list)
     events = np.moveaxis(event_list, 0, -1)
 
     # calib data
