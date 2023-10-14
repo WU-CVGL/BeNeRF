@@ -38,19 +38,33 @@ def crop_img(files, x_start, x_end, y_start, y_end):
 
 
 if __name__ == '__main__':
-    # sup decoration
-    # x_start = [411, 237, 89]
-    # y_start = [175, 250, 7]
-    # x_end = [599, 379, 182]
-    # y_end = [300, 344, 193]
+    # livingroom: 18
+    # lamp, leaves, painting
+    x_start = [375, 660, 283]
+    y_start = [145, 27, 5]
+    x_end = [420, 737, 353]
+    y_end = [245, 162, 51]
 
-    # sup stair, coordinates
-    x_start = [0, 166]
-    y_start = [94, 62]
-    x_end = [77, 471]
-    y_end = [190, 266]
+    # tanabata: 5
+    # font, ball, lines
+    # x_start = [80, 340, 532]
+    # y_start = [14, 230, 5]
+    # x_end = [190, 378, 590]
+    # y_end = [145, 267, 97]
 
-    path = './test'  # image folder path
+    # outdoorpool: 11
+    # x_start = [248, 372]
+    # y_start = [172, 310]
+    # x_end = [317, 490]
+    # y_end = [257, 373]
+
+    # whiteroom: 5
+    x_start = [306, 588]
+    y_start = [297, 81]
+    x_end = [448, 677]
+    y_end = [403, 157]
+
+    path = r'C:\Users\User\Desktop\cvpr2024\compare_whiteroom'  # image folder path
 
     files = find_files(path)
 
