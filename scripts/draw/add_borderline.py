@@ -6,7 +6,8 @@ def find_files(directory):
     file_list = []
     for root, dirs, files in os.walk(directory):
         for file in files:
-            file_list.append(os.path.join(root, file))
+            if not file.endswith(".DS_Store"):
+                file_list.append(os.path.join(root, file))
     return file_list
 
 
@@ -18,8 +19,20 @@ def add_border(image_path, border_size, border_color):
 
 
 if __name__ == '__main__':
-    path = './test'  # image folder path
+    path = '/Users/pianwan/Desktop/DataProcess/tanabata_2'  # image folder path
     file = find_files(path)
-    add_border(file, 8, (255, 102, 0))
+    # image color: black
+    # color = (0, 11, 11)
+    # # 0
+    # color = (225, 7, 7)
+    # # 1
+    # color = (135, 244, 6)
+    # # 2
+    color = (0, 0, 255)
+    # # 3
+    # color = (103, 202, 177)
+    # # 4
+    # color = (243, 10, 158)
+    add_border(file, 8, color)
 
     # print(file)
