@@ -119,6 +119,8 @@ def main():
     y = events[2].astype(int)
     x_rect = ev_mapx[y, x]
     y_rect = ev_mapy[y, x]
+    x_rect = np.round(x_rect)
+    y_rect = np.round(y_rect)
     events = np.stack((x_rect, y_rect, events[0], events[3]))
     events = np.moveaxis(events, 0, 1)
     idx = np.where(
