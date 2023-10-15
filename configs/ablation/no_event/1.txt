@@ -4,7 +4,7 @@ datadir = ~/data/synthetic_blender/tanabata_1
 logdir = ~/logs/tanabata_1/no_event
 idx = 1
 viewer = wandb
-model = cubic_optimposeset
+model = cubic_optimpose
 depth = True
 debug = False
 
