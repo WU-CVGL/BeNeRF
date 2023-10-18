@@ -85,7 +85,7 @@ def main():
         K_rgb[1, 2] = 5.893578331375140e+02
         K_rgb[2, 2] = 1
         dist_coeffs_rgb = np.asarray(
-            [-0.212646108244695, 0.245645134473721, 0., 0.])
+            [-0.212646108244695, 0.128544295068080, 0., 0.])
 
     K_new_rgb, roi = cv2.getOptimalNewCameraMatrix(K_rgb, dist_coeffs_rgb, (W, H), alpha=0, newImgSize=(
         W, H))  # alpha = 0 => all pixels in undistorted image are valid
@@ -112,13 +112,13 @@ def main():
         dist_coeffs_evs = np.asarray(
             [-0.235408719177916, 0.168008998984555, 0., 0.])
     elif datastr == "blur_10_18":
-        K_evs[0, 0] = 6.907470740030362e+02
-        K_evs[0, 2] = 3.264918683532288e+02
-        K_evs[1, 1] = 6.899703839462844e+02
-        K_evs[1, 2] = 2.401335049902228e+02
+        K_evs[0, 0] = 6.849005217868419e+02
+        K_evs[0, 2] = 3.227065904460661e+02
+        K_evs[1, 1] = 6.855773604539088e+02
+        K_evs[1, 2] = 2.383661890630902e+02
         K_evs[2, 2] = 1
         dist_coeffs_evs = np.asarray(
-            [-0.235408719177916, 0.168008998984555, 0., 0.])
+            [-0.245752831548958, 0.264042346551461, 0., 0.])
 
     K_new_evs, roi = cv2.getOptimalNewCameraMatrix(K_evs, dist_coeffs_evs, (W_ev, H_ev), alpha=0,
                                                    newImgSize=(W_ev, H_ev))
