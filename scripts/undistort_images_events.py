@@ -78,6 +78,14 @@ def main():
         K_rgb[2, 2] = 1
         dist_coeffs_rgb = np.asarray(
             [-0.229663650372365, 0.245645134473721, 0., 0.])
+    elif datastr == "blur_10_18":
+        K_rgb[0, 0] = 1.787039879397959e+03
+        K_rgb[0, 2] = 6.816307154663094e+02
+        K_rgb[1, 1] = 1.787267093986961e+03
+        K_rgb[1, 2] = 5.893578331375140e+02
+        K_rgb[2, 2] = 1
+        dist_coeffs_rgb = np.asarray(
+            [-0.212646108244695, 0.245645134473721, 0., 0.])
 
     K_new_rgb, roi = cv2.getOptimalNewCameraMatrix(K_rgb, dist_coeffs_rgb, (W, H), alpha=0, newImgSize=(
         W, H))  # alpha = 0 => all pixels in undistorted image are valid
@@ -96,6 +104,14 @@ def main():
         dist_coeffs_evs = np.asarray(
             [-0.263867253487239, 0.452167567807637, 0., 0.])
     elif datastr == "blur_10_10":
+        K_evs[0, 0] = 6.907470740030362e+02
+        K_evs[0, 2] = 3.264918683532288e+02
+        K_evs[1, 1] = 6.899703839462844e+02
+        K_evs[1, 2] = 2.401335049902228e+02
+        K_evs[2, 2] = 1
+        dist_coeffs_evs = np.asarray(
+            [-0.235408719177916, 0.168008998984555, 0., 0.])
+    elif datastr == "blur_10_18":
         K_evs[0, 0] = 6.907470740030362e+02
         K_evs[0, 2] = 3.264918683532288e+02
         K_evs[1, 1] = 6.899703839462844e+02
