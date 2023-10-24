@@ -36,7 +36,7 @@ class Model(nerf.Model):
         grad_vars_pose = list(self.graph.rgb_pose.parameters())
         self.optim_pose = torch.optim.Adam(params=grad_vars_pose, lr=args.pose_lrate)
 
-        grad_vars_transform = list(self.graph.transform.parameters())
+        grad_vars_transform = list(self.graph.transform.parameters()) + list(self.graph.exposure_time.parameters())
         self.optim_transform = torch.optim.Adam(params=grad_vars_transform, lr=args.transform_lrate)
 
         return self.optim, self.optim_pose, self.optim_transform
@@ -44,28 +44,27 @@ class Model(nerf.Model):
 
 class Graph(nerf.Graph):
     def get_pose(self, args, events_ts):
-        se3_0 = spline.se3_to_SE3(self.rgb_pose.params.weight[0].reshape(1, 1, 6)).squeeze()
-        se3_1 = spline.se3_to_SE3(self.rgb_pose.params.weight[1].reshape(1, 1, 6)).squeeze()
-        se3_2 = spline.se3_to_SE3(self.rgb_pose.params.weight[2].reshape(1, 1, 6)).squeeze()
-        se3_3 = spline.se3_to_SE3(self.rgb_pose.params.weight[3].reshape(1, 1, 6)).squeeze()
+        se3_0 = self.rgb_pose.params.weight[0].reshape(1, 1, 6)
+        se3_1 = self.rgb_pose.params.weight[1].reshape(1, 1, 6)
+        se3_2 = self.rgb_pose.params.weight[2].reshape(1, 1, 6)
+        se3_3 = self.rgb_pose.params.weight[3].reshape(1, 1, 6)
 
         spline_poses = spline.spline_event_cubic(se3_0, se3_1, se3_2, se3_3, events_ts)
 
         return spline_poses
 
     def get_pose_rgb(self, args, seg_num=None):
-        start = self.graph.exposure_time.params.weight[0]
-        duration = self.graph.exposure_time.params.weight[1]
-
+        start = self.exposure_time.params.weight[0]
+        duration = self.exposure_time.params.weight[1]
 
         i_0 = torch.tensor((.0, .0, .0, 1.)).reshape(1, 4)
-        SE3_0_from = self.rgb_pose.params.weight[0].reshape(1, 1, 6)
+        SE3_0_from = spline.se3_to_SE3(self.rgb_pose.params.weight[0].reshape(1, 1, 6)).squeeze()
         SE3_0_from = torch.cat((SE3_0_from, i_0), dim=0)
-        SE3_1_from = self.rgb_pose.params.weight[1].reshape(1, 1, 6)
+        SE3_1_from = spline.se3_to_SE3(self.rgb_pose.params.weight[1].reshape(1, 1, 6)).squeeze()
         SE3_1_from = torch.cat((SE3_1_from, i_0), dim=0)
-        SE3_2_from = self.rgb_pose.params.weight[2].reshape(1, 1, 6)
+        SE3_2_from = spline.se3_to_SE3(self.rgb_pose.params.weight[2].reshape(1, 1, 6)).squeeze()
         SE3_2_from = torch.cat((SE3_2_from, i_0), dim=0)
-        SE3_3_from = self.rgb_pose.params.weight[3].reshape(1, 1, 6)
+        SE3_3_from = spline.se3_to_SE3(self.rgb_pose.params.weight[3].reshape(1, 1, 6)).squeeze()
         SE3_3_from = torch.cat((SE3_3_from, i_0), dim=0)
 
         SE3_trans = spline.se3_to_SE3(self.transform.params.weight.reshape(1, 1, 6)).squeeze()
@@ -82,13 +81,13 @@ class Graph(nerf.Graph):
 
         # spline
         if seg_num is None:
-            ts = torch.range(0, 1, args.deblur_images, requires_grad=True)
+            ts = torch.linspace(0, 1, args.deblur_images)
             ts *= duration
             ts += start
 
             spline_poses = spline.spline_event_cubic(se3_0, se3_1, se3_2, se3_3, ts)
         else:
-            ts = torch.range(0, 1, args.deblur_images, requires_grad=True)
+            ts = torch.linspace(0, 1, seg_num)
             ts *= duration
             ts += start
 
