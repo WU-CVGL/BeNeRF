@@ -11,6 +11,7 @@ from logger.wandb_logger import WandbLogger
 from loss import imgloss
 from metrics import compute_img_metric
 from model import nerf_cubic_optimpose
+from model import test_model
 from model import nerf_cubic_optimposeset
 from model import nerf_cubic_optimtrans
 from model import nerf_cubic_rigidtrans
@@ -108,6 +109,8 @@ def train(args):
         model = nerf_linear_optimtrans.Model(args)
     elif args.model == "linear_optimposeset":
         model = nerf_linear_optimposeset.Model(args)
+    elif args.model == "test":
+        model = test_model.Model(args)
     else:
         print("Unknown model type")
         return
