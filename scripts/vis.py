@@ -18,10 +18,10 @@ def dvsarray_to_image(events, height, width):
 
 
 if __name__ == '__main__':
-    events = np.load("/Users/pianwan/Downloads/blur_1019/carpet/2023-10-17-23-04-19/events/events.npy")
-    save_dir = "/Users/pianwan/Downloads/blur_1019/carpet/2023-10-17-23-04-19/output"  # image save path
-    ts = 1.697555066208295822e+09
-    te = 1.697555066284142733e+09
+    events = np.load("/Users/pianwan/Downloads/blur_1019/carpet/2023-10-17-23-04-44/events/events.npy")
+    save_dir = "/Users/pianwan/Downloads/blur_1019/carpet/2023-10-17-23-04-44/output"  # image save path
+    ts = 1.697555087649756908e+09
+    te = 1.697555087726284504e+09
     # ts = 1.697554819352672577e+09
     # te = 1.697554819433324575e+09
     events = np.array([event for event in events if ts <= event[2] <= te])
