@@ -2,12 +2,16 @@ import torch
 
 import spline
 from model import nerf
-from model.component import CameraPose, EventPose
+from model.component import CameraPose, EventPose, ExposureTime
 
 
 class Model(nerf.Model):
     def __init__(self, args):
         self.graph = Graph(args, D=8, W=256, input_ch=63, input_ch_views=27, output_ch=4, skips=[4], use_viewdirs=True)
+        self.graph.exposure_time = ExposureTime()
+        self.graph.exposure_time.params.weight.data = torch.concatenate(
+            (torch.nn.Parameter(torch.tensor(.0, dtype=torch.float32).reshape((1, 1))),
+             torch.nn.Parameter(torch.tensor(.9, dtype=torch.float32).reshape((1, 1)))))
 
     def build_network(self, args, poses=None, event_poses=None):
         self.graph.rgb_pose = CameraPose(4)
@@ -50,6 +54,10 @@ class Graph(nerf.Graph):
         return spline_poses
 
     def get_pose_rgb(self, args, seg_num=None):
+        start = self.graph.exposure_time.params.weight[0]
+        duration = self.graph.exposure_time.params.weight[1]
+
+
         i_0 = torch.tensor((.0, .0, .0, 1.)).reshape(1, 4)
         SE3_0_from = self.rgb_pose.params.weight[0].reshape(1, 1, 6)
         SE3_0_from = torch.cat((SE3_0_from, i_0), dim=0)
@@ -74,10 +82,16 @@ class Graph(nerf.Graph):
 
         # spline
         if seg_num is None:
-            pose_nums = torch.arange(args.deblur_images).reshape(1, -1).repeat(se3_0.shape[0], 1)
-            spline_poses = spline.spline_cubic(se3_0, se3_1, se3_2, se3_3, pose_nums, args.deblur_images)
+            ts = torch.range(0, 1, args.deblur_images, requires_grad=True)
+            ts *= duration
+            ts += start
+
+            spline_poses = spline.spline_event_cubic(se3_0, se3_1, se3_2, se3_3, ts)
         else:
-            pose_nums = torch.arange(seg_num).reshape(1, -1).repeat(se3_0.shape[0], 1)
-            spline_poses = spline.spline_cubic(se3_0, se3_1, se3_2, se3_3, pose_nums, seg_num)
+            ts = torch.range(0, 1, args.deblur_images, requires_grad=True)
+            ts *= duration
+            ts += start
+
+            spline_poses = spline.spline_event_cubic(se3_0, se3_1, se3_2, se3_3, ts)
 
         return spline_poses
