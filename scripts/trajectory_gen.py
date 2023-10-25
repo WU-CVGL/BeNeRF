@@ -14,7 +14,7 @@ def get_event_traj(graph, args, n):
     :param n: number of pose to generate
     :return: event poses
     """
-    events_ts = torch.arange(1e-6, 1, n)
+    events_ts = torch.linspace(0, 1, n)
     return graph.get_pose(args, events_ts)
 
 
