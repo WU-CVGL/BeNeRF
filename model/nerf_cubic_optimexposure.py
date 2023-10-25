@@ -1,10 +1,8 @@
-import numpy as np
 import torch
 
 import spline
 from model import nerf
-from model.component import CameraPose, ExposureTime
-from utils.eventutils import accumulate_events_range
+from model.component import CameraPose, EventPose, ExposureTime
 
 
 class Model(nerf.Model):
@@ -13,13 +11,19 @@ class Model(nerf.Model):
         self.graph.exposure_time = ExposureTime()
         self.graph.exposure_time.params.weight.data = torch.concatenate(
             (torch.nn.Parameter(torch.tensor(.0, dtype=torch.float32).reshape((1, 1))),
-             torch.nn.Parameter(torch.tensor(.0, dtype=torch.float32).reshape((1, 1)))))
+             torch.nn.Parameter(torch.tensor(.9, dtype=torch.float32).reshape((1, 1)))))
 
     def build_network(self, args, poses=None, event_poses=None):
         self.graph.rgb_pose = CameraPose(4)
+        self.graph.transform = EventPose(1)
+
         parm_rgb = torch.concatenate(
             (torch.rand(1, 6) * 0.01, torch.rand(1, 6) * 0.01, torch.rand(1, 6) * 0.01, torch.rand(1, 6) * 0.01))
         self.graph.rgb_pose.params.weight.data = torch.nn.Parameter(parm_rgb)
+
+        parm_e = torch.nn.Parameter(torch.zeros(1, 6))
+
+        self.graph.transform.params.weight.data = torch.nn.Parameter(parm_e)
 
         return self.graph
 
@@ -32,102 +36,61 @@ class Model(nerf.Model):
         grad_vars_pose = list(self.graph.rgb_pose.parameters())
         self.optim_pose = torch.optim.Adam(params=grad_vars_pose, lr=args.pose_lrate)
 
-        # exposure_time optimizer
-        grad_vars_exposure = list(self.graph.exposure_time.parameters())
-        self.optim_transform = torch.optim.Adam(params=grad_vars_exposure, lr=args.transform_lrate)
+        grad_vars_transform = list(self.graph.transform.parameters()) + list(self.graph.exposure_time.parameters())
+        self.optim_transform = torch.optim.Adam(params=grad_vars_transform, lr=args.transform_lrate)
 
         return self.optim, self.optim_pose, self.optim_transform
 
 
 class Graph(nerf.Graph):
-
     def get_pose(self, args, events_ts):
-        pose0 = self.rgb_pose.params.weight[0].reshape(1, 1, 6)
-        pose1 = self.rgb_pose.params.weight[1].reshape(1, 1, 6)
-        pose2 = self.rgb_pose.params.weight[2].reshape(1, 1, 6)
-        pose3 = self.rgb_pose.params.weight[3].reshape(1, 1, 6)
+        se3_0 = self.rgb_pose.params.weight[0].reshape(1, 1, 6)
+        se3_1 = self.rgb_pose.params.weight[1].reshape(1, 1, 6)
+        se3_2 = self.rgb_pose.params.weight[2].reshape(1, 1, 6)
+        se3_3 = self.rgb_pose.params.weight[3].reshape(1, 1, 6)
 
-        spline_poses = spline.spline_event_cubic(pose0, pose1, pose2, pose3, events_ts)
+        spline_poses = spline.spline_event_cubic(se3_0, se3_1, se3_2, se3_3, events_ts)
 
         return spline_poses
 
     def get_pose_rgb(self, args, seg_num=None):
-        pose0 = self.rgb_pose.params.weight[0].reshape(1, 1, 6)
-        pose1 = self.rgb_pose.params.weight[1].reshape(1, 1, 6)
-        pose2 = self.rgb_pose.params.weight[2].reshape(1, 1, 6)
-        pose3 = self.rgb_pose.params.weight[3].reshape(1, 1, 6)
+        start = self.exposure_time.params.weight[0]
+        duration = self.exposure_time.params.weight[1]
+
+        i_0 = torch.tensor((.0, .0, .0, 1.)).reshape(1, 4)
+        SE3_0_from = spline.se3_to_SE3(self.rgb_pose.params.weight[0].reshape(1, 1, 6)).squeeze()
+        SE3_0_from = torch.cat((SE3_0_from, i_0), dim=0)
+        SE3_1_from = spline.se3_to_SE3(self.rgb_pose.params.weight[1].reshape(1, 1, 6)).squeeze()
+        SE3_1_from = torch.cat((SE3_1_from, i_0), dim=0)
+        SE3_2_from = spline.se3_to_SE3(self.rgb_pose.params.weight[2].reshape(1, 1, 6)).squeeze()
+        SE3_2_from = torch.cat((SE3_2_from, i_0), dim=0)
+        SE3_3_from = spline.se3_to_SE3(self.rgb_pose.params.weight[3].reshape(1, 1, 6)).squeeze()
+        SE3_3_from = torch.cat((SE3_3_from, i_0), dim=0)
+
+        SE3_trans = spline.se3_to_SE3(self.transform.params.weight.reshape(1, 1, 6)).squeeze()
+        SE3_trans = torch.cat((SE3_trans, i_0), dim=0)
+
+        SE3_0 = SE3_0_from @ SE3_trans
+        se3_0 = torch.unsqueeze(spline.SE3_to_se3(SE3_0[:3, :4].reshape(1, 3, 4)), dim=0)
+        SE3_1 = SE3_1_from @ SE3_trans
+        se3_1 = torch.unsqueeze(spline.SE3_to_se3(SE3_1[:3, :4].reshape(1, 3, 4)), dim=0)
+        SE3_2 = SE3_2_from @ SE3_trans
+        se3_2 = torch.unsqueeze(spline.SE3_to_se3(SE3_2[:3, :4].reshape(1, 3, 4)), dim=0)
+        SE3_3 = SE3_3_from @ SE3_trans
+        se3_3 = torch.unsqueeze(spline.SE3_to_se3(SE3_3[:3, :4].reshape(1, 3, 4)), dim=0)
 
         # spline
         if seg_num is None:
-            pose_nums = torch.arange(args.deblur_images).reshape(1, -1).repeat(pose0.shape[0], 1)
-            spline_poses = spline.spline_cubic(pose0, pose1, pose2, pose3, pose_nums, args.deblur_images)
+            ts = torch.linspace(0, 1, args.deblur_images)
+            ts *= duration
+            ts += start
+
+            spline_poses = spline.spline_event_cubic(se3_0, se3_1, se3_2, se3_3, ts)
         else:
-            pose_nums = torch.arange(seg_num).reshape(1, -1).repeat(pose0.shape[0], 1)
-            spline_poses = spline.spline_cubic(pose0, pose1, pose2, pose3, pose_nums, seg_num)
+            ts = torch.linspace(0, 1, seg_num)
+            ts *= duration
+            ts += start
+
+            spline_poses = spline.spline_event_cubic(se3_0, se3_1, se3_2, se3_3, ts)
 
         return spline_poses
-
-    def forward(self, i, events, H, W, K, K_event, args):
-        if args.time_window:
-            start, end = .1, .0
-            delta_t = end - start
-            window_t = delta_t * args.window_percent
-            low_t = torch.rand(1) * (1 - args.window_percent) * delta_t + start
-            upper_t = low_t + window_t
-            idx_a = low_t <= events["ts"]
-            idx_b = events["ts"] <= upper_t
-            idx = idx_a * idx_b
-            indices = np.where(idx)
-            pol_window = events['pol'][indices]
-            x_window = events['x'][indices]
-            y_window = events['y'][indices]
-            ts_window = events['ts'][indices]
-        else:
-            num = len(events["pol"])
-            if args.window_desc:
-                # linear desc
-                i_end = args.max_iter * args.window_desc_end
-                percent = args.window_percent - (args.window_percent - args.window_percent_end) * (
-                        i / i_end) if i < i_end else args.window_percent_end
-                N_window = round(num * percent)
-            else:
-                N_window = round(num * args.window_percent)
-
-            if args.random_window:
-                window_low_bound = np.random.randint(num - N_window)
-            else:
-                window_low_bound = np.random.randint((num - N_window) // N_window) * N_window
-
-            window_up_bound = int(window_low_bound + N_window)
-            pol_window = events['pol'][window_low_bound:window_up_bound]
-            x_window = events['x'][window_low_bound:window_up_bound]
-            y_window = events['y'][window_low_bound:window_up_bound]
-            ts_window = events['ts'][window_low_bound:window_up_bound]
-
-        out = np.zeros((args.h_event, args.w_event))
-        accumulate_events_range(out, x_window, y_window, pol_window)
-        out *= args.threshold
-        events_accu = torch.tensor(out)
-
-        # timestamps of event windows begin and end
-        if args.time_window:
-            events_ts = np.stack((low_t, upper_t)).reshape(2)
-        else:
-            events_ts = ts_window[np.array([0, int(N_window) - 1])]
-
-        ray_idx_event = torch.randperm(args.h_event * args.w_event)[:args.pix_event]
-        spline_poses = self.get_pose(args, torch.tensor(events_ts, dtype=torch.float32))
-        spline_rgb_poses = self.get_pose_rgb(args)
-
-        # render event
-        ret_event = self.render(spline_poses, ray_idx_event.reshape(-1, 1).squeeze(), args.h_event, args.w_event,
-                                K_event,
-                                args,
-                                training=True)
-
-        # render rgb
-        ray_idx_rgb = torch.randperm(H * W)[:args.pix_rgb // args.deblur_images]
-        ret_rgb = self.render(spline_rgb_poses, ray_idx_rgb.reshape(-1, 1).squeeze(), H, W, K, args,
-                              training=True)
-
-        return ret_event, ret_rgb, ray_idx_event, ray_idx_rgb, events_accu
