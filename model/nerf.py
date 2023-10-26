@@ -166,7 +166,6 @@ class Graph(nn.Module):
 
         out = np.zeros((args.h_event, args.w_event))
         accumulate_events(out, x_window, y_window, pol_window)
-        out *= args.threshold
         events_accu = torch.tensor(out)
 
         # timestamps of event windows begin and end

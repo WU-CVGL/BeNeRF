@@ -11,13 +11,13 @@ from logger.wandb_logger import WandbLogger
 from loss import imgloss
 from metrics import compute_img_metric
 from model import nerf_cubic_optimpose
-from model import test_model
 from model import nerf_cubic_optimposeset
 from model import nerf_cubic_optimtrans
 from model import nerf_cubic_rigidtrans
 from model import nerf_linear_optimpose
 from model import nerf_linear_optimposeset
 from model import nerf_linear_optimtrans
+from model import test_model
 from model.nerf import *
 from run_nerf_helpers import init_nerf, render_image_test, render_video_test
 from utils import imgutils
@@ -75,7 +75,6 @@ def train(args):
         K_render = K
         H_render = H
         W_render = W
-
 
     print(f"camera intrinsic parameters: \n{K}\n")
     print(f"event camera intrinsic parameters: \n{K_event}\n")
@@ -174,29 +173,74 @@ def train(args):
 
         # compute loss
         loss = 0
-        if args.channels == 3:
-            img_loss = mse_loss(safelog(rgb2gray(ret_gray2['rgb_map'])) - safelog(rgb2gray(ret_gray1['rgb_map'])),
-                                target_s)
-        else:
-            img_loss = mse_loss(safelog(ret_gray2['rgb_map']) - safelog(ret_gray1['rgb_map']), target_s)
-        img_loss *= args.event_coefficient
-        logger.write("train_event_loss_fine", img_loss.item())
 
         # Event loss
-        if 'rgb0' in ret_event:
+        # Synthetic dataset
+        if args.threshold > 0:
+            # compute acc * C
+            target_s *= torch.tensor(args.threshold)
+
             if args.channels == 3:
-                img_loss0 = mse_loss(safelog(rgb2gray(ret_gray2['rgb0'])) - safelog(rgb2gray(ret_gray1['rgb0'])),
-                                     target_s)
+                img_loss = mse_loss(safelog(rgb2gray(ret_gray2['rgb_map'])) - safelog(rgb2gray(ret_gray1['rgb_map'])),
+                                    target_s)
             else:
-                img_loss0 = mse_loss(safelog(ret_gray2['rgb0']) - safelog(ret_gray1['rgb0']), target_s)
-            img_loss0 *= args.event_coefficient
-            logger.write("train_event_loss_coarse", img_loss0.item())
+                img_loss = mse_loss(safelog(ret_gray2['rgb_map']) - safelog(ret_gray1['rgb_map']), target_s)
+            img_loss *= args.event_coefficient
+            logger.write("train_event_loss_fine", img_loss.item())
 
-        event_loss = img_loss0 + img_loss
+            if 'rgb0' in ret_event:
+                if args.channels == 3:
+                    img_loss0 = mse_loss(safelog(rgb2gray(ret_gray2['rgb0'])) - safelog(rgb2gray(ret_gray1['rgb0'])),
+                                         target_s)
+                else:
+                    img_loss0 = mse_loss(safelog(ret_gray2['rgb0']) - safelog(ret_gray1['rgb0']), target_s)
+                img_loss0 *= args.event_coefficient
+                logger.write("train_event_loss_coarse", img_loss0.item())
 
-        logger.write("train_event_loss", event_loss.item())
+            event_loss = img_loss0 + img_loss
 
-        loss += event_loss
+            logger.write("train_event_loss", event_loss.item())
+
+            loss += event_loss
+        # Real dataset
+        else:
+            if args.channels == 3:
+                render_brightness_diff = safelog(rgb2gray(ret_gray2['rgb0'])) - safelog(rgb2gray(ret_gray1['rgb0']))
+                render_brightness_diff = render_brightness_diff / (
+                        torch.linalg.norm(render_brightness_diff, dim=1, keepdim=True) + 1e-9)
+                target_s = target_s / (torch.linalg.norm(target_s, dim=1, keepdim=True) + 1e-9)
+                img_loss = mse_loss(render_brightness_diff, target_s)
+            else:
+                render_brightness_diff = safelog(rgb2gray['rgb0']) - safelog(ret_gray1['rgb0'])
+                render_brightness_diff = render_brightness_diff / (
+                        torch.linalg.norm(render_brightness_diff, dim=1, keepdim=True) + 1e-9)
+                target_s = target_s / (torch.linalg.norm(target_s, dim=1, keepdim=True) + 1e-9)
+                img_loss = mse_loss(render_brightness_diff, target_s)
+            img_loss *= args.event_coefficient
+            logger.write("train_event_loss_fine", img_loss.item())
+
+            if 'rgb0' in ret_event:
+                if args.channels == 3:
+                    render_brightness_diff = safelog(rgb2gray(ret_gray2['rgb0'])) - safelog(rgb2gray(ret_gray1['rgb0']))
+                    render_brightness_diff = render_brightness_diff / (
+                            torch.linalg.norm(render_brightness_diff, dim=1, keepdim=True) + 1e-9)
+                    target_s = target_s / (torch.linalg.norm(target_s, dim=1, keepdim=True) + 1e-9)
+                    img_loss0 = mse_loss(render_brightness_diff, target_s)
+                else:
+                    render_brightness_diff = safelog(ret_gray2['rgb0']) - safelog(ret_gray1['rgb0'])
+                    render_brightness_diff = render_brightness_diff / (
+                            torch.linalg.norm(render_brightness_diff, dim=1, keepdim=True) + 1e-9)
+                    target_s = target_s / (torch.linalg.norm(target_s, dim=1, keepdim=True) + 1e-9)
+                    img_loss0 = mse_loss(render_brightness_diff, target_s)
+
+                img_loss0 *= args.event_coefficient
+                logger.write("train_event_loss_coarse", img_loss0.item())
+
+            event_loss = img_loss0 + img_loss
+
+            logger.write("train_event_loss", event_loss.item())
+
+            loss += event_loss
 
         # RGB loss
         if args.rgb_loss:
