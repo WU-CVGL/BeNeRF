@@ -2,9 +2,11 @@ import os
 
 import torch
 
+import spline
 from config import config_parser
 from model import nerf_cubic_optimpose, nerf_cubic_optimtrans, nerf_cubic_optimposeset, nerf_cubic_rigidtrans, \
     nerf_linear_optimpose, nerf_linear_optimtrans, nerf_linear_optimposeset, test_model
+from run_nerf_helpers import render_image_test
 
 
 def get_event_traj(graph, args, n):
@@ -66,12 +68,28 @@ def main(args):
         raise AssertionError("NOT LOAD WEIGHTS")
 
     # get rgb pose x 1000
-    rgb_poses = get_rgb_traj(graph, args, 1000)
+    rgb_poses = get_rgb_traj(graph, args, 19)
     # get event pose x1000
-    event_poses = get_event_traj(graph, args, 1000)
+    event_poses = get_event_traj(graph, args, 19)
+
+
+def render(poses, graph, args, logdir):
+    # camera for rendering
+    K_render = torch.Tensor([
+        [args.focal_event_x, 0, args.event_cx],
+        [0, args.focal_event_y, args.event_cy],
+        [0, 0, 1]
+    ])
+    H_render = args.h_event
+    W_render = args.w_event
+
+    with torch.no_grad():
+        imgs, depth = render_image_test(99999, graph, poses, H_render, W_render, K_render, args, logdir,
+                                        dir='images_test', need_depth=False)
 
 
 if __name__ == '__main__':
+    torch.set_default_tensor_type('torch.cuda.FloatTensor')
     # load config
     print("Loading config")
     parser = config_parser()
