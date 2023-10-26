@@ -211,7 +211,7 @@ def train(args):
                 target_s = target_s / (torch.linalg.norm(target_s, dim=1, keepdim=True) + 1e-9)
                 img_loss = mse_loss(render_brightness_diff, target_s)
             else:
-                render_brightness_diff = safelog(rgb2gray['rgb0']) - safelog(ret_gray1['rgb0'])
+                render_brightness_diff = safelog(ret_gray2['rgb0']) - safelog(ret_gray1['rgb0'])
                 render_brightness_diff = render_brightness_diff / (
                         torch.linalg.norm(render_brightness_diff, dim=1, keepdim=True) + 1e-9)
                 target_s = target_s / (torch.linalg.norm(target_s, dim=1, keepdim=True) + 1e-9)
