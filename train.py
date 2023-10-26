@@ -206,35 +206,38 @@ def train(args):
         else:
             if args.channels == 3:
                 render_brightness_diff = safelog(rgb2gray(ret_gray2['rgb0'])) - safelog(rgb2gray(ret_gray1['rgb0']))
-                render_brightness_diff = render_brightness_diff / (
-                        torch.linalg.norm(render_brightness_diff, dim=1, keepdim=True) + 1e-9)
-                target_s = target_s / (torch.linalg.norm(target_s, dim=1, keepdim=True) + 1e-9)
-                img_loss = mse_loss(render_brightness_diff, target_s)
+                render_norm = render_brightness_diff / (
+                        torch.linalg.norm(render_brightness_diff, dim=0, keepdim=True) + 1e-9)
+                target_s_norm = target_s / (torch.linalg.norm(target_s, dim=0, keepdim=True) + 1e-9)
+                img_loss = mse_loss(render_norm, target_s_norm)
             else:
                 render_brightness_diff = safelog(ret_gray2['rgb0']) - safelog(ret_gray1['rgb0'])
-                render_brightness_diff = render_brightness_diff / (
-                        torch.linalg.norm(render_brightness_diff, dim=1, keepdim=True) + 1e-9)
-                target_s = target_s / (torch.linalg.norm(target_s, dim=1, keepdim=True) + 1e-9)
-                img_loss = mse_loss(render_brightness_diff, target_s)
+                render_norm = render_brightness_diff / (
+                        torch.linalg.norm(render_brightness_diff, dim=0, keepdim=True) + 1e-9)
+                target_s_norm = target_s / (torch.linalg.norm(target_s, dim=0, keepdim=True) + 1e-9)
+                img_loss = mse_loss(render_norm, target_s_norm)
             img_loss *= args.event_coefficient
+            img_loss *= 20
             logger.write("train_event_loss_fine", img_loss.item())
 
             if 'rgb0' in ret_event:
                 if args.channels == 3:
                     render_brightness_diff = safelog(rgb2gray(ret_gray2['rgb0'])) - safelog(rgb2gray(ret_gray1['rgb0']))
-                    render_brightness_diff = render_brightness_diff / (
-                            torch.linalg.norm(render_brightness_diff, dim=1, keepdim=True) + 1e-9)
-                    target_s = target_s / (torch.linalg.norm(target_s, dim=1, keepdim=True) + 1e-9)
-                    img_loss0 = mse_loss(render_brightness_diff, target_s)
+                    render_norm = render_brightness_diff / (
+                            torch.linalg.norm(render_brightness_diff, dim=0, keepdim=True) + 1e-9)
+                    target_s_norm = target_s / (torch.linalg.norm(target_s, dim=0, keepdim=True) + 1e-9)
+                    img_loss0 = mse_loss(render_norm, target_s_norm)
                 else:
                     render_brightness_diff = safelog(ret_gray2['rgb0']) - safelog(ret_gray1['rgb0'])
-                    render_brightness_diff = render_brightness_diff / (
-                            torch.linalg.norm(render_brightness_diff, dim=1, keepdim=True) + 1e-9)
-                    target_s = target_s / (torch.linalg.norm(target_s, dim=1, keepdim=True) + 1e-9)
-                    img_loss0 = mse_loss(render_brightness_diff, target_s)
+                    render_norm = render_brightness_diff / (
+                            torch.linalg.norm(render_brightness_diff, dim=0, keepdim=True) + 1e-9)
+                    target_s_norm = target_s / (torch.linalg.norm(target_s, dim=0, keepdim=True) + 1e-9)
+                    img_loss0 = mse_loss(render_norm, target_s_norm)
 
                 img_loss0 *= args.event_coefficient
+                img_loss0 *= 20
                 logger.write("train_event_loss_coarse", img_loss0.item())
+
 
             event_loss = img_loss0 + img_loss
 
