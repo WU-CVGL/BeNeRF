@@ -39,7 +39,7 @@ def main():
     )
     args = parser.parse_args()
 
-    datastr = "blur"
+    datastr = "blur_10_18"
     print(f"Processing {args.indir}")
     W, H = args.w_rgb, args.h_rgb
     W_ev, H_ev = args.w_ev, args.h_ev
