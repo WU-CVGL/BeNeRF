@@ -22,6 +22,9 @@ if __name__ == '__main__':
     save_dir = "/Users/pianwan/Downloads/blur_1019/carpet/2023-10-17-23-04-44/output"  # image save path
     ts = 1.697555087649756908e+09
     te = 1.697555087726284504e+09
+    duration = (te - ts) / 18
+    te = ts + duration
+
     # ts = 1.697554819352672577e+09
     # te = 1.697554819433324575e+09
     events = np.array([event for event in events if ts <= event[2] <= te])
