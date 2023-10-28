@@ -11,6 +11,7 @@ from logger.wandb_logger import WandbLogger
 from loss import imgloss
 from metrics import compute_img_metric
 from model import nerf_cubic_optimpose
+from model import nerf_cubic_optimtrans_event
 from model import nerf_cubic_optimposeset
 from model import nerf_cubic_optimtrans
 from model import nerf_cubic_rigidtrans
@@ -98,6 +99,8 @@ def train(args):
         model = nerf_cubic_optimpose.Model(args)
     elif args.model == "cubic_optimtrans":
         model = nerf_cubic_optimtrans.Model(args)
+    elif args.model == "cubic_optimtrans_event":
+        model = nerf_cubic_optimtrans_event.Model(args)
     elif args.model == "cubic_optimposeset":
         model = nerf_cubic_optimposeset.Model(args)
     elif args.model == "cubic_rigidtrans":
@@ -217,7 +220,7 @@ def train(args):
                 target_s_norm = target_s / (torch.linalg.norm(target_s, dim=0, keepdim=True) + 1e-9)
                 img_loss = mse_loss(render_norm, target_s_norm)
             img_loss *= args.event_coefficient
-            img_loss *= 20
+            img_loss *= args.real_coeff
             logger.write("train_event_loss_fine", img_loss.item())
 
             if 'rgb0' in ret_event:
@@ -235,7 +238,7 @@ def train(args):
                     img_loss0 = mse_loss(render_norm, target_s_norm)
 
                 img_loss0 *= args.event_coefficient
-                img_loss0 *= 20
+                img_loss0 *= args.real_coeff
                 logger.write("train_event_loss_coarse", img_loss0.item())
 
 

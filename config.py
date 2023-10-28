@@ -193,4 +193,7 @@ def config_parser():
                         help='the viewer to use (wandb)')
     parser.add_argument("--loadtrans", action='store_true',
                         help='the viewer to use (wandb)')
+
+    parser.add_argument("--real_coeff", type=float, default=20.,
+                        help='learning rate of rgb camera pose')
     return parser
