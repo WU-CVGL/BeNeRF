@@ -30,6 +30,8 @@ if __name__ == '__main__':
     print("Loading data...")
     img = os.path.expanduser(args.in_dir)
     gt = os.path.expanduser(args.gt_dir)
+    assert os.path.exists(gt)
+    assert os.path.expanduser(img)
     out = os.path.expanduser(args.out_dir)
     metrics = os.path.join(out, "metrics.csv")
     result = os.path.join(out, "result.txt")
