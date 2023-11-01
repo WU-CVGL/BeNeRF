@@ -24,7 +24,7 @@ cy = 591.2202392008659
 
 optimize_event = True
 loadtrans = False
-threshold = 0.1
+threshold = -1
 transform_lrate = 5e-4
 decay_rate_transform = 0.01
 focal_event_x = 655.0935625792758
@@ -49,8 +49,8 @@ rgb_blur_loss = False
 
 channels = 1
 
-pix_event = 2048
-pix_rgb = 5120
+pix_event = 1536
+pix_rgb = 4096
 
 window_percent = 0.1
 random_window = True
