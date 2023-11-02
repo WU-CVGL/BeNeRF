@@ -1,7 +1,7 @@
 project = whiteroom_gray_separate
 expname = 19
 datadir = ~/data/synthetic_unreal_rigid/whiteroom_x_5cm
-logdir = ~/logs/whiteroom_gray/separate
+logdir = ~/logs/whiteroom_gray/trans/separate_x_5cm
 idx = 19
 viewer = wandb
 model = cubic_optimpose
