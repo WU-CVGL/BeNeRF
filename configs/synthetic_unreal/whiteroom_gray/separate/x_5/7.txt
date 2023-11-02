@@ -1,6 +1,6 @@
 project = whiteroom_gray_separate
 expname = 7
-datadir = ~/data/synthetic_unreal_rigid/whiteroom_x_5cm
+datadir = ~/data/synthetic_unreal_rigid/whiteroom_gray_x_5cm
 logdir = ~/logs/whiteroom_gray/trans/separate_x_5cm
 idx = 7
 viewer = wandb
