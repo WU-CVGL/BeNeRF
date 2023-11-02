@@ -5,7 +5,8 @@ import torch
 import spline
 from config import config_parser
 from model import nerf_cubic_optimpose, nerf_cubic_optimtrans, nerf_cubic_optimposeset, nerf_cubic_rigidtrans, \
-    nerf_linear_optimpose, nerf_linear_optimtrans, nerf_linear_optimposeset, test_model
+    nerf_linear_optimpose, nerf_linear_optimtrans, nerf_linear_optimposeset, test_model, nerf_cubic_optimtrans_event, \
+    nerf_cubic_optimexposure
 from run_nerf_helpers import render_image_test
 
 
@@ -37,8 +38,12 @@ def main(args):
         model = nerf_cubic_optimpose.Model(args)
     elif args.model == "cubic_optimtrans":
         model = nerf_cubic_optimtrans.Model(args)
+    elif args.model == "cubic_optimtrans_event":
+        model = nerf_cubic_optimtrans_event.Model(args)
     elif args.model == "cubic_optimposeset":
         model = nerf_cubic_optimposeset.Model(args)
+    elif args.model == "cubic_optim_exposure":
+        model = nerf_cubic_optimexposure.Model(args)
     elif args.model == "cubic_rigidtrans":
         model = nerf_cubic_rigidtrans.Model(args)
     elif args.model == "linear_optimpose":
