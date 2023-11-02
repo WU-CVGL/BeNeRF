@@ -19,11 +19,12 @@ def add_border(image_path, border_size, border_color):
 
 
 if __name__ == '__main__':
-    path = '/Users/pianwan/Desktop/DataProcess/whiteroom_1'  # image folder path
+    path = '/Users/pianwan/Downloads/outdoorpool_more/outdoorpool_more/1'  # image folder path
     file = find_files(path)
     # image color: black
+    # size: 8
     # color = (0, 11, 11)
-    # # 0
+    # 0
     # color = (225, 7, 7)
     # # 1
     color = (135, 6, 244)
@@ -42,6 +43,6 @@ if __name__ == '__main__':
 
     # size for whiteroom
     # 2 2
-    add_border(file, 2, color)
+    add_border(file, 3, color)
 
     # print(file)
