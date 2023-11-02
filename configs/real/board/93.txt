@@ -50,7 +50,7 @@ rgb_blur_loss = False
 channels = 3
 
 pix_event = 1536
-pix_rgb = 4096
+pix_rgb = 3840
 
 window_percent = 0.1
 random_window = True
