@@ -1,10 +1,10 @@
-project = whiteroom_gray_separate
+project = whiteroom_gray_trans_event
 expname = 15
 datadir = ~/data/synthetic_unreal_rigid/whiteroom_gray_x_5cm
-logdir = ~/logs/whiteroom_gray/trans/separate_x_5cm
+logdir = ~/logs/whiteroom_gray/trans_event/x_5cm
 idx = 15
 viewer = wandb
-model = cubic_optimpose
+model = cubic_optimtrans_event
 depth = True
 debug = False
 
