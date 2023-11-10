@@ -65,10 +65,10 @@ if __name__ == '__main__':
     # y_end = [403, 157]
 
     # tanabata: teaser (12)
-    x_start = [136]
-    y_start = [162]
-    x_end = [391]
-    y_end = [332]
+    # x_start = [136]
+    # y_start = [162]
+    # x_end = [391]
+    # y_end = [332]
 
     # real-carpet-168
     # x_start = [851, 379, 179, 1156]
@@ -76,7 +76,13 @@ if __name__ == '__main__':
     # x_end = [1123, 556, 299, 1377]
     # y_end = [625, 319, 982, 1037]
 
-    path = r'/Users/pianwan/Desktop/DataProcess/tanabata_teaser/img'  # image folder path
+    # real-cup-15
+    x_start = [518, 442]
+    y_start = [711, 373]
+    x_end = [1358, 783]
+    y_end = [861, 556]
+
+    path = r'/Users/pianwan/Downloads/cup/img'  # image folder path
 
     files = find_files(path)
 
