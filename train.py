@@ -211,13 +211,13 @@ def train(args):
         # Real dataset
         else:
             if args.channels == 3:
-                render_brightness_diff = safelog(rgb2gray(ret_gray2['rgb0'])) - safelog(rgb2gray(ret_gray1['rgb0']))
+                render_brightness_diff = safelog(rgb2gray(ret_gray2['rgb_map'])) - safelog(rgb2gray(ret_gray1['rgb_map']))
                 render_norm = render_brightness_diff / (
                         torch.linalg.norm(render_brightness_diff, dim=0, keepdim=True) + 1e-9)
                 target_s_norm = target_s / (torch.linalg.norm(target_s, dim=0, keepdim=True) + 1e-9)
                 img_loss = mse_loss(render_norm, target_s_norm)
             else:
-                render_brightness_diff = safelog(ret_gray2['rgb0']) - safelog(ret_gray1['rgb0'])
+                render_brightness_diff = safelog(ret_gray2['rgb_map']) - safelog(ret_gray1['rgb_map'])
                 render_norm = render_brightness_diff / (
                         torch.linalg.norm(render_brightness_diff, dim=0, keepdim=True) + 1e-9)
                 target_s_norm = target_s / (torch.linalg.norm(target_s, dim=0, keepdim=True) + 1e-9)
