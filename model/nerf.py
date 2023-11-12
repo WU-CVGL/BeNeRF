@@ -173,7 +173,7 @@ class Graph(nn.Module):
             events_ts = np.stack((low_t, upper_t)).reshape(2)
         else:
             events_ts = ts_window[np.array([0, int(N_window) - 1])]
-
+        # modify it
         ray_idx_event = torch.randperm(args.h_event * args.w_event)[:args.pix_event]
         spline_poses = self.get_pose(args, torch.tensor(events_ts, dtype=torch.float32))
         spline_rgb_poses = self.get_pose_rgb(args)
@@ -183,6 +183,29 @@ class Graph(nn.Module):
                                 K_event,
                                 args,
                                 training=True)
+        # warping loss
+        if True:
+            # get the pixel of event camera image
+            uv = torch.vstack((ray_idx_event // args.w_event, ray_idx_event % args.w_event)).t().unsqueeze(0).float()
+            # get the depth of event camera image
+            depth_src = ret_event['disp_map'][:args.pix_event]
+            # event camera intrin
+            intrin = [args.focal_event_x, args.focal_event_y, args.event_cx, args.event_cy]
+            # rgb camera intrin
+            intrin_rgb = [args.focal_x, args.focal_y, args.cx, args.cy]
+            from loss.warping import pix_loc_src_to_tgt
+            # cal new pixel in rgb camera
+            result = pix_loc_src_to_tgt(uv, intrin, spline_poses[1], intrin_rgb,
+                                        spline_rgb_poses[spline_rgb_poses.shape[0] // 2], depth_src)
+            result = torch.round(result).to(torch.int)
+            # choose only the possible pixels
+            mask = (0 <= result[..., 0]) & (result[..., 0] < W) & (0 <= result[..., 1]) & (result[..., 1] < H)
+            result = result[mask]
+            print(result.shape)
+            additional_idx = torch.prod(result, dim=1)
+            ret_warp = self.render(spline_rgb_poses[spline_rgb_poses.shape[0] // 2],
+                                   additional_idx.reshape(-1, 1).squeeze(), H, W, K, args,
+                                   training=True)
 
         # render rgb
         ray_idx_rgb = torch.randperm(H * W)[:args.pix_rgb // args.deblur_images]
