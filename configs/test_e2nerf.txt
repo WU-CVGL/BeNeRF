@@ -17,8 +17,8 @@ optimize_se3 = True
 loadpose = False
 pose_lrate = 5e-4
 decay_rate_pose = 0.01
-focal_x = 548.409
-focal_y = 548.409
+focal_x = 653.98456
+focal_y = 653.98456
 cx = 173
 cy = 130
 
