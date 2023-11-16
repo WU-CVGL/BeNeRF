@@ -24,7 +24,7 @@ cy = 130
 
 optimize_event = True
 loadtrans = False
-threshold = 0.1
+threshold = -1
 transform_lrate = 5e-4
 decay_rate_transform = 0.01
 focal_event_x = 653.98456
