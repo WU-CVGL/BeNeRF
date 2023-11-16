@@ -52,11 +52,12 @@ def pix_loc_src_to_tgt(uv, intrin_src, c2w_src, intrin_tgt, c2w_tgt, depth_src):
 
 if __name__ == '__main__':
     ray_idx_event = torch.randperm(680 * 480)[:1500]
-    uv = torch.vstack((ray_idx_event // 480, (ray_idx_event % 480))).t().unsqueeze(0).float()
-    depth_src = torch.rand(1, 1500)
+    uv = torch.vstack((torch.tensor((1.)), torch.tensor(2.,))).t().unsqueeze(0).float()
+    depth_src = torch.rand(1, 1)
     intrin = [500, 500, 200, 200]
+    intrin = [1000, 1000, 300, 300]
     c2w_src = torch.rand((1, 4, 4))
-    c2w_tgt = c2w_src + 0.01 *torch.rand((1, 4, 4))
+    c2w_tgt = torch.rand((1, 4, 4))
     result = pix_loc_src_to_tgt(uv, intrin, c2w_src, intrin, c2w_tgt, depth_src)
     result = torch.round(result).to(torch.int)
     mask = (0 <= result[..., 0]) & (result[..., 0] < 680) & (0 <= result[..., 1]) & (result[..., 1] < 480)

@@ -70,19 +70,19 @@ if __name__ == '__main__':
     # x_end = [391]
     # y_end = [332]
 
-    # real-carpet-168
-    # x_start = [851, 379, 179, 1156]
-    # y_start = [459, 220, 851, 786]
-    # x_end = [1123, 556, 299, 1377]
-    # y_end = [625, 319, 982, 1037]
+    # real-carpet-65
+    x_start = [787, 304, 403]
+    y_start = [441, 370, 700]
+    x_end = [1063, 457, 703]
+    y_end = [697, 496, 916]
 
     # real-cup-15
-    x_start = [518, 442]
-    y_start = [711, 373]
-    x_end = [1358, 783]
-    y_end = [861, 556]
+    # x_start = [518, 442]
+    # y_start = [711, 373]
+    # x_end = [1358, 783]
+    # y_end = [861, 556]
 
-    path = r'/Users/pianwan/Downloads/cup/img'  # image folder path
+    path = r'/Users/pianwan/Downloads/image'  # image folder path
 
     files = find_files(path)
 
