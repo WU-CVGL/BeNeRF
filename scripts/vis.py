@@ -1,3 +1,4 @@
+import cv2
 import cv2 as cv
 import numpy as np
 from matplotlib import pyplot as plt
@@ -5,10 +6,13 @@ from matplotlib import pyplot as plt
 from utils import eventutils
 
 
-def dvsarray_to_image(events, height, width):
+def dvsarray_to_image(events, height, width, init_map=None):
     # Draw event image in RPG way
-    dvs_image = np.ones((width, height, 3), dtype=np.dtype("uint8"))
-    dvs_image *= 255
+    if init_map is None:
+        dvs_image = np.ones((width, height, 3), dtype=np.dtype("uint8"))
+    else:
+        dvs_image = init_map
+        dvs_image *= 255
     map = np.zeros((width, height))
     eventutils.accumulate_events_no_numba(map, events[:, 0].astype(int), events[:, 1].astype(int), events[:, 3])
     pos_map = map > 0
