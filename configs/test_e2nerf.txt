@@ -1,10 +1,10 @@
 project = test_real
-expname = 9
+expname = 30
 datadir = ~/data/real/e2nerf/lego_gray
 logdir = ~/logs/real/e2nerf/lego_gray
-idx = 9
+idx = 30
 viewer = wandb
-model = cubic_optimpose
+model = cubic_optimposeset
 depth = True
 debug = False
 
@@ -40,9 +40,9 @@ dataset_event_split = 500
 
 i_print = 100
 i_img = 5000
-i_video = 80000
-i_weights = 80000
-max_iter = 80000
+i_video = 100000
+i_weights = 100000
+max_iter = 100000
 
 rgb_loss = True
 rgb_blur_loss = False
