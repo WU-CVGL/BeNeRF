@@ -1,7 +1,7 @@
 project = test_real
 expname = 9
-datadir = ~/data/real/e2nerf/lego
-logdir = ~/logs/real/e2nerf/lego
+datadir = ~/data/real/e2nerf/lego_gray
+logdir = ~/logs/real/e2nerf/lego_gray
 idx = 9
 viewer = wandb
 model = cubic_optimpose
