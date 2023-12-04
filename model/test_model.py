@@ -2,7 +2,7 @@ import torch
 
 import spline
 from model import nerf
-from model.component import CameraPose, EventPose, ExposureTime
+from model.component import CameraPose, EventPose, ExposureTime, CRF
 
 
 class Model(nerf.Model):
@@ -12,6 +12,8 @@ class Model(nerf.Model):
         self.graph.exposure_time.params.weight.data = torch.concatenate(
             (torch.nn.Parameter(torch.tensor(.0, dtype=torch.float32).reshape((1, 1))),
              torch.nn.Parameter(torch.tensor(.9, dtype=torch.float32).reshape((1, 1)))))
+
+        self.graph.crf = CRF(19, 16)
 
     def build_network(self, args, poses=None, event_poses=None):
         self.graph.rgb_pose = CameraPose(4)
