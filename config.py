@@ -1,6 +1,5 @@
 import configargparse
 
-
 def config_parser():
     parser = configargparse.ArgumentParser()
 
