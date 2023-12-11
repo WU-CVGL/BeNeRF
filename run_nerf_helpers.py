@@ -159,12 +159,10 @@ def compute_ray_idx(width, H, W):
     ray_idx = ray_idx.squeeze()
     return ray_idx
 
-
 def init_weights(linear):
     # use Xavier init instead of Kaiming init
     torch.nn.init.xavier_uniform_(linear.weight)
     torch.nn.init.zeros_(linear.bias)
-
 
 def init_nerf(nerf):
     for linear_pt in nerf.pts_linears:

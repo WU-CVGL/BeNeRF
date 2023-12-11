@@ -26,6 +26,6 @@ def rgb2gray(x) -> np.ndarray:
     x = x.astype(np.uint8)
     return x
 
-
+# read image and normlization
 def load_image(img, gray) -> np.ndarray:
     return imread(img) / 255. if gray else imread(img)[..., :3] / 255.

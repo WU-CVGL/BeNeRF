@@ -5,7 +5,6 @@ import torch
 
 from utils import imgutils
 
-
 def load_img_data(datadir, gray=False):
     print("Loading images...")
     # Load images
@@ -22,7 +21,6 @@ def load_img_data(datadir, gray=False):
     imgtests = np.stack(imgtests, -1)
 
     return imgs, imgtests
-
 
 def load_camera_pose(basedir, H, W, cubic):
     sh = H, W
@@ -46,21 +44,21 @@ def load_camera_pose(basedir, H, W, cubic):
 
     return poses, ev_poses
 
-
 def load_camera_trans(basedir):
     # load trans
     trans_arr = np.load(os.path.join(basedir, 'trans.npy'))
     return trans_arr
 
-
 def load_timestamps(basedir):
     poses_ts_path = os.path.join(basedir, 'poses_ts.txt')
     poses_start_path = os.path.join(basedir, "poses_start_ts.txt")
     poses_end_path = os.path.join(basedir, "poses_end_ts.txt")
+    # synthetic dataset
     if os.path.exists(poses_ts_path):
         poses_ts = np.loadtxt(poses_ts_path)
         poses_start = poses_ts[:-1]
         poses_end = poses_ts[1:]
+    # real dataset
     elif os.path.exists(poses_start_path) and os.path.exists(poses_end_path):
         poses_start = np.loadtxt(poses_start_path)
         poses_end = np.loadtxt(poses_end_path)
@@ -70,10 +68,8 @@ def load_timestamps(basedir):
 
     return poses_start, poses_end
 
-
 def normalize(x):
     return x / np.linalg.norm(x)
-
 
 def viewmatrix(z, up, pos):
     vec2 = normalize(z)
@@ -83,11 +79,9 @@ def viewmatrix(z, up, pos):
     m = np.stack([vec0, vec1, vec2, pos], 1)
     return m
 
-
 def ptstocam(pts, c2w):
     tt = np.matmul(c2w[:3, :3].T, (pts - c2w[:3, 3])[..., np.newaxis])[..., 0]
     return tt
-
 
 def poses_avg(poses):
     hwf = poses[0, :3, -1:]
@@ -99,7 +93,6 @@ def poses_avg(poses):
 
     return c2w
 
-
 def render_path_spiral(c2w, up, rads, focal, zdelta, zrate, rots, N):
     render_poses = []
     rads = np.array(list(rads) + [1.])
@@ -110,7 +103,6 @@ def render_path_spiral(c2w, up, rads, focal, zdelta, zrate, rots, N):
         z = normalize(c - np.dot(c2w[:3, :4], np.array([0, 0, -focal, 1.])))
         render_poses.append(np.concatenate([viewmatrix(z, up, c), hwf], 1))
     return render_poses
-
 
 def recenter_poses(poses):
     poses_ = poses + 0
@@ -124,7 +116,6 @@ def recenter_poses(poses):
     poses_[:, :3, :4] = poses[:, :3, :4]
     poses = poses_
     return poses
-
 
 def spherify_poses(poses, bds):
     p34_to_44 = lambda p: np.concatenate([p, np.tile(np.reshape(np.eye(4)[-1, :], [1, 1, 4]), [p.shape[0], 1, 1])], 1)
@@ -183,17 +174,18 @@ def spherify_poses(poses, bds):
 
     return poses_reset, new_poses, bds
 
-
 def load_data(datadir, args, load_pose=False, load_trans=False, cubic=False):
     datadir = os.path.expanduser(datadir)
     gray = args.channels == 1
 
     # process imges
+    # [height, width, channel, num]
     imgs, imgtests = load_img_data(datadir, gray=gray)
-
+    # [num, height, width, channel]
     imgs = np.moveaxis(imgs, -1, 0).astype(np.float32)
     if gray:
         imgs = np.expand_dims(imgs, -1)
+    # select one image: [1, height, width, channel]
     imgs = np.expand_dims(imgs[args.idx], 0)
     imgs = torch.Tensor(imgs)
 
@@ -210,10 +202,12 @@ def load_data(datadir, args, load_pose=False, load_trans=False, cubic=False):
         # event shift, selecting more events means better result
         st = max(args.idx - args.event_shift_start, 0)
         ed = min(args.idx + args.event_shift_end, len(ts_end) - 1)
+        # real timestamp of start and end
         poses_ts = np.array((ts_start[st], ts_end[ed]))
         events = np.load(os.path.join(eventdir, "events.npy"))
         delta = (poses_ts[1] - poses_ts[0]) * args.event_time_shift
         poses_ts = np.array([poses_ts[0] - delta, poses_ts[1] + delta])
+        # get events
         events = np.array([event for event in events if poses_ts[0] <= event[2] <= poses_ts[1]])
     else:
         # synthesis dataset
