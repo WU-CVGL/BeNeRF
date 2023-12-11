@@ -3,8 +3,7 @@ import torch
 import spline
 from model import nerf
 from model.component import CameraPose, EventPose
-
-
+# based on a abstract class
 class Model(nerf.Model):
     def __init__(self, args):
         self.graph = Graph(args, D=8, W=256, input_ch=63, input_ch_views=27, output_ch=4, skips=[4], use_viewdirs=True)
@@ -13,30 +12,34 @@ class Model(nerf.Model):
         self.graph.rgb_pose = CameraPose(4)
         self.graph.transform = EventPose(1)
 
+        # assign random weights to graph.rgb_pose.params
         parm_rgb = torch.concatenate(
             (torch.rand(1, 6) * 0.01, torch.rand(1, 6) * 0.01, torch.rand(1, 6) * 0.01, torch.rand(1, 6) * 0.01))
         self.graph.rgb_pose.params.weight.data = torch.nn.Parameter(parm_rgb)
 
+        # assign zero weights to graph.rgb_pose.params
         parm_e = torch.nn.Parameter(torch.zeros(1, 6))
-
         self.graph.transform.params.weight.data = torch.nn.Parameter(parm_e)
 
         return self.graph
 
     def setup_optimizer(self, args):
+        # optim related to nerf
         grad_vars = list(self.graph.nerf.parameters())
         if args.N_importance > 0:
             grad_vars += list(self.graph.nerf_fine.parameters())
         self.optim = torch.optim.Adam(params=grad_vars, lr=args.lrate)
 
+        # optim related to pose knot
         grad_vars_pose = list(self.graph.rgb_pose.parameters())
         self.optim_pose = torch.optim.Adam(params=grad_vars_pose, lr=args.pose_lrate)
 
+        # optim related to trans between cam and event
         grad_vars_transform = list(self.graph.transform.parameters())
         self.optim_transform = torch.optim.Adam(params=grad_vars_transform, lr=args.transform_lrate)
 
+        # three optimizer
         return self.optim, self.optim_pose, self.optim_transform
-
 
 class Graph(nerf.Graph):
     def get_pose(self, args, events_ts):

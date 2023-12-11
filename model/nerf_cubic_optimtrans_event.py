@@ -4,7 +4,7 @@ import spline
 from model import nerf
 from model.component import CameraPose, EventPose
 
-
+# based on a abstract class
 class Model(nerf.Model):
     def __init__(self, args):
         self.graph = Graph(args, D=8, W=256, input_ch=63, input_ch_views=27, output_ch=4, skips=[4], use_viewdirs=True)
