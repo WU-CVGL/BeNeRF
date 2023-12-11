@@ -25,7 +25,6 @@ from run_nerf_helpers import init_nerf, render_image_test, render_video_test
 from utils import imgutils
 from utils.mathutils import safelog
 
-
 def train(args):
     # Load data images are groundtruth
     logger = WandbLogger(args)
@@ -35,9 +34,10 @@ def train(args):
     rgb2gray = imgutils.RGB2Gray()
 
     print("Loading data")
-    events, images, imgtests, poses_ts, poses, ev_poses, trans = load_data(args.datadir, args, load_pose=args.loadpose,
-                                                                           load_trans=args.loadtrans,
-                                                                           cubic="cubic" in args.model)
+    # imgtests:for render test
+    events, images, imgtests, poses_ts, poses, ev_poses, trans = load_data(args.datadir, args, load_pose = args.loadpose,
+                                                                           load_trans = args.loadtrans,
+                                                                           cubic = "cubic" in args.model)
     print(f"Loaded data {args.datadir} {args.idx} {images.shape}")
 
     print(f"Camera Pose: {poses}")
@@ -51,6 +51,7 @@ def train(args):
     H, W = images[0].shape[0], images[0].shape[1]
     H, W = int(H), int(W)
 
+    # intrinsic matrix
     K = torch.Tensor([
         [args.focal_x, 0, args.cx],
         [0, args.focal_y, args.cy],
@@ -155,6 +156,7 @@ def train(args):
     for i in trange(start, N_iters):
         i = i + global_step_
         if i == 0:
+            # init weights of nn using Xavier value 
             init_nerf(graph.nerf)
             init_nerf(graph.nerf_fine)
 

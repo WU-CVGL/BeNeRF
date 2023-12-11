@@ -10,7 +10,6 @@ from model import embedder
 from run_nerf_helpers import get_specific_rays, get_rays, ndc_rays, sample_pdf
 from utils.eventutils import accumulate_events
 
-
 class Model:
     @abc.abstractmethod
     def build_network(self, args, poses=None, event_poses=None):
@@ -22,7 +21,6 @@ class Model:
 
     def after_train(self):
         print(f"Successfully finished model on {datetime.now()}")
-
 
 class NeRF(nn.Module):
     def __init__(self, D=8, W=256, input_ch=63, input_ch_views=27, output_ch=4, skips=[4], use_viewdirs=False,
@@ -121,7 +119,6 @@ class NeRF(nn.Module):
         sigma = F.relu(raw[..., self.channels] + noise)
 
         return rgb_map, disp_map, acc_map, weights, depth_map, sigma
-
 
 class Graph(nn.Module):
 
