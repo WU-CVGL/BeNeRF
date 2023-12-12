@@ -131,6 +131,7 @@ class Graph(nn.Module):
         self.pose_eye = torch.eye(3, 4)
 
     def forward(self, i, events, H, W, K, K_event, args):
+        # select events in time windows(length: 0.1s)
         if args.time_window:
             window_t = args.window_percent
             if args.random_window:
@@ -143,6 +144,7 @@ class Graph(nn.Module):
             idx_b = events["ts"] <= upper_t
             idx = idx_a * idx_b
             indices = np.where(idx)
+            # get element in time window
             pol_window = events['pol'][indices]
             x_window = events['x'][indices]
             y_window = events['y'][indices]
@@ -161,6 +163,7 @@ class Graph(nn.Module):
             y_window = events['y'][window_low_bound:window_up_bound]
             ts_window = events['ts'][window_low_bound:window_up_bound]
 
+        # event temporal aggregate
         out = np.zeros((args.h_event, args.w_event))
         accumulate_events(out, x_window, y_window, pol_window)
         events_accu = torch.tensor(out)
@@ -170,9 +173,12 @@ class Graph(nn.Module):
             events_ts = np.stack((low_t, upper_t)).reshape(2)
         else:
             events_ts = ts_window[np.array([0, int(N_window) - 1])]
-        # modify it
+        
+        # index of event rays
         ray_idx_event = torch.randperm(args.h_event * args.w_event)[:args.pix_event]
+        # interpolated event pose 
         spline_poses = self.get_pose(args, torch.tensor(events_ts, dtype=torch.float32))
+        # interpolated rgb pose 
         spline_rgb_poses = self.get_pose_rgb(args)
 
         # render event

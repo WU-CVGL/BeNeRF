@@ -160,18 +160,20 @@ def train(args):
             init_nerf(graph.nerf)
             init_nerf(graph.nerf_fine)
 
+        # interpolate, eta and render
         ret_event, ret_rgb, ray_idx_event, ray_idx_rgb, events_accu = graph.forward(i, events,
                                                                                     H, W, K, K_event, args)
-
         pixels_num = ray_idx_event.shape[0]
 
+        # render results of event(start and end)
         ret_gray1 = {'rgb_map': ret_event['rgb_map'][:pixels_num],
                      'rgb0': ret_event['rgb0'][:pixels_num]}
         ret_gray2 = {'rgb_map': ret_event['rgb_map'][pixels_num:],
                      'rgb0': ret_event['rgb0'][pixels_num:]}
+        # render results of rgb(contain N sharp image)
         ret_rgb = {'rgb_map': ret_rgb['rgb_map'],
                    'rgb0': ret_rgb['rgb0']}
-
+        # observed eta
         target_s = events_accu.reshape(-1, 1)[ray_idx_event]
 
         # zero grad
@@ -205,6 +207,7 @@ def train(args):
                 img_loss0 *= args.event_coefficient
                 logger.write("train_event_loss_coarse", img_loss0.item())
 
+            # coarse + fine 
             event_loss = img_loss0 + img_loss
 
             logger.write("train_event_loss", event_loss.item())
@@ -265,6 +268,7 @@ def train(args):
             rgb_list = []
             extras_list = []
             for j in range(0, args.deblur_images):
+                # accumulate sharp rgb to blur rgb
                 ray_rgb = ret_rgb['rgb_map'][j * interval:(j + 1) * interval]
                 rgb_ += ray_rgb
 
