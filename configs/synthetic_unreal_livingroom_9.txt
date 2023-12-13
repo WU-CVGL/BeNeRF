@@ -1,4 +1,4 @@
-project = livingroom_compare
+project = synthetic_unreal_livingroom_9
 expname = 9
 datadir = ~/Dataset/synthetic_unreal/livingroom
 logdir = ./logs/synthetic_unreal/livingroom/cubic_optimpose/9
@@ -49,8 +49,8 @@ rgb_blur_loss = False
 
 channels = 3
 
-pix_event = 2048
-pix_rgb = 5120
+pix_event = 1024
+pix_rgb = 1024
 
 window_percent = 0.1
 random_window = True
