@@ -10,7 +10,6 @@ photometric = {
     "lpips": None
 }
 
-
 def compute_img_metric(im1t: torch.Tensor, im2t: torch.Tensor,
                        metric="mse", margin=0, mask=None):
     """

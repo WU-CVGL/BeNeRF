@@ -1,21 +1,18 @@
 from torch import nn as nn
 
-
 class CameraPose(nn.Module):
     def __init__(self, pose_num):
-        super(CameraPose).__init__()
+        super(CameraPose, self).__init__()
         self.params = nn.Embedding(pose_num, 6)
-
 
 class EventPose(nn.Module):
     def __init__(self, pose_num):
-        super(EventPose).__init__()
+        super(EventPose, self).__init__()
         self.params = nn.Embedding(pose_num, 6)
-
 
 class ExposureTime(nn.Module):
     def __init__(self):
-        super(ExposureTime).__init__()
+        super(ExposureTime, self).__init__()
         self.params = nn.Embedding(2, 1)
 
 

@@ -187,7 +187,7 @@ class Graph(nn.Module):
                                 args,
                                 training=True)
         # warping loss
-        if True:
+        if False:
             # get the pixel of event camera image
             uv = torch.vstack((ray_idx_event // args.w_event, ray_idx_event % args.w_event)).t().unsqueeze(0).float()
             # get the depth of event camera image

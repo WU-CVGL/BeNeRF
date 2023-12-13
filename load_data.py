@@ -207,7 +207,7 @@ def load_data(datadir, args, load_pose=False, load_trans=False, cubic=False):
         events = np.load(os.path.join(eventdir, "events.npy"))
         delta = (poses_ts[1] - poses_ts[0]) * args.event_time_shift
         poses_ts = np.array([poses_ts[0] - delta, poses_ts[1] + delta])
-        # get events
+        # get events  
         events = np.array([event for event in events if poses_ts[0] <= event[2] <= poses_ts[1]])
     else:
         # synthesis dataset
@@ -218,7 +218,8 @@ def load_data(datadir, args, load_pose=False, load_trans=False, cubic=False):
 
         event_list = [np.load(e) for e in eventfiles]
         events = np.concatenate(event_list)
-
+        
+    # sorted according to time
     events = events[events[:, 2].argsort()]
     # create dictionary
     events = {'x': events[:, 0].astype(int), 'y': events[:, 1].astype(int),
