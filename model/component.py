@@ -1,6 +1,7 @@
 import torch
 from torch import nn as nn
 from utils.mathutils import safelog
+from torch.nn import functional as F
 
 class CameraPose(nn.Module):
     def __init__(self, pose_num):
@@ -86,25 +87,63 @@ class ColorToneMapper(nn.Module):
         # logarithmic domain
         log_radience = safelog(radience)
 
+        # tone mapping for camera data
         # Gray
         if self.input_type == "Gray":
             raw_color = self.mlp_gray(log_radience)
             color = torch.tanh(raw_color)
-
         # RGB
-        if self.input_type == "RGB":
-            log_r = log_radience[:, 0]
-            log_g = log_radience[:, 1]
-            log_b = log_radience[:, 2]
+        elif self.input_type == "RGB":
+            log_radience_r = log_radience[:, 0]
+            log_radience_g = log_radience[:, 1]
+            log_radience_b = log_radience[:, 2]
 
-            color_r = self.mlp_r(log_r)
-            color_g = self.mlp_r(log_g)
-            color_b = self.mlp_r(log_b)
+            raw_color_r = self.mlp_r(log_radience_r)
+            raw_color_g = self.mlp_r(log_radience_g)
+            raw_color_b = self.mlp_r(log_radience_b)
 
-            raw_color = torch.cat([color_r, color_g, color_b], -1)
+            raw_color = torch.cat([raw_color_r, raw_color_g, raw_color_b], -1)
             color = torch.tanh(raw_color)
 
         return color
 
 class LuminanceToneMapper(nn.Module):
-    pass
+    '''A network for color tone-mapping.'''
+
+    def __init__(self, hidden = 0, width = 128, input_type = "Gray"):
+        super(LuminanceToneMapper, self).__init__()
+        self.net_hidden = hidden
+        self.net_width = width
+        self.input_type = str(input_type)
+
+        # Luminance
+        if self.input_type == "Gray":
+            self.mlp_luminance = nn.Sequential(*[
+                nn.Linear(1, self.net_width),
+                nn.ReLU(),
+                *[
+                    nn.Linear(self.net_width, self.net_width), nn.ReLU()
+                    for i in range(self.net_hidden)
+                    ],
+                nn.Linear(self.net_width, 1)
+            ])
+        elif self.input_type == "RGB":
+            self.mlp_luminance = nn.Sequential(*[
+                nn.Linear(3, self.net_width),
+                nn.ReLU(),
+                *[
+                    nn.Linear(self.net_width, self.net_width), nn.ReLU()
+                    for i in range(self.net_hidden)
+                    ],
+                nn.Linear(self.net_width, 1)
+            ])  
+
+    def forward(self, radience, x, input_exps, noise=None, output_grads=False):
+        # logarithmic domain
+        log_radience = safelog(radience)
+
+        # tone mapping for event data
+        raw_luminance = self.mlp_luminance(log_radience)
+        luminance = F.relu(raw_luminance)
+
+        return luminance
