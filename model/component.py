@@ -1,7 +1,8 @@
 import torch
-from torch import nn as nn
-from utils.mathutils import safelog
+import torch.nn as nn
+import torch.nn.init as init
 from torch.nn import functional as F
+from utils.mathutils import safelog
 
 class CameraPose(nn.Module):
     def __init__(self, pose_num):
@@ -43,37 +44,9 @@ class ColorToneMapper(nn.Module):
         self.net_width = width
         self.input_type = str(input_type)
 
-        # RGB
-        self.mlp_r = nn.Sequential(*[
-            nn.Linear(1, self.net_width),
-            nn.ReLU(),
-            *[
-                nn.Linear(self.net_width, self.net_width), nn.ReLU()
-                for i in range(self.net_hidden)
-             ],
-            nn.Linear(self.net_width, 1)
-        ])
-        self.mlp_g = nn.Sequential(*[
-            nn.Linear(1, self.net_width),
-            nn.ReLU(),
-            *[
-                nn.Linear(self.net_width, self.net_width), nn.ReLU()
-                for i in range(self.net_hidden)
-             ],
-            nn.Linear(self.net_width, 1)
-        ])
-        self.mlp_b = nn.Sequential(*[
-            nn.Linear(1, self.net_width),
-            nn.ReLU(),
-            *[
-                nn.Linear(self.net_width, self.net_width), nn.ReLU()
-                for i in range(self.net_hidden)
-             ],
-            nn.Linear(self.net_width, 1)
-        ])
-
         # Gray
-        self.mlp_gray = nn.Sequential(*[
+        if self.input_type == "Gray":
+            self.mlp_gray = nn.Sequential(*[
             nn.Linear(1, self.net_width),
             nn.ReLU(),
             *[
@@ -82,7 +55,51 @@ class ColorToneMapper(nn.Module):
              ],
             nn.Linear(self.net_width, 1)
         ])
+        # RGB
+        elif self.input_type == "RGB":
+            self.mlp_r = nn.Sequential(*[
+                nn.Linear(1, self.net_width),
+                nn.ReLU(),
+                *[
+                    nn.Linear(self.net_width, self.net_width), nn.ReLU()
+                    for i in range(self.net_hidden)
+                ],
+                nn.Linear(self.net_width, 1)
+            ])
+            self.mlp_g = nn.Sequential(*[
+                nn.Linear(1, self.net_width),
+                nn.ReLU(),
+                *[
+                    nn.Linear(self.net_width, self.net_width), nn.ReLU()
+                    for i in range(self.net_hidden)
+                ],
+                nn.Linear(self.net_width, 1)
+            ])
+            self.mlp_b = nn.Sequential(*[
+                nn.Linear(1, self.net_width),
+                nn.ReLU(),
+                *[
+                    nn.Linear(self.net_width, self.net_width), nn.ReLU()
+                    for i in range(self.net_hidden)
+                ],
+                nn.Linear(self.net_width, 1)
+            ])
 
+    def weights_biases_init(self):
+        # Initialize weight and biases
+        if self.input_type == "Gray":
+            for layer in self.mlp_gray:
+                if isinstance(layer, nn.Linear):
+                    init.xavier_uniform_(layer.weight)
+                    init.zeros_(layer.bias)                   
+        elif self.input_type == "RGB":
+            for layer_r, layer_g, layer_b in zip(self.mlp_r, self.mlp_g, self.mlp_b):
+                layer_list = [layer_r, layer_g, layer_b]
+                for layer in layer_list:
+                    if isinstance(layer, nn.Linear):
+                        init.xavier_uniform_(layer.weight)
+                        init.zeros_(layer.bias)        
+          
     def forward(self, radience, x, input_exps, noise=None, output_grads=False):
         # logarithmic domain
         log_radience = safelog(radience)
@@ -108,7 +125,7 @@ class ColorToneMapper(nn.Module):
         return color
 
 class LuminanceToneMapper(nn.Module):
-    '''A network for color tone-mapping.'''
+    '''A network for luminance tone-mapping.'''
 
     def __init__(self, hidden = 0, width = 128, input_type = "Gray"):
         super(LuminanceToneMapper, self).__init__()
@@ -137,6 +154,12 @@ class LuminanceToneMapper(nn.Module):
                     ],
                 nn.Linear(self.net_width, 1)
             ])  
+
+    def weights_biases_init(self):
+        for layer in self.mlp_luminance:
+            if isinstance(layer, nn.Linear):
+                init.xavier_uniform_(layer.weight)
+                init.zeros_(layer.bias)
 
     def forward(self, radience, x, input_exps, noise=None, output_grads=False):
         # logarithmic domain
