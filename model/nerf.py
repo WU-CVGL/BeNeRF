@@ -93,7 +93,7 @@ class NeRF(nn.Module):
 
         return outputs
 
-    def raw2output(self, crf, sensor_type, raw, z_vals, rays_d, raw_noise_std=1.0):
+    def raw2output(self, enable_crf: bool, crf_func, sensor_type, raw, z_vals, rays_d, raw_noise_std=1.0):
         raw2alpha = lambda raw, dists, act_fn=F.relu: 1. - torch.exp(-act_fn(raw) * dists)
 
         dists = z_vals[..., 1:] - z_vals[..., :-1]
@@ -103,7 +103,10 @@ class NeRF(nn.Module):
 
         rgb = torch.sigmoid(raw[..., :self.channels])
 
-        rgb = crf(rgb, sensor_type)
+        if enable_crf == True:
+            rgb = crf_func(rgb, sensor_type)
+        elif enable_crf == False:
+            pass
 
         noise = 0.
         if raw_noise_std > 0.:
@@ -190,6 +193,7 @@ class Graph(nn.Module):
                                 args.w_event,
                                 K_event,
                                 args,
+                                enable_crf = True,
                                 sensor_type = "event",
                                 training=True)
         # warping loss
@@ -223,13 +227,14 @@ class Graph(nn.Module):
                               H, 
                               W, 
                               K, 
-                              args, 
+                              args,
+                              enable_crf = True, 
                               sensor_type = "rgb",
                               training=True)
 
         return ret_event, ret_rgb, ray_idx_event, ray_idx_rgb, events_accu
 
-    def render(self, poses, ray_idx, H, W, K, args, sensor_type, near=0., far=1., training=False):
+    def render(self, poses, ray_idx, H, W, K, args, enable_crf: bool, sensor_type: str, near=0., far=1., training=False):
         if training:
             ray_idx_ = ray_idx.repeat(poses.shape[0])
             poses = poses.unsqueeze(1).repeat(1, ray_idx.shape[0], 1, 1).reshape(-1, 3, 4)
@@ -297,6 +302,7 @@ class Graph(nn.Module):
         raw_output = self.nerf.forward(pts, viewdirs, args)
 
         rgb_map, disp_map, acc_map, weights, depth_map, sigma = self.nerf.raw2output(self.camera_response_func,
+                                                                                     enable_crf,
                                                                                      sensor_type,
                                                                                      raw_output, 
                                                                                      z_vals, 
@@ -340,7 +346,17 @@ class Graph(nn.Module):
         all_ret = {}
         ray_idx = torch.arange(0, H * W)
         for i in range(0, ray_idx.shape[0], args.chunk):
-            ret = self.render(poses, ray_idx[i:i + args.chunk], H, W, K, args)
+            
+            ret = self.render(poses, 
+                              ray_idx[i:i + args.chunk], 
+                              H, 
+                              W, 
+                              K, 
+                              args, 
+                              enable_crf = False, 
+                              sensor_type = None, 
+                              training = False)
+            
             for k in ret:
                 if k not in all_ret:
                     all_ret[k] = []
