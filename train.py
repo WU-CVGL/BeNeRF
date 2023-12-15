@@ -367,6 +367,18 @@ def train(args):
         for param_group in optimizer_trans.param_groups:
             param_group['lr'] = new_lrate_trans
 
+        decay_rate_rgb_crf = args.decay_rate_rgb_crf
+        new_lrate_rgb_crf = args.rgb_crf_lrate * (decay_rate_rgb_crf ** (global_step / decay_steps))
+        logger.write("lr_rgb_crf", new_lrate_rgb_crf)
+        for param_group in optimizer_rgb_crf.param_groups:
+            param_group['lr'] = new_lrate_rgb_crf
+
+        deacy_rate_event_crf = args.decay_rate_event_crf
+        new_lrate_event_crf = args.event_crf_lrate * (deacy_rate_event_crf ** (global_step / decay_steps))
+        logger.write("lr_event_crf", new_lrate_event_crf)
+        for param_group in optimizer_event_crf.param_groups:
+            param_group['lr'] = new_lrate_event_crf
+
         # print result in console
         if i % args.i_print == 0:
             tqdm.write(
