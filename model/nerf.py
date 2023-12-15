@@ -93,7 +93,7 @@ class NeRF(nn.Module):
 
         return outputs
 
-    def raw2output(self, enable_crf: bool, crf_func, sensor_type, raw, z_vals, rays_d, raw_noise_std=1.0):
+    def raw2output(self, crf_func, enable_crf: bool, sensor_type, raw, z_vals, rays_d, raw_noise_std=1.0):
         raw2alpha = lambda raw, dists, act_fn=F.relu: 1. - torch.exp(-act_fn(raw) * dists)
 
         dists = z_vals[..., 1:] - z_vals[..., :-1]
@@ -320,6 +320,7 @@ class Graph(nn.Module):
 
             raw_output = self.nerf_fine.forward(pts, viewdirs, args)
             rgb_map, disp_map, acc_map, weights, depth_map, sigma = self.nerf_fine.raw2output(self.camera_response_func,
+                                                                                              enable_crf,
                                                                                               sensor_type,
                                                                                               raw_output, 
                                                                                               z_vals,
@@ -346,7 +347,7 @@ class Graph(nn.Module):
         all_ret = {}
         ray_idx = torch.arange(0, H * W)
         for i in range(0, ray_idx.shape[0], args.chunk):
-            
+
             ret = self.render(poses, 
                               ray_idx[i:i + args.chunk], 
                               H, 
