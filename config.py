@@ -11,7 +11,7 @@ def config_parser():
     parser.add_argument("--seed", type=int, default=0,
                         help='cuda id to use')
     # others
-    parser.add_argument('--config', is_config_file=True, default='./configs/synthetic_unreal_livingroom_9.txt',
+    parser.add_argument('--config', is_config_file=True, default='./configs/synthetic_unreal_livingroom_gray_9.txt',
                         help='config file path')
     parser.add_argument("--project", type=str, default="event-bad-nerf",
                         help='the viewer to use (wandb)')
