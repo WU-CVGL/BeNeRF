@@ -298,7 +298,9 @@ class Graph(nn.Module):
 
         rgb_map, disp_map, acc_map, weights, depth_map, sigma = self.nerf.raw2output(self.camera_response_func,
                                                                                      sensor_type,
-                                                                                     raw_output, z_vals, rays_d)
+                                                                                     raw_output, 
+                                                                                     z_vals, 
+                                                                                     rays_d)
 
         if args.N_importance > 0:
             rgb_map_0, disp_map_0, acc_map_0 = rgb_map, disp_map, acc_map
@@ -311,7 +313,10 @@ class Graph(nn.Module):
             pts = rays_o[..., None, :] + rays_d[..., None, :] * z_vals[..., :, None]
 
             raw_output = self.nerf_fine.forward(pts, viewdirs, args)
-            rgb_map, disp_map, acc_map, weights, depth_map, sigma = self.nerf_fine.raw2output(raw_output, z_vals,
+            rgb_map, disp_map, acc_map, weights, depth_map, sigma = self.nerf_fine.raw2output(self.camera_response_func,
+                                                                                              sensor_type,
+                                                                                              raw_output, 
+                                                                                              z_vals,
                                                                                               rays_d)
         ret = {'rgb_map': rgb_map, 'disp_map': disp_map, 'acc_map': acc_map}
         if args.N_importance > 0:
