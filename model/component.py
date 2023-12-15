@@ -44,47 +44,24 @@ class ColorToneMapper(nn.Module):
         self.net_width = width
         self.input_type = str(input_type)
 
+        # Create NN
+        layers = []
+        layers.append(nn.Linear(1, self.net_width))
+        layers.append(nn.ReLU())
+        for _ in range(self.net_hidden):
+            layers.append(nn.Linear(self.net_width, self.net_width))
+            layers.append(nn.ReLU())
+        layers.append(self.net_width, 1)
+
         # Gray
         if self.input_type == "Gray":
-            self.mlp_gray = nn.Sequential(*[
-            nn.Linear(1, self.net_width),
-            nn.ReLU(),
-            *[
-                nn.Linear(self.net_width, self.net_width), nn.ReLU()
-                for i in range(self.net_hidden)
-             ],
-            nn.Linear(self.net_width, 1)
-        ])
+            self.mlp_gray = nn.Sequential(*layers)
         # RGB
         elif self.input_type == "RGB":
-            self.mlp_r = nn.Sequential(*[
-                nn.Linear(1, self.net_width),
-                nn.ReLU(),
-                *[
-                    nn.Linear(self.net_width, self.net_width), nn.ReLU()
-                    for i in range(self.net_hidden)
-                ],
-                nn.Linear(self.net_width, 1)
-            ])
-            self.mlp_g = nn.Sequential(*[
-                nn.Linear(1, self.net_width),
-                nn.ReLU(),
-                *[
-                    nn.Linear(self.net_width, self.net_width), nn.ReLU()
-                    for i in range(self.net_hidden)
-                ],
-                nn.Linear(self.net_width, 1)
-            ])
-            self.mlp_b = nn.Sequential(*[
-                nn.Linear(1, self.net_width),
-                nn.ReLU(),
-                *[
-                    nn.Linear(self.net_width, self.net_width), nn.ReLU()
-                    for i in range(self.net_hidden)
-                ],
-                nn.Linear(self.net_width, 1)
-            ])
-
+            self.mlp_r = nn.Sequential(*layers)
+            self.mlp_g = nn.Sequential(*layers)
+            self.mlp_b = nn.Sequential(*layers)
+            
     def weights_biases_init(self):
         # Initialize weight and biases
         if self.input_type == "Gray":
@@ -108,7 +85,7 @@ class ColorToneMapper(nn.Module):
         # Gray
         if self.input_type == "Gray":
             raw_color = self.mlp_gray(log_radience)
-            color = torch.tanh(raw_color)
+            color = F.tanh(raw_color)
         # RGB
         elif self.input_type == "RGB":
             log_radience_r = log_radience[:, 0]
@@ -116,11 +93,11 @@ class ColorToneMapper(nn.Module):
             log_radience_b = log_radience[:, 2]
 
             raw_color_r = self.mlp_r(log_radience_r)
-            raw_color_g = self.mlp_r(log_radience_g)
-            raw_color_b = self.mlp_r(log_radience_b)
+            raw_color_g = self.mlp_g(log_radience_g)
+            raw_color_b = self.mlp_b(log_radience_b)
 
             raw_color = torch.cat([raw_color_r, raw_color_g, raw_color_b], -1)
-            color = torch.tanh(raw_color)
+            color = F.tanh(raw_color)
 
         return color
 
@@ -133,27 +110,20 @@ class LuminanceToneMapper(nn.Module):
         self.net_width = width
         self.input_type = str(input_type)
 
-        # Luminance
+        # Create NN
+        layers = []
         if self.input_type == "Gray":
-            self.mlp_luminance = nn.Sequential(*[
-                nn.Linear(1, self.net_width),
-                nn.ReLU(),
-                *[
-                    nn.Linear(self.net_width, self.net_width), nn.ReLU()
-                    for i in range(self.net_hidden)
-                    ],
-                nn.Linear(self.net_width, 1)
-            ])
+            layers.append(nn.Linear(1, self.net_width))
         elif self.input_type == "RGB":
-            self.mlp_luminance = nn.Sequential(*[
-                nn.Linear(3, self.net_width),
-                nn.ReLU(),
-                *[
-                    nn.Linear(self.net_width, self.net_width), nn.ReLU()
-                    for i in range(self.net_hidden)
-                    ],
-                nn.Linear(self.net_width, 1)
-            ])  
+            layers.append(nn.Linear(3, self.net_width))
+        layers.append(nn.ReLU())
+        for _ in range(self.net_hidden):
+            layers.append(nn.Linear(self.net_width, self.net_width))
+            layers.append(nn.ReLU())
+        layers.append(self.net_width, 1)
+
+        # Luminance
+        self.mlp_luminance = nn.Sequential(*layers)
 
     def weights_biases_init(self):
         for layer in self.mlp_luminance:
