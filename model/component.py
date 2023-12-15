@@ -51,7 +51,7 @@ class ColorToneMapper(nn.Module):
         for _ in range(self.net_hidden):
             layers.append(nn.Linear(self.net_width, self.net_width))
             layers.append(nn.ReLU())
-        layers.append(self.net_width, 1)
+        layers.append(nn.Linear(self.net_width, 1))
 
         # Gray
         if self.input_type == "Gray":
@@ -120,7 +120,7 @@ class LuminanceToneMapper(nn.Module):
         for _ in range(self.net_hidden):
             layers.append(nn.Linear(self.net_width, self.net_width))
             layers.append(nn.ReLU())
-        layers.append(self.net_width, 1)
+        layers.append(nn.Linear(self.net_width, 1))
 
         # Luminance
         self.mlp_luminance = nn.Sequential(*layers)
