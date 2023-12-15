@@ -11,7 +11,7 @@ debug = False
 # training parameters for nerf
 optimize_nerf = True
 lrate = 5e-4
-decay_rate = 0.1
+decay_rate = 0.01
 
 # training parameters for pose 
 optimize_se3 = True
@@ -45,14 +45,14 @@ optimize_rgb_crf = True
 rgb_crf_net_hidden = 0
 rgb_crf_net_width = 128
 rgb_crf_lrate = 5e-4
-decay_rate_rgb_crf = 0.1
+decay_rate_rgb_crf = 0.01
 
 # training parameters for event_crf
 optimize_event_crf = True
 event_crf_net_hidden = 0
 event_crf_net_width = 128
 event_crf_lrate = 5e-4
-decay_rate_event_crf = 0.1
+decay_rate_event_crf = 0.01
 
 i_print = 100
 i_img = 5000
