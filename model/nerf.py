@@ -93,7 +93,7 @@ class NeRF(nn.Module):
 
         return outputs
 
-    def raw2output(self, raw, z_vals, rays_d, raw_noise_std=1.0):
+    def raw2output(self, crf, sensor_type, raw, z_vals, rays_d, raw_noise_std=1.0):
         raw2alpha = lambda raw, dists, act_fn=F.relu: 1. - torch.exp(-act_fn(raw) * dists)
 
         dists = z_vals[..., 1:] - z_vals[..., :-1]
@@ -102,6 +102,8 @@ class NeRF(nn.Module):
         dists = dists * torch.norm(rays_d[..., None, :], dim=-1)
 
         rgb = torch.sigmoid(raw[..., :self.channels])
+
+        rgb = crf(rgb, sensor_type)
 
         noise = 0.
         if raw_noise_std > 0.:
@@ -182,9 +184,13 @@ class Graph(nn.Module):
         spline_rgb_poses = self.get_pose_rgb(args)
 
         # render event
-        ret_event = self.render(spline_poses, ray_idx_event.reshape(-1, 1).squeeze(), args.h_event, args.w_event,
+        ret_event = self.render(spline_poses, 
+                                ray_idx_event.reshape(-1, 1).squeeze(), 
+                                args.h_event, 
+                                args.w_event,
                                 K_event,
                                 args,
+                                sensor_type = "event",
                                 training=True)
         # warping loss
         if False:
@@ -212,12 +218,18 @@ class Graph(nn.Module):
 
         # render rgb
         ray_idx_rgb = torch.randperm(H * W)[:args.pix_rgb // args.deblur_images]
-        ret_rgb = self.render(spline_rgb_poses, ray_idx_rgb.reshape(-1, 1).squeeze(), H, W, K, args,
+        ret_rgb = self.render(spline_rgb_poses, 
+                              ray_idx_rgb.reshape(-1, 1).squeeze(), 
+                              H, 
+                              W, 
+                              K, 
+                              args, 
+                              sensor_type = "rgb",
                               training=True)
 
         return ret_event, ret_rgb, ray_idx_event, ray_idx_rgb, events_accu
 
-    def render(self, poses, ray_idx, H, W, K, args, near=0., far=1., training=False):
+    def render(self, poses, ray_idx, H, W, K, args, sensor_type, near=0., far=1., training=False):
         if training:
             ray_idx_ = ray_idx.repeat(poses.shape[0])
             poses = poses.unsqueeze(1).repeat(1, ray_idx.shape[0], 1, 1).reshape(-1, 3, 4)
@@ -284,7 +296,9 @@ class Graph(nn.Module):
 
         raw_output = self.nerf.forward(pts, viewdirs, args)
 
-        rgb_map, disp_map, acc_map, weights, depth_map, sigma = self.nerf.raw2output(raw_output, z_vals, rays_d)
+        rgb_map, disp_map, acc_map, weights, depth_map, sigma = self.nerf.raw2output(self.camera_response_func,
+                                                                                     sensor_type,
+                                                                                     raw_output, z_vals, rays_d)
 
         if args.N_importance > 0:
             rgb_map_0, disp_map_0, acc_map_0 = rgb_map, disp_map, acc_map
@@ -299,7 +313,6 @@ class Graph(nn.Module):
             raw_output = self.nerf_fine.forward(pts, viewdirs, args)
             rgb_map, disp_map, acc_map, weights, depth_map, sigma = self.nerf_fine.raw2output(raw_output, z_vals,
                                                                                               rays_d)
-
         ret = {'rgb_map': rgb_map, 'disp_map': disp_map, 'acc_map': acc_map}
         if args.N_importance > 0:
             ret['rgb0'] = rgb_map_0
@@ -308,7 +321,15 @@ class Graph(nn.Module):
             ret['sigma'] = sigma
 
         return ret
-
+    
+    def camera_response_func(self, radience, sensor_type):
+        if sensor_type == "rgb":
+            color = self.rgb_crf.forward(radience)
+            return color 
+        elif sensor_type == "event":
+            luminance = self.event_crf.forward(radience)
+            return luminance
+            
     @torch.no_grad()
     def render_video(self, poses, H, W, K, args):
         all_ret = {}
