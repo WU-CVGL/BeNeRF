@@ -142,7 +142,7 @@ def train(args):
         print('Model Load Done!')
     else:
         graph = model.build_network(args, poses=poses, event_poses=ev_poses)
-        optimizer, optimizer_pose, optimizer_trans = model.setup_optimizer(args)
+        optimizer, optimizer_pose, optimizer_trans, optimizer_rgb_crf, optimizer_event_crf = model.setup_optimizer(args)
         print('Not Load Model!')
 
     print('Begin')
@@ -180,6 +180,8 @@ def train(args):
         optimizer_pose.zero_grad()
         optimizer_trans.zero_grad()
         optimizer.zero_grad()
+        optimizer_rgb_crf.zero_grad()
+        optimizer_event_crf.zero_grad()
 
         # compute loss
         loss = 0
@@ -340,6 +342,10 @@ def train(args):
             optimizer_pose.step()
         if args.optimize_event:
             optimizer_trans.step()
+        if args.optimize_rgb_crf:
+            optimizer_rgb_crf.step()
+        if args.optimize_rgb_crf:
+            optimizer_event_crf.step()
 
         # update learning rate
         decay_rate = args.decay_rate
