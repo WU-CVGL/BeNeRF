@@ -77,7 +77,7 @@ class ColorToneMapper(nn.Module):
                         init.xavier_uniform_(layer.weight)
                         init.zeros_(layer.bias)        
           
-    def forward(self, radience, x, input_exps, noise=None, output_grads=False):
+    def forward(self, radience):
         # logarithmic domain
         log_radience = safelog(radience)
 
@@ -131,7 +131,7 @@ class LuminanceToneMapper(nn.Module):
                 init.xavier_uniform_(layer.weight)
                 init.zeros_(layer.bias)
 
-    def forward(self, radience, x, input_exps, noise=None, output_grads=False):
+    def forward(self, radience):
         # logarithmic domain
         log_radience = safelog(radience)
 
