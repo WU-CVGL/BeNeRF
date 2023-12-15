@@ -436,9 +436,9 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     # setup seed (for exp)
-    torch.set_default_dtype(torch.float32)
-    torch.set_default_device('cuda')
-    #torch.set_default_tensor_type('torch.cuda.FloatTensor')
+    #torch.set_default_dtype(torch.float32)
+    #torch.set_default_device('cuda')
+    torch.set_default_tensor_type('torch.cuda.FloatTensor')
     os.environ['PYTHONHASHSEED'] = str(0)
     random.seed(args.seed)
     np.random.seed(args.seed)
