@@ -1,18 +1,19 @@
-project = synthetic_unreal_livingroom_9
+project = synthetic_unreal_livingroom_gray_9
 expname = 9
-datadir = ~/Dataset/synthetic_unreal/livingroom
-logdir = ./logs/synthetic_unreal/livingroom/cubic_optimpose/9
+datadir = ~/Dataset/synthetic_unreal/livingroom_gray
+logdir = ./logs/synthetic_unreal/livingroom_gray/cubic_optimpose/9
 idx = 9
 viewer = wandb
-model = cubic_optimpose
+model = test
 depth = True
 debug = False
 
-# training parameters
+# training parameters for nerf
 optimize_nerf = True
 lrate = 5e-4
 decay_rate = 0.1
 
+# training parameters for pose 
 optimize_se3 = True
 loadpose = False
 pose_lrate = 5e-4
@@ -22,6 +23,7 @@ focal_y = 548.409
 cx = 384
 cy = 240
 
+# training parameters for transform
 optimize_event = True
 loadtrans = False
 threshold = 0.1
@@ -38,6 +40,20 @@ event_shift_end = 0
 event_time_shift = 0
 dataset_event_split = 500
 
+# training parameters for rgb_crf
+optimize_rgb_crf = True
+rgb_crf_net_hidden = 0
+rgb_crf_net_width = 128
+rgb_crf_lrate = 5e-4
+decay_rate_rgb_crf = 0.1
+
+# training parameters for event_crf
+optimize_event_crf = True
+event_crf_net_hidden = 0
+event_crf_net_width = 128
+event_crf_lrate = 5e-4
+decay_rate_event_crf = 0.1
+
 i_print = 100
 i_img = 5000
 i_video = 80000
@@ -47,7 +63,7 @@ max_iter = 80000
 rgb_loss = True
 rgb_blur_loss = False
 
-channels = 3
+channels = 1
 
 pix_event = 1024
 pix_rgb = 1024
