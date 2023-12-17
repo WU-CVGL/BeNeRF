@@ -414,11 +414,11 @@ def train(args):
                     img_mid = imgs[len(imgs) // 2] / 255.
                     img_mid = torch.unsqueeze(torch.tensor(img_mid, dtype=torch.float32), dim=0)
                     test_mid_psnr = compute_img_metric(img_mid, imgtests, metric="psnr")
-                    test_mid_ssim = compute_img_metric(img_mid, imgtests, metric="ssim")
+                    #test_mid_ssim = compute_img_metric(img_mid, imgtests, metric="ssim")
                     test_mid_lpips = compute_img_metric(img_mid, imgtests, metric="lpips")
 
                     logger.write("test_mid_psnr", test_mid_psnr)
-                    logger.write("test_mid_ssim", test_mid_ssim)
+                    #logger.write("test_mid_ssim", test_mid_ssim)
                     logger.write("test_mid_lpips", test_mid_lpips)
                 if len(depth) > 0:
                     logger.write_img("test_depth_mid", depth[len(depth) // 2])
