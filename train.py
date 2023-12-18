@@ -433,11 +433,12 @@ def train(args):
             render_poses = graph.get_pose_rgb(args, 90)
 
             with torch.no_grad():
-                rgbs, disps = render_video_test(graph, render_poses, H_render, W_render, K_render, args)
-            print('Done, saving', rgbs.shape, disps.shape)
+                rgbs, radiences, disps = render_video_test(graph, render_poses, H_render, W_render, K_render, args)
+            print('Done, saving', rgbs.shape, radiences.shape, disps.shape)
             moviebase = os.path.join(logdir, '{}_spiral_{:06d}_'.format(args.expname, i))
-            imageio.mimsave(moviebase + 'rgb.mp4', imgutils.to8bit(rgbs), fps=30, quality=8)
-            imageio.mimsave(moviebase + 'disp.mp4', imgutils.to8bit(disps / np.max(disps)), fps=30, quality=8)
+            imageio.mimsave(moviebase + 'rgb.mp4', imgutils.to8bit(rgbs), fps = 30, quality = 8)
+            imageio.mimsave(moviebase + 'radience.mp4', radiences, fps = 30, quality = 8)
+            imageio.mimsave(moviebase + 'disp.mp4', imgutils.to8bit(disps / np.max(disps)), fps = 30, quality = 8)
 
         logger.update_buffer()
         global_step += 1

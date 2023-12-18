@@ -102,17 +102,24 @@ def sample_pdf(bins, weights, N_samples, det=False, pytest=False):
 def render_video_test(graph, render_poses, H, W, K, args):
     rgbs = []
     disps = []
+    radiences = []
     for i, pose in enumerate(tqdm(render_poses)):
         pose = pose[None, :3, :4]
-        ret = graph.render_video(pose[:3, :4], H, W, K, args)
+        ret = graph.render_video(pose[:3, :4], H, W, K, args, type = "rgb")
+        ret_radience = graph.render_video(pose[:3, :4], H, W, K, args, type = "radience")
         rgbs.append(ret['rgb_map'].cpu().numpy())
         disps.append(ret['disp_map'].cpu().numpy())
+
+        radience = ret_radience['rgb_map'].cpu().numpy()
+        radience = tonemap(radience / np.max(radience))
+        radiences.append(radience)
+
         if i == 0:
             print(ret['rgb_map'].shape, ret['disp_map'].shape)
     rgbs = np.stack(rgbs, 0)
     disps = np.stack(disps, 0)
-
-    return rgbs, disps
+    radiences = np.stack(radiences, 0)
+    return rgbs, radiences, disps
 
 
 def render_image_test(i, graph, render_poses, H, W, K, args, logdir, dir=None, need_depth=True):
