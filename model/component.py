@@ -79,13 +79,13 @@ class ColorToneMapper(nn.Module):
           
     def forward(self, radience):
         # logarithmic domain
-        log_radience = safelog(radience)
+        log_radience = radience
 
         # tone mapping for camera data
         # Gray
         if self.input_type == "Gray":
             raw_color = self.mlp_gray(log_radience)
-            color = F.tanh(raw_color)
+            #color = F.tanh(raw_color)
         # RGB
         elif self.input_type == "RGB":
             log_radience_r = log_radience[:, 0]
@@ -97,9 +97,17 @@ class ColorToneMapper(nn.Module):
             raw_color_b = self.mlp_b(log_radience_b)
 
             raw_color = torch.cat([raw_color_r, raw_color_g, raw_color_b], -1)
-            color = F.tanh(raw_color)
+            #color = F.tanh(raw_color)
 
-        return color
+        return raw_color
+    
+    def constraint_radience_scale(self, fixed_value = 0.5):
+        #log_radience = torch.zeros([3,1])
+        if self.input_type == "Gray":
+            log_radience_0 = 0
+            color_0 = torch.sigmoid(self.mlp_gray(log_radience_0))
+        
+        return torch.mean((color_0 - fixed_value) ** 2) 
 
 class LuminanceToneMapper(nn.Module):
     '''A network for luminance tone-mapping.'''
@@ -133,10 +141,10 @@ class LuminanceToneMapper(nn.Module):
 
     def forward(self, radience):
         # logarithmic domain
-        log_radience = safelog(radience)
+        log_radience = radience
 
         # tone mapping for event data
         raw_luminance = self.mlp_luminance(log_radience)
-        luminance = F.relu(raw_luminance)
+        #luminance = F.relu(raw_luminance)
 
-        return luminance
+        return raw_luminance

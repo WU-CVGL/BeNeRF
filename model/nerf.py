@@ -101,12 +101,13 @@ class NeRF(nn.Module):
 
         dists = dists * torch.norm(rays_d[..., None, :], dim=-1)
 
-        rgb = torch.sigmoid(raw[..., :self.channels])
+        rgb = raw[..., :self.channels]
 
         if enable_crf == True:
             rgb = crf_func(rgb, sensor_type)
+            rgb = torch.sigmoid(rgb)
         elif enable_crf == False:
-            pass
+            rgb = torch.exp(rgb)
 
         noise = 0.
         if raw_noise_std > 0.:
@@ -195,7 +196,7 @@ class Graph(nn.Module):
                                 args,
                                 enable_crf = True,
                                 sensor_type = "event",
-                                training=True)
+                                training = True)
         # warping loss
         if False:
             # get the pixel of event camera image
@@ -230,7 +231,7 @@ class Graph(nn.Module):
                               args,
                               enable_crf = True, 
                               sensor_type = "rgb",
-                              training=True)
+                              training = True)
 
         return ret_event, ret_rgb, ray_idx_event, ray_idx_rgb, events_accu
 
@@ -343,20 +344,32 @@ class Graph(nn.Module):
             return luminance
             
     @torch.no_grad()
-    def render_video(self, poses, H, W, K, args):
+    def render_video(self, poses, H, W, K, args, type):
         all_ret = {}
         ray_idx = torch.arange(0, H * W)
+        type = str(type)
         for i in range(0, ray_idx.shape[0], args.chunk):
-
-            ret = self.render(poses, 
-                              ray_idx[i:i + args.chunk], 
-                              H, 
-                              W, 
-                              K, 
-                              args, 
-                              enable_crf = False, 
-                              sensor_type = None, 
-                              training = False)
+            
+            if type == "radience":
+                ret = self.render(poses, 
+                                ray_idx[i:i + args.chunk], 
+                                H, 
+                                W, 
+                                K, 
+                                args, 
+                                enable_crf = False, 
+                                sensor_type = None, 
+                                training = False)
+            elif type == "rgb":
+                ret = self.render(poses, 
+                                ray_idx[i:i + args.chunk], 
+                                H, 
+                                W, 
+                                K, 
+                                args, 
+                                enable_crf = True, 
+                                sensor_type = "rgb", 
+                                training = False)              
             
             for k in ret:
                 if k not in all_ret:
