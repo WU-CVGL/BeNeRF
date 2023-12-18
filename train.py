@@ -303,12 +303,12 @@ def train(args):
                 extras_blur = extras_blur.reshape(-1, args.channels)
 
             # rgb loss
-            rgb_loss_fine = mse_loss(rgb_blur, target_s)
+            rgb_loss_fine = mse_loss(rgb_blur, target_s) + graph.rgb_crf.constraint_radience_scale()
             rgb_loss_fine *= args.rgb_coefficient
             logger.write("train_rgb_loss_fine", rgb_loss_fine.item())
 
             if 'rgb0' in ret_rgb:
-                rgb_loss_coarse = mse_loss(extras_blur, target_s)
+                rgb_loss_coarse = mse_loss(extras_blur, target_s) + graph.rgb_crf.constraint_radience_scale()
                 rgb_loss_coarse *= args.rgb_coefficient
                 logger.write("train_rgb_loss_coarse", rgb_loss_coarse.item())
 
@@ -406,11 +406,16 @@ def train(args):
                                             seg_num=args.deblur_images if args.deblur_images % 2 == 1 else args.deblur_images + 1)
 
             with torch.no_grad():
-                imgs, depth = render_image_test(i, graph, test_poses, H_render, W_render, K_render, args, logdir,
+                imgs, radiences, depth = render_image_test(i, graph, test_poses, H_render, W_render, K_render, args, logdir,
                                                 dir='images_test', need_depth=args.depth)
+                
+                
                 if len(imgs) > 0:
                     logger.write_img("test_img_mid", imgs[len(imgs) // 2])
                     logger.write_imgs("test_img_all", imgs)
+                    logger.write_img("test_radience_mid", radiences[len(radiences) // 2])
+                    logger.write_imgs("test_radience_all", radiences)
+                    
                     img_mid = imgs[len(imgs) // 2] / 255.
                     img_mid = torch.unsqueeze(torch.tensor(img_mid, dtype=torch.float32), dim=0)
                     test_mid_psnr = compute_img_metric(img_mid, imgtests, metric="psnr")
