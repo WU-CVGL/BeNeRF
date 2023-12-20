@@ -102,54 +102,55 @@ def sample_pdf(bins, weights, N_samples, det=False, pytest=False):
 def render_video_test(graph, render_poses, H, W, K, args):
     rgbs = []
     disps = []
-    radiences = []
+    #radiences = []
     for i, pose in enumerate(tqdm(render_poses)):
         pose = pose[None, :3, :4]
         ret = graph.render_video(pose[:3, :4], H, W, K, args, type = "rgb")
-        ret_radience = graph.render_video(pose[:3, :4], H, W, K, args, type = "radience")
+        #ret_radience = graph.render_video(pose[:3, :4], H, W, K, args, type = "radience")
         rgbs.append(ret['rgb_map'].cpu().numpy())
         disps.append(ret['disp_map'].cpu().numpy())
 
-        radience = ret_radience['rgb_map'].cpu().numpy()
-        radience = tonemap(radience / np.max(radience))
-        radiences.append(radience)
+        #radience = ret_radience['rgb_map'].cpu().numpy()
+        #radience = tonemap(radience / np.max(radience))
+        #radiences.append(radience)
 
         if i == 0:
             print(ret['rgb_map'].shape, ret['disp_map'].shape)
     rgbs = np.stack(rgbs, 0)
     disps = np.stack(disps, 0)
-    radiences = np.stack(radiences, 0)
-    return rgbs, radiences, disps
+    #radiences = np.stack(radiences, 0)
+    return rgbs, disps
 
 
 def render_image_test(i, graph, render_poses, H, W, K, args, logdir, dir=None, need_depth=True):
     img_dir = os.path.join(logdir, dir, 'img_test_{:06d}'.format(i))
     os.makedirs(img_dir, exist_ok=True)
     imgs = []
-    radiences = []
+    #radiences = []
     depth = []
 
     for j, pose in enumerate(tqdm(render_poses)):
         pose = pose[None, :3, :4]
         ret = graph.render_video(pose[:3, :4], H, W, K, args, type = "rgb")
-        ret_radience = graph.render_video(pose[:3, :4], H, W, K, args, type = "radience")
+        #ret_radience = graph.render_video(pose[:3, :4], H, W, K, args, type = "radience")
         rgbs = ret['rgb_map'].cpu().numpy()
-        radience = ret_radience['rgb_map'].cpu().numpy()
+        #radience = ret_radience['rgb_map'].cpu().numpy()
         rgb8 = imgutils.to8bit(rgbs)
-        radience = tonemap(radience / np.max(radience))
+        #radience = tonemap(radience / np.max(radience))
         imwrite(os.path.join(img_dir, dir[11:] + 'img_{:03d}.png'.format(j)), rgb8.squeeze(),
                 mode="L" if args.channels == 1 else "RGB")
-        imwrite(os.path.join(img_dir, dir[11:] + 'radience_{:03d}.png'.format(j)), rgb8.squeeze(),
-                mode="L" if args.channels == 1 else "RGB")
+        # imwrite(os.path.join(img_dir, dir[11:] + 'radience_{:03d}.png'.format(j)), rgb8.squeeze(),
+        #         mode="L" if args.channels == 1 else "RGB")
         imgs.append(rgb8)
-        radiences.append(radience)
+        #radiences.append(radience)
         if need_depth:
             depths = ret['disp_map'].cpu().numpy()
             depths_ = depths / np.max(depths)
             depth8 = imgutils.to8bit(depths_)
             imwrite(os.path.join(img_dir, 'depth_{:03d}.png'.format(j)), depth8)
             depth.append(depth8)
-    return imgs, radiences, depth
+    return imgs, depth
+    #return imgs, radiences, depth
 
 
 def compute_poses_idx(img_idx, args):
