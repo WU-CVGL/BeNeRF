@@ -102,12 +102,12 @@ class NeRF(nn.Module):
         dists = dists * torch.norm(rays_d[..., None, :], dim=-1)
 
         rgb = raw[..., :self.channels]
-
-        if enable_crf == True:
-            rgb = crf_func(rgb, sensor_type)
-            rgb = torch.sigmoid(rgb)
-        elif enable_crf == False:
-            rgb = torch.exp(rgb)
+        rgb = torch.sigmoid(rgb)
+        # if enable_crf == True:
+        #     rgb = crf_func(rgb, sensor_type)
+        #     rgb = torch.sigmoid(rgb)
+        # elif enable_crf == False:
+        #     rgb = torch.exp(rgb)
 
         noise = 0.
         if raw_noise_std > 0.:
@@ -197,6 +197,7 @@ class Graph(nn.Module):
                                 enable_crf = True,
                                 sensor_type = "event",
                                 training = True)
+        
         # warping loss
         if False:
             # get the pixel of event camera image

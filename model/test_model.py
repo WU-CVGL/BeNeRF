@@ -11,9 +11,9 @@ class Model(nerf.Model):
     def build_network(self, args, poses=None, event_poses=None):
         self.graph.rgb_pose = CameraPose(4)
         self.graph.event = EventPose(4)
-        self.graph.rgb_crf = ColorToneMapper(hidden = args.rgb_crf_net_hidden, 
-                                             width = args.rgb_crf_net_width, 
-                                             input_type = "Gray")
+        # self.graph.rgb_crf = ColorToneMapper(hidden = args.rgb_crf_net_hidden, 
+        #                                      width = args.rgb_crf_net_width, 
+        #                                      input_type = "Gray")
         self.graph.event_crf = LuminanceToneMapper(hidden = args.event_crf_net_hidden, 
                                                    width = args.event_crf_net_width, 
                                                    input_type = "Gray")
@@ -26,7 +26,7 @@ class Model(nerf.Model):
             (torch.rand(1, 6) * 0.01, torch.rand(1, 6) * 0.01, torch.rand(1, 6) * 0.01, torch.rand(1, 6) * 0.01))
         self.graph.event.params.weight.data = torch.nn.Parameter(parm_e)
 
-        self.graph.rgb_crf.weights_biases_init()
+        # self.graph.rgb_crf.weights_biases_init()
         self.graph.event_crf.weights_biases_init()        
 
         return self.graph
@@ -43,13 +43,13 @@ class Model(nerf.Model):
         grad_vars_transform = list(self.graph.event.parameters())
         self.optim_transform = torch.optim.Adam(params = grad_vars_transform, lr = args.transform_lrate)
         
-        grad_vars_rgb_crf = list(self.graph.rgb_crf.parameters())
-        self.optim_rgb_crf = torch.optim.Adam(params = grad_vars_rgb_crf, lr = args.rgb_crf_lrate)
+        # grad_vars_rgb_crf = list(self.graph.rgb_crf.parameters())
+        # self.optim_rgb_crf = torch.optim.Adam(params = grad_vars_rgb_crf, lr = args.rgb_crf_lrate)
 
         grad_vars_event_crf = list(self.graph.event_crf.parameters())
         self.optim_event_crf = torch.optim.Adam(params = grad_vars_event_crf, lr = args.event_crf_lrate)
-        return self.optim, self.optim_pose, self.optim_transform, \
-               self.optim_rgb_crf, self.optim_event_crf
+
+        return self.optim, self.optim_pose, self.optim_transform, self.optim_event_crf
 
 
 class Graph(nerf.Graph):
