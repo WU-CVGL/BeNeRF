@@ -142,7 +142,7 @@ def train(args):
         print('Model Load Done!')
     else:
         graph = model.build_network(args, poses=poses, event_poses=ev_poses)
-        optimizer, optimizer_pose, optimizer_trans, optimizer_rgb_crf, optimizer_event_crf = model.setup_optimizer(args)
+        optimizer, optimizer_pose, optimizer_trans, optimizer_event_crf = model.setup_optimizer(args)
         print('Not Load Model!')
 
     print('Begin')
@@ -176,11 +176,21 @@ def train(args):
         # observed eta
         target_s = events_accu.reshape(-1, 1)[ray_idx_event]
 
+        # map color domain to luminance  domain
+        ret_gray1_fine = graph.event_crf.forward(ret_gray1['rgb_map'])
+        ret_gray1_coarse = graph.event_crf.forward(ret_gray1['rgb0'])
+
+        ret_gray2_fine = graph.event_crf.forward(ret_gray2['rgb_map'])
+        ret_gray2_coarse = graph.event_crf.forward(ret_gray2['rgb0'])
+
+        ret_gray1 = {'rgb_map': ret_gray1_fine, 'rgb0': ret_gray1_coarse}
+        ret_gray2 = {'rgb_map': ret_gray2_fine, 'rgb0': ret_gray2_coarse}
+
         # zero grad
         optimizer_pose.zero_grad()
         optimizer_trans.zero_grad()
         optimizer.zero_grad()
-        optimizer_rgb_crf.zero_grad()
+        #optimizer_rgb_crf.zero_grad()
         optimizer_event_crf.zero_grad()
 
         # compute loss
@@ -303,12 +313,12 @@ def train(args):
                 extras_blur = extras_blur.reshape(-1, args.channels)
 
             # rgb loss
-            rgb_loss_fine = mse_loss(rgb_blur, target_s) + graph.rgb_crf.constraint_radience_scale()
+            rgb_loss_fine = mse_loss(rgb_blur, target_s)
             rgb_loss_fine *= args.rgb_coefficient
             logger.write("train_rgb_loss_fine", rgb_loss_fine.item())
 
             if 'rgb0' in ret_rgb:
-                rgb_loss_coarse = mse_loss(extras_blur, target_s) + graph.rgb_crf.constraint_radience_scale()
+                rgb_loss_coarse = mse_loss(extras_blur, target_s) 
                 rgb_loss_coarse *= args.rgb_coefficient
                 logger.write("train_rgb_loss_coarse", rgb_loss_coarse.item())
 
@@ -342,9 +352,9 @@ def train(args):
             optimizer_pose.step()
         if args.optimize_event:
             optimizer_trans.step()
-        if args.optimize_rgb_crf:
-            optimizer_rgb_crf.step()
-        if args.optimize_rgb_crf:
+        # if args.optimize_rgb_crf:
+        #     optimizer_rgb_crf.step()
+        if args.optimize_event_crf:
             optimizer_event_crf.step()
 
         # update learning rate
@@ -367,11 +377,11 @@ def train(args):
         for param_group in optimizer_trans.param_groups:
             param_group['lr'] = new_lrate_trans
 
-        decay_rate_rgb_crf = args.decay_rate_rgb_crf
-        new_lrate_rgb_crf = args.rgb_crf_lrate * (decay_rate_rgb_crf ** (global_step / decay_steps))
-        logger.write("lr_rgb_crf", new_lrate_rgb_crf)
-        for param_group in optimizer_rgb_crf.param_groups:
-            param_group['lr'] = new_lrate_rgb_crf
+        # decay_rate_rgb_crf = args.decay_rate_rgb_crf
+        # new_lrate_rgb_crf = args.rgb_crf_lrate * (decay_rate_rgb_crf ** (global_step / decay_steps))
+        # logger.write("lr_rgb_crf", new_lrate_rgb_crf)
+        # for param_group in optimizer_rgb_crf.param_groups:
+        #     param_group['lr'] = new_lrate_rgb_crf
 
         deacy_rate_event_crf = args.decay_rate_event_crf
         new_lrate_event_crf = args.event_crf_lrate * (deacy_rate_event_crf ** (global_step / decay_steps))
@@ -406,15 +416,15 @@ def train(args):
                                             seg_num=args.deblur_images if args.deblur_images % 2 == 1 else args.deblur_images + 1)
 
             with torch.no_grad():
-                imgs, radiences, depth = render_image_test(i, graph, test_poses, H_render, W_render, K_render, args, logdir,
+                imgs, depth = render_image_test(i, graph, test_poses, H_render, W_render, K_render, args, logdir,
                                                 dir='images_test', need_depth=args.depth)
                 
                 
                 if len(imgs) > 0:
                     logger.write_img("test_img_mid", imgs[len(imgs) // 2])
                     logger.write_imgs("test_img_all", imgs)
-                    logger.write_img("test_radience_mid", radiences[len(radiences) // 2])
-                    logger.write_imgs("test_radience_all", radiences)
+                    # logger.write_img("test_radience_mid", radiences[len(radiences) // 2])
+                    # logger.write_imgs("test_radience_all", radiences)
                     
                     img_mid = imgs[len(imgs) // 2] / 255.
                     img_mid = torch.unsqueeze(torch.tensor(img_mid, dtype=torch.float32), dim=0)
@@ -433,11 +443,11 @@ def train(args):
             render_poses = graph.get_pose_rgb(args, 90)
 
             with torch.no_grad():
-                rgbs, radiences, disps = render_video_test(graph, render_poses, H_render, W_render, K_render, args)
-            print('Done, saving', rgbs.shape, radiences.shape, disps.shape)
+                rgbs, disps = render_video_test(graph, render_poses, H_render, W_render, K_render, args)
+            print('Done, saving', rgbs.shape, disps.shape)
             moviebase = os.path.join(logdir, '{}_spiral_{:06d}_'.format(args.expname, i))
             imageio.mimsave(moviebase + 'rgb.mp4', imgutils.to8bit(rgbs), fps = 30, quality = 8)
-            imageio.mimsave(moviebase + 'radience.mp4', radiences, fps = 30, quality = 8)
+            #imageio.mimsave(moviebase + 'radience.mp4', radiences, fps = 30, quality = 8)
             imageio.mimsave(moviebase + 'disp.mp4', imgutils.to8bit(disps / np.max(disps)), fps = 30, quality = 8)
 
         logger.update_buffer()
