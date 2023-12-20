@@ -1,5 +1,5 @@
 project = synthetic_unreal_livingroom_gray_9
-expname = 9
+expname = map_event_to_color_1024_1024
 datadir = ~/Dataset/synthetic_unreal/livingroom_gray
 logdir = ./logs/synthetic_unreal/livingroom_gray/cubic_optimpose/9
 idx = 9
@@ -41,7 +41,7 @@ event_time_shift = 0
 dataset_event_split = 500
 
 # training parameters for rgb_crf
-optimize_rgb_crf = True
+optimize_rgb_crf = False
 rgb_crf_net_hidden = 0
 rgb_crf_net_width = 128
 rgb_crf_lrate = 5e-4
@@ -55,7 +55,7 @@ event_crf_lrate = 5e-4
 decay_rate_event_crf = 0.01
 
 i_print = 100
-i_img = 5000
+i_img = 80000
 i_video = 80000
 i_weights = 80000
 max_iter = 80000
