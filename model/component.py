@@ -104,7 +104,7 @@ class ColorToneMapper(nn.Module):
     def constraint_radience_scale(self, fixed_value = 0.5):
         #log_radience = torch.zeros([3,1])
         if self.input_type == "Gray":
-            log_radience_0 = 0
+            log_radience_0 = torch.Tensor([0])
             color_0 = torch.sigmoid(self.mlp_gray(log_radience_0))
         
         return torch.mean((color_0 - fixed_value) ** 2) 
