@@ -98,7 +98,7 @@ class ColorToneMapper(nn.Module):
 
             raw_color = torch.cat([raw_color_r, raw_color_g, raw_color_b], -1)
             #color = F.tanh(raw_color)
-
+        raw_color = torch.sigmoid(raw_color)
         return raw_color
     
     def constraint_radience_scale(self, fixed_value = 0.5):
@@ -137,14 +137,13 @@ class LuminanceToneMapper(nn.Module):
         for layer in self.mlp_luminance:
             if isinstance(layer, nn.Linear):
                 init.xavier_uniform_(layer.weight)
-                init.zeros_(layer.bias)
+                init.ones_(layer.bias)
 
     def forward(self, radience):
         # logarithmic domain
         log_radience = radience
-
         # tone mapping for event data
         raw_luminance = self.mlp_luminance(log_radience)
         #luminance = F.relu(raw_luminance)
-
+        raw_luminance = torch.sigmoid(raw_luminance)
         return raw_luminance
