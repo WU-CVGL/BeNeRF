@@ -1,0 +1,87 @@
+project = real_board_gray_67
+expname = map_color_to_event_optim_T_hidden_0_2048_3072
+datadir = ~/ssd_data/wp-event/real/board_gray
+logdir = ./logs/real_board_gray_67
+idx = 67
+viewer = wandb
+model = test
+depth = True
+debug = False
+
+# training parameters for nerf
+optimize_nerf = True
+lrate = 5e-4
+decay_rate = 0.01
+
+# training parameters for pose 
+optimize_se3 = True
+loadpose = False
+pose_lrate = 5e-4
+decay_rate_pose = 0.01
+focal_x = 1726.5549268321315
+focal_y = 1749.8830080420669
+cx = 680.9330909127963
+cy = 598.3856244490474
+
+# training parameters for transform
+optimize_event = True
+loadtrans = False
+threshold = -1
+transform_lrate = 5e-4
+decay_rate_transform = 0.01
+focal_event_x = 661.6167070526125
+focal_event_y = 668.9502640387101
+event_cx = 331.22775942403223
+event_cy = 235.55203469569062
+w_event = 640
+h_event = 480
+event_shift_start = 0
+event_shift_end = 0
+event_time_shift = 0
+dataset_event_split = 500
+
+# training parameters for rgb_crf
+optimize_rgb_crf = False
+rgb_crf_net_hidden = 0
+rgb_crf_net_width = 128
+rgb_crf_lrate = 5e-4
+decay_rate_rgb_crf = 0.01
+
+# training parameters for event_crf
+optimize_event_crf = True
+event_crf_net_hidden = 0
+event_crf_net_width = 128
+event_crf_lrate = 5e-4
+decay_rate_event_crf = 0.01
+
+i_print = 100
+i_img = 5000
+i_video = 80000
+i_weights = 80000
+max_iter = 80000
+
+rgb_loss = True
+rgb_blur_loss = False
+
+channels = 1
+
+pix_event = 2048
+pix_rgb = 3072
+
+window_percent = 0.1
+random_window = True
+time_window = True
+
+N_samples = 64
+N_importance = 64
+
+use_viewdirs = True
+raw_noise_std = 0
+
+load_weights = False
+weight_iter = 10000
+
+deblur_images = 19
+event_coefficient = 0.1
+rgb_coefficient = 1.0
+rgb_blur_coefficient = 0.3
