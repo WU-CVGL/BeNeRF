@@ -142,7 +142,7 @@ def train(args):
         print('Model Load Done!')
     else:
         graph = model.build_network(args, poses=poses, event_poses=ev_poses)
-        optimizer, optimizer_pose, optimizer_trans, optimizer_event_crf = model.setup_optimizer(args)
+        optimizer, optimizer_pose, optimizer_trans, optimizer_rgb_crf, optimizer_event_crf = model.setup_optimizer(args)
         print('Not Load Model!')
 
     print('Begin')
@@ -176,21 +176,27 @@ def train(args):
         # observed eta
         target_s = events_accu.reshape(-1, 1)[ray_idx_event]
 
-        # map color domain to luminance  domain
-        ret_gray1_fine = graph.event_crf.forward(ret_gray1['rgb_map'])
-        ret_gray1_coarse = graph.event_crf.forward(ret_gray1['rgb0'])
+        # use crf for event data
+        if args.optimize_event_crf:
+            ret_gray1_fine = graph.event_crf.forward(ret_gray1['rgb_map'])
+            ret_gray1_coarse = graph.event_crf.forward(ret_gray1['rgb0'])
 
-        ret_gray2_fine = graph.event_crf.forward(ret_gray2['rgb_map'])
-        ret_gray2_coarse = graph.event_crf.forward(ret_gray2['rgb0'])
+            ret_gray2_fine = graph.event_crf.forward(ret_gray2['rgb_map'])
+            ret_gray2_coarse = graph.event_crf.forward(ret_gray2['rgb0'])
 
-        ret_gray1 = {'rgb_map': ret_gray1_fine, 'rgb0': ret_gray1_coarse}
-        ret_gray2 = {'rgb_map': ret_gray2_fine, 'rgb0': ret_gray2_coarse}
+            ret_gray1 = {'rgb_map': ret_gray1_fine, 'rgb0': ret_gray1_coarse}
+            ret_gray2 = {'rgb_map': ret_gray2_fine, 'rgb0': ret_gray2_coarse}
+
+        if args.optimize_rgb_crf:
+            ret_rgb_fine = graph.rgb_crf.forward(ret_rgb['rgb_map'])
+            ret_rgb_coarse = graph.rgb_crf.forward(ret_rgb['rgb0'])
+            ret_rgb = {'rgb_map': ret_rgb_fine, 'rgb0': ret_rgb_coarse}
 
         # zero grad
         optimizer_pose.zero_grad()
         optimizer_trans.zero_grad()
         optimizer.zero_grad()
-        #optimizer_rgb_crf.zero_grad()
+        optimizer_rgb_crf.zero_grad()
         optimizer_event_crf.zero_grad()
 
         # compute loss
@@ -352,8 +358,8 @@ def train(args):
             optimizer_pose.step()
         if args.optimize_event:
             optimizer_trans.step()
-        # if args.optimize_rgb_crf:
-        #     optimizer_rgb_crf.step()
+        if args.optimize_rgb_crf:
+            optimizer_rgb_crf.step()
         if args.optimize_event_crf:
             optimizer_event_crf.step()
 
@@ -377,11 +383,11 @@ def train(args):
         for param_group in optimizer_trans.param_groups:
             param_group['lr'] = new_lrate_trans
 
-        # decay_rate_rgb_crf = args.decay_rate_rgb_crf
-        # new_lrate_rgb_crf = args.rgb_crf_lrate * (decay_rate_rgb_crf ** (global_step / decay_steps))
-        # logger.write("lr_rgb_crf", new_lrate_rgb_crf)
-        # for param_group in optimizer_rgb_crf.param_groups:
-        #     param_group['lr'] = new_lrate_rgb_crf
+        decay_rate_rgb_crf = args.decay_rate_rgb_crf
+        new_lrate_rgb_crf = args.rgb_crf_lrate * (decay_rate_rgb_crf ** (global_step / decay_steps))
+        logger.write("lr_rgb_crf", new_lrate_rgb_crf)
+        for param_group in optimizer_rgb_crf.param_groups:
+            param_group['lr'] = new_lrate_rgb_crf
 
         deacy_rate_event_crf = args.decay_rate_event_crf
         new_lrate_event_crf = args.event_crf_lrate * (deacy_rate_event_crf ** (global_step / decay_steps))
