@@ -328,6 +328,7 @@ def spline_event_cubic(pose0, pose1, pose2, pose3, sample_time):
 
 
 def spline_cubic(pose0, pose1, pose2, pose3, poses_number, NUM):
+    # sample_time: [0, 1] 
     sample_time = poses_number / (NUM - 1)
     # parallel
     pos_0 = torch.where(sample_time == 0)
