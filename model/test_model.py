@@ -10,10 +10,10 @@ class Model(nerf.Model):
 
     def build_network(self, args, poses=None, event_poses=None):
         self.graph.rgb_pose = CameraPose(4)
-        self.graph.event = EventPose(4)
-        # self.graph.rgb_crf = ColorToneMapper(hidden = args.rgb_crf_net_hidden, 
-        #                                      width = args.rgb_crf_net_width, 
-        #                                      input_type = "Gray")
+        self.graph.transform = EventPose(1)
+        self.graph.rgb_crf = ColorToneMapper(hidden = args.rgb_crf_net_hidden, 
+                                             width = args.rgb_crf_net_width, 
+                                             input_type = "Gray")
         self.graph.event_crf = LuminanceToneMapper(hidden = args.event_crf_net_hidden, 
                                                    width = args.event_crf_net_width, 
                                                    input_type = "Gray")
@@ -22,11 +22,11 @@ class Model(nerf.Model):
             (torch.rand(1, 6) * 0.01, torch.rand(1, 6) * 0.01, torch.rand(1, 6) * 0.01, torch.rand(1, 6) * 0.01))
         self.graph.rgb_pose.params.weight.data = torch.nn.Parameter(parm_rgb)
 
-        parm_e = torch.concatenate(
-            (torch.rand(1, 6) * 0.01, torch.rand(1, 6) * 0.01, torch.rand(1, 6) * 0.01, torch.rand(1, 6) * 0.01))
-        self.graph.event.params.weight.data = torch.nn.Parameter(parm_e)
+        # assign zero weights to graph.transform.params
+        parm_e = torch.nn.Parameter(torch.zeros(1, 6))
+        self.graph.transform.params.weight.data = torch.nn.Parameter(parm_e)
 
-        # self.graph.rgb_crf.weights_biases_init()
+        self.graph.rgb_crf.weights_biases_init()
         self.graph.event_crf.weights_biases_init()        
 
         return self.graph
@@ -40,30 +40,32 @@ class Model(nerf.Model):
         grad_vars_pose = list(self.graph.rgb_pose.parameters())
         self.optim_pose = torch.optim.Adam(params = grad_vars_pose, lr = args.pose_lrate)
 
-        grad_vars_transform = list(self.graph.event.parameters())
-        self.optim_transform = torch.optim.Adam(params = grad_vars_transform, lr = args.transform_lrate)
-        
-        # grad_vars_rgb_crf = list(self.graph.rgb_crf.parameters())
-        # self.optim_rgb_crf = torch.optim.Adam(params = grad_vars_rgb_crf, lr = args.rgb_crf_lrate)
+        # optim related to trans between cam and event
+        grad_vars_transform = list(self.graph.transform.parameters())
+        self.optim_transform = torch.optim.Adam(params=grad_vars_transform, lr=args.transform_lrate)
 
-        grad_vars_event_crf = list(self.graph.event_crf.parameters())
+        grad_vars_event_crf = list(self.graph.event_crf.mlp_luminance.parameters())
         self.optim_event_crf = torch.optim.Adam(params = grad_vars_event_crf, lr = args.event_crf_lrate)
 
-        return self.optim, self.optim_pose, self.optim_transform, self.optim_event_crf
+        grad_vars_rgb_crf = list(self.graph.rgb_crf.mlp_gray.parameters())
+        self.optim_rgb_crf = torch.optim.Adam(params = grad_vars_rgb_crf, lr = args.rgb_crf_lrate)
 
+        return self.optim, self.optim_pose, self.optim_transform, self.optim_rgb_crf, self.optim_event_crf
 
 class Graph(nerf.Graph):
     def get_pose(self, args, events_ts):
-        pose0 = self.event.params.weight[0].reshape(1, 1, 6)
-        pose1 = self.event.params.weight[1].reshape(1, 1, 6)
-        pose2 = self.event.params.weight[2].reshape(1, 1, 6)
-        pose3 = self.event.params.weight[3].reshape(1, 1, 6)
-
-        spline_poses = spline.spline_event_cubic(pose0, pose1, pose2, pose3, events_ts)
-
+        se3_0 = self.rgb_pose.params.weight[0].reshape(1, 1, 6) + self.transform.params.weight.reshape(1, 1, 6)
+        se3_1 = self.rgb_pose.params.weight[1].reshape(1, 1, 6) + self.transform.params.weight.reshape(1, 1, 6)
+        se3_2 = self.rgb_pose.params.weight[2].reshape(1, 1, 6) + self.transform.params.weight.reshape(1, 1, 6)
+        se3_3 = self.rgb_pose.params.weight[3].reshape(1, 1, 6) + self.transform.params.weight.reshape(1, 1, 6)
+        #print(self.transform.params.weight.reshape(1, 1, 6))
+        # interpolate pose at start and end of time window
+        spline_poses = spline.spline_event_cubic(se3_0, se3_1, se3_2, se3_3, events_ts)
+        # SE3
         return spline_poses
 
     def get_pose_rgb(self, args, seg_num=None):
+        # init knot pose 
         pose0 = self.rgb_pose.params.weight[0].reshape(1, 1, 6)
         pose1 = self.rgb_pose.params.weight[1].reshape(1, 1, 6)
         pose2 = self.rgb_pose.params.weight[2].reshape(1, 1, 6)
@@ -76,5 +78,5 @@ class Graph(nerf.Graph):
         else:
             pose_nums = torch.arange(seg_num).reshape(1, -1).repeat(pose0.shape[0], 1)
             spline_poses = spline.spline_cubic(pose0, pose1, pose2, pose3, pose_nums, seg_num)
-
+        # SE3
         return spline_poses
