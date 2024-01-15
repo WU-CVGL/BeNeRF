@@ -101,8 +101,7 @@ class NeRF(nn.Module):
 
         dists = dists * torch.norm(rays_d[..., None, :], dim=-1)
 
-        rgb = raw[..., :self.channels]
-        rgb = torch.sigmoid(rgb)
+        rgb = torch.sigmoid(raw[..., :self.channels])
         # if enable_crf == True:
         #     rgb = crf_func(rgb, sensor_type)
         #     rgb = torch.sigmoid(rgb)
