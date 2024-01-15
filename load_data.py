@@ -192,6 +192,7 @@ def load_data(datadir, args, load_pose=False, load_trans=False, cubic=False):
     imgtests = np.moveaxis(imgtests, -1, 0).astype(np.float32)
     if gray:
         imgtests = np.expand_dims(imgtests, -1)
+    # select one image
     imgtests = np.expand_dims(imgtests[args.idx], 0)
     imgtests = torch.Tensor(imgtests)
 
@@ -223,7 +224,7 @@ def load_data(datadir, args, load_pose=False, load_trans=False, cubic=False):
     events = events[events[:, 2].argsort()]
     # create dictionary
     events = {'x': events[:, 0].astype(int), 'y': events[:, 1].astype(int),
-              # norm ts
+              # norm ts(0~1)
               'ts': (events[:, 2] - poses_ts[0]) / (poses_ts[1] - poses_ts[0]), 'pol': events[:, 3]}
 
     # process poses
