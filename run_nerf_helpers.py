@@ -25,6 +25,7 @@ def get_rays(H, W, K, c2w):
     rays_o = c2w[:3, -1].expand(rays_d.shape)
     return rays_o, rays_d
 
+
 # Ray helpers only get specific rays
 def get_specific_rays(i, j, K, c2w):
     dirs = torch.stack(
@@ -36,6 +37,7 @@ def get_specific_rays(i, j, K, c2w):
     # Translate camera frame's origin to the world frame. It is the origin of all rays.
     rays_o = c2w[..., :3, -1]
     return rays_o, rays_d
+
 
 def ndc_rays(H, W, focal, near, rays_o, rays_d):
     # Shift ray origins to near plane
@@ -63,6 +65,7 @@ def ndc_rays(H, W, focal, near, rays_o, rays_d):
     rays_d = torch.stack([d0, d1, d2], -1)
 
     return rays_o, rays_d
+
 
 # Hierarchical sampling (section 5.2)
 def sample_pdf(bins, weights, N_samples, det=False, pytest=False):
@@ -108,6 +111,7 @@ def sample_pdf(bins, weights, N_samples, det=False, pytest=False):
 
     return samples
 
+
 @torch.no_grad()
 def render_video_test(graph, render_poses, H, W, K, args):
     rgbs = []
@@ -132,6 +136,7 @@ def render_video_test(graph, render_poses, H, W, K, args):
     disps = np.stack(disps, 0)
     # radiences = np.stack(radiences, 0)
     return rgbs, disps
+
 
 @torch.no_grad()
 def render_image_test(
@@ -171,12 +176,14 @@ def render_image_test(
     return imgs, depth
     # return imgs, radiences, depth
 
+
 def compute_poses_idx(img_idx, args):
     poses_idx = torch.arange(img_idx.shape[0] * args.deblur_images)
     for i in range(img_idx.shape[0]):
         for j in range(args.deblur_images):
             poses_idx[i * args.deblur_images + j] = img_idx[i] * args.deblur_images + j
     return poses_idx
+
 
 def compute_ray_idx(width, H, W):
     ray_idx_start = torch.randint(H * W, (1,))
@@ -192,10 +199,12 @@ def compute_ray_idx(width, H, W):
     ray_idx = ray_idx.squeeze()
     return ray_idx
 
+
 def init_weights(linear):
     # use Xavier init instead of Kaiming init
     torch.nn.init.xavier_uniform_(linear.weight)
     torch.nn.init.zeros_(linear.bias)
+
 
 def init_nerf(nerf):
     for linear_pt in nerf.pts_linears:
