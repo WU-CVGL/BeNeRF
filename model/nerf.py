@@ -181,10 +181,10 @@ class Graph(nn.Module):
         
         # index of event rays
         ray_idx_event = torch.randperm(args.h_event * args.w_event)[:args.pix_event]
-        # interpolated event pose 
-        spline_poses = self.get_pose(args, torch.tensor(events_ts, dtype=torch.float32))
         # interpolated rgb pose 
         spline_rgb_poses = self.get_pose_rgb(args)
+        # interpolated event pose 
+        spline_poses = self.get_pose(args, torch.tensor(events_ts, dtype=torch.float32))
 
         # render event
         ret_event = self.render(spline_poses, 
