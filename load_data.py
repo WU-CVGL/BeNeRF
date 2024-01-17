@@ -1,12 +1,13 @@
 import os
 import torch
 import h5py
+import hdf5plugin
 import numpy as np
 from pathlib import Path
 from utils import imgutils
 
 
-def load_img_data(datadir, data_source = None, gray = False):
+def load_img_data(datadir, data_source=None, gray=False):
     print("Loading images...")
     # Load images
     imgdir = os.path.join(datadir, "images")
@@ -71,7 +72,7 @@ def load_camera_trans(basedir):
 
 
 def load_timestamps(basedir):
-    # file path 
+    # file path
     time_ts_path = os.path.join(basedir, "poses_ts.txt")
     time_start_path = os.path.join(basedir, "poses_start_ts.txt")
     time_end_path = os.path.join(basedir, "poses_end_ts.txt")
@@ -129,9 +130,7 @@ def poses_avg(poses):
     return c2w
 
 
-def render_path_spiral(
-    c2w, up, rads, focal, zdelta, zrate, rots, N
-):
+def render_path_spiral(c2w, up, rads, focal, zdelta, zrate, rots, N):
     render_poses = []
     rads = np.array(list(rads) + [1.0])
     hwf = c2w[:, 4:5]
@@ -231,7 +230,7 @@ def spherify_poses(poses, bds):
 
 
 def load_data(
-    datadir, args, load_pose = False, load_trans = False, cubic = False, data_source = None
+    datadir, args, load_pose=False, load_trans=False, cubic=False, data_source=None
 ):
     datadir = os.path.expanduser(datadir)
     gray = args.channels == 1
@@ -275,8 +274,30 @@ def load_data(
         )
     # TUM-VIE
     elif os.path.exists(os.path.join(eventdir, "events.h5")):
-        st = args.idx
+        # import h5 file 
+        h5file = h5py.File(os.path.join(eventdir, "events.h5"))
+        # h5group contains h5dataset: [x y t p]
+        h5group = h5file["events"]
 
+        # select events corresponding to idx
+        h5dataset_ts = h5group["t"] 
+        indices = np.where(
+            (h5dataset_ts > ts_start[args.idx])
+            & (h5dataset_ts < ts_end[args.idx])
+        )
+        selected_indices = indices[0]
+        selected_indices_start = selected_indices[0]
+        selected_indices_end = selected_indices[len(selected_indices) - 1] + 1
+
+        # creat events array
+        events = np.zeros(len(selected_indices))
+        h5group_order = ["x", "y", "t", "p"]
+        for h5dataset_name in h5group_order:
+            h5dataset = h5group[h5dataset_name][selected_indices_start : selected_indices_end]
+            events = np.vstack((events, h5dataset))
+        events = np.delete(events, 0, axis = 0)
+        events = np.transpose(events)
+        
     else:
         poses_ts = np.array((ts_start[args.idx], ts_end[args.idx]))
         eventfiles = [
