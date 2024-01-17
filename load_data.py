@@ -28,8 +28,14 @@ def load_img_data(datadir, data_source=None, gray=False):
             if f.lower().endswith(("jpg", "png"))
         ]
 
-    imgs = [imgutils.load_image(f, gray) for f in imgfiles]
-    imgs = np.stack(imgs, -1)
+    # Using iterative approach to read image into a NumPy array helps to reduce memory cost.
+    # Converting the entire image list into a NumPy array may result in a memory overflow.
+    img_trial = imgutils.load_image(imgfiles[0], gray)
+    h, w = np.array(img_trial).shape
+    img_array = np.empty((len(imgfiles), h, w), dtype = np.uint8)
+    for i, imagefile in enumerate(imgfiles):
+        img_array[i, :, :] = np.array(imgutils.load_image(imagefile, gray))
+    imgs = np.stack(img_array, -1)
 
     if data_source == "Synthetic":
         imgtests = [imgutils.load_image(f, gray) for f in imgtests]
@@ -72,6 +78,7 @@ def load_camera_trans(basedir):
 
 
 def load_timestamps(basedir):
+    print("Loading timestamps...")
     # file path
     time_ts_path = os.path.join(basedir, "poses_ts.txt")
     time_start_path = os.path.join(basedir, "poses_start_ts.txt")
@@ -253,36 +260,39 @@ def load_data(
         # select one image
         imgtests = np.expand_dims(imgtests[args.idx], 0)
         imgtests = torch.Tensor(imgtests)
+    print("Load images successfully")
 
     # load timestamps
     ts_start, ts_end = load_timestamps(datadir)
+    print("Load timestamps successfully")
 
     # load events
+    print("Loading events...")
     eventdir = os.path.join(datadir, "events")
     if os.path.exists(os.path.join(eventdir, "events.npy")):
         # event shift, selecting more events means better result
-        st = max(args.idx - args.event_shift_start, 0)
-        ed = min(args.idx + args.event_shift_end, len(ts_end) - 1)
+        # st = max(args.idx - args.event_shift_start, 0)
+        # ed = min(args.idx + args.event_shift_end, len(ts_end) - 1)
         # real timestamp of start and end
-        poses_ts = np.array((ts_start[st], ts_end[ed]))
-        events = np.load(os.path.join(eventdir, "events.npy"))
-        delta = (poses_ts[1] - poses_ts[0]) * args.event_time_shift
-        poses_ts = np.array([poses_ts[0] - delta, poses_ts[1] + delta])
+        # poses_ts = np.array((ts_start[st], ts_end[ed]))
+        # events = np.load(os.path.join(eventdir, "events.npy"))
+        # delta = (poses_ts[1] - poses_ts[0]) * args.event_time_shift
+        # poses_ts = np.array([poses_ts[0] - delta, poses_ts[1] + delta])
         # get events
         events = np.array(
-            [event for event in events if poses_ts[0] <= event[2] <= poses_ts[1]]
+            [ event for event in events if ts_start[args.idx] <= event[2] <= ts_end[args.idx]]
         )
     # TUM-VIE
     elif os.path.exists(os.path.join(eventdir, "events.h5")):
-        # import h5 file 
+        # import h5 file
         h5file = h5py.File(os.path.join(eventdir, "events.h5"))
         # h5group contains h5dataset: [x y t p]
         h5group = h5file["events"]
 
         # select events corresponding to idx
-        h5dataset_ts = h5group["t"] 
+        h5dataset_ts = h5group["t"]
         indices = np.where(
-            (h5dataset_ts > ts_start[args.idx])
+            (h5dataset_ts > ts_start[args.idx]) 
             & (h5dataset_ts < ts_end[args.idx])
         )
         selected_indices = indices[0]
@@ -293,11 +303,12 @@ def load_data(
         events = np.zeros(len(selected_indices))
         h5group_order = ["x", "y", "t", "p"]
         for h5dataset_name in h5group_order:
-            h5dataset = h5group[h5dataset_name][selected_indices_start : selected_indices_end]
+            h5dataset = h5group[h5dataset_name][
+                selected_indices_start : selected_indices_end
+            ]
             events = np.vstack((events, h5dataset))
         events = np.delete(events, 0, axis = 0)
         events = np.transpose(events)
-        
     else:
         poses_ts = np.array((ts_start[args.idx], ts_end[args.idx]))
         eventfiles = [
@@ -314,7 +325,6 @@ def load_data(
 
         event_list = [np.load(e) for e in eventfiles]
         events = np.concatenate(event_list)
-
     # sorted according to time
     events = events[events[:, 2].argsort()]
     # create dictionary
@@ -322,12 +332,12 @@ def load_data(
         "x": events[:, 0].astype(int),
         "y": events[:, 1].astype(int),
         # norm ts(0~1)
-        "ts": (events[:, 2] - poses_ts[0]) / (poses_ts[1] - poses_ts[0]),
+        "ts": (events[:, 2] - ts_start[args.idx]) / (ts_end[args.idx] - ts_start[args.idx]),
         "pol": events[:, 3],
     }
-
+    print("Load events successfully")
     # process poses
-    poses, ev_poses, trans = None, None, None
+    poses, ev_poses, trans, poses_ts = None, None, None, None
     if load_pose:
         poses, ev_poses = load_camera_pose(datadir, imgs.shape[0], imgs.shape[1], cubic)
         # recenter for rgb
