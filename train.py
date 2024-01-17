@@ -68,7 +68,11 @@ def train(args):
 
     # intrinsic matrix
     K = torch.Tensor(
-        [[args.focal_x, 0, args.cx], [0, args.focal_y, args.cy], [0, 0, 1]]
+        [
+            [args.focal_x, 0, args.cx], 
+            [0, args.focal_y, args.cy], 
+            [0, 0, 1]
+        ]
     )
 
     # event camera
