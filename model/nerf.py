@@ -1,7 +1,9 @@
 import abc
+import os
 from datetime import datetime
 
 import numpy as np
+import cv2 as cv
 import torch
 import torch.nn.functional as F
 from torch import nn as nn
@@ -9,6 +11,7 @@ from torch import nn as nn
 from model import embedder
 from run_nerf_helpers import get_specific_rays, get_rays, ndc_rays, sample_pdf
 from utils.event_utils import accumulate_events
+from utils.event_utils import event_stream_visualization
 
 class Model:
     @abc.abstractmethod
@@ -170,7 +173,12 @@ class Graph(nn.Module):
 
         # event temporal aggregate
         out = np.zeros((args.h_event, args.w_event))
+        out = np.zeros((720, 1280))
         accumulate_events(out, x_window, y_window, pol_window)
+        img = event_stream_visualization(x_window, y_window, pol_window, 720, 1280)
+        distorted_folder = "distorted_events"     
+        os.makedirs(distorted_folder, exist_ok = True)
+        cv.imwrite(os.path.join(distorted_folder, "%06d_raw" % i + ".png"), img)
         events_accu = torch.tensor(out)
 
         # timestamps of event windows begin and end

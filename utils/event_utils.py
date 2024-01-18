@@ -228,6 +228,23 @@ class EventReader(EventReaderAbstract):
         self.t_start_us = t_end_us
         return events
 
+def event_stream_visualization(x: np.ndarray, y: np.ndarray, pol: np.ndarray, H: int, W: int) -> np.ndarray:
+    assert x.size == y.size == pol.size
+    assert H > 0
+    assert W > 0
+    img = np.full((H, W, 3), fill_value = 255, dtype = 'uint8')
+    mask = np.zeros((H, W), dtype = 'int32')
+    pol = pol.astype('int')
+    pol[pol == 0] = -1
+    mask1 = (x >= 0) & ( y >= 0) & (W > x) & (H > y)
+    x = x[mask1].astype(np.uint64)
+    y = y[mask1].astype(np.uint64)
+    pol = pol[mask1]
+    accumulate_events(mask, x, y, pol)
+    img[mask == 0] = [255, 255, 255]
+    img[mask == -1] = [255, 0, 0]
+    img[mask == 1] = [0, 0, 255] 
+    return img
 
 @numba.jit(nopython=True)
 def accumulate_events(out, xs, ys, ps):
