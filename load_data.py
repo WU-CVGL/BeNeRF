@@ -3,6 +3,7 @@ import torch
 import h5py
 import hdf5plugin
 import numpy as np
+from tqdm import tqdm
 from pathlib import Path
 from utils import img_utils
 
@@ -30,11 +31,13 @@ def load_img_data(datadir, datasource = None, gray = False):
 
     # Using iterative approach to read image into a NumPy array helps to reduce memory cost.
     # Converting the entire image list into a NumPy array may result in a memory overflow.
-    h, w, _ = np.array(img_utils.load_image(imgfiles[0], gray)).shape
-    img_array = np.empty((len(imgfiles), h, w), dtype = np.uint8)
-    for i, imagefile in enumerate(imgfiles):
-        img_array[i, :, :] = np.array(img_utils.load_image(imagefile, gray))
-    imgs = np.stack(img_array, -1)
+    if gray == True:
+        h, w = np.array(img_utils.load_image(imgfiles[0], gray)).shape
+    elif gray == False:
+        h, w, _ = np.array(img_utils.load_image(imgfiles[0], gray)).shape
+    imgs = np.empty((len(imgfiles), h, w), dtype = np.uint8)
+    for i, imagefile in tqdm(enumerate(imgfiles)):
+        imgs[i, :, :] = np.array(img_utils.load_image(imagefile, gray))
 
     if datasource == "Unreal" or datasource == "Blender":
         imgtests = [img_utils.load_image(f, gray) for f in imgtests]
@@ -242,10 +245,8 @@ def load_data(
     gray = args.channels == 1
 
     # load imges
-    # [height, width, channel, num]
-    imgs, imgtests = load_img_data(datadir, datasource, gray = gray)
     # [num, height, width, channel]
-    imgs = np.moveaxis(imgs, -1, 0).astype(np.float32)
+    imgs, imgtests = load_img_data(datadir, datasource, gray = gray)
     if gray:
         imgs = np.expand_dims(imgs, -1)
     # select one image: [1, height, width, channel]
@@ -301,7 +302,8 @@ def load_data(
         # creat events array
         events = np.zeros(len(selected_indices))
         h5group_order = ["x", "y", "t", "p"]
-        for h5dataset_name in h5group_order:
+        print(len(selected_indices))
+        for h5dataset_name in tqdm(h5group_order):
             h5dataset = h5group[h5dataset_name][
                 selected_indices_start : selected_indices_end
             ]
