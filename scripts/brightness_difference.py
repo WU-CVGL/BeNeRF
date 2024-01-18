@@ -4,9 +4,9 @@ import cv2
 import numpy as np
 import torch
 
-from utils import eventutils
-from utils.imgutils import rgb2gray
-from utils.mathutils import safelog
+from utils import event_utils
+from utils.img_utils import rgb2gray
+from utils.math_utils import safelog
 
 if __name__ == '__main__':
     img0 = cv2.imread(r"/Users/pianwan/Desktop/temp/img_000.png", cv2.IMREAD_GRAYSCALE)
@@ -21,7 +21,7 @@ if __name__ == '__main__':
     events = np.array([event for event in events if ts <= event[2] <= ts + duration])
 
     map = np.zeros((height, width))
-    eventutils.accumulate_events_no_numba(map, events[:, 0].astype(int), events[:, 1].astype(int), events[:, 3])
+    event_utils.accumulate_events_no_numba(map, events[:, 0].astype(int), events[:, 1].astype(int), events[:, 3])
 
     save_dir = "/Users/pianwan/Downloads/blur_1019/carpet/2023-10-17-23-04-44/output"
 

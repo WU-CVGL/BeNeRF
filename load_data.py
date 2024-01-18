@@ -4,7 +4,7 @@ import h5py
 import hdf5plugin
 import numpy as np
 from pathlib import Path
-from utils import imgutils
+from utils import img_utils
 
 
 def load_img_data(datadir, datasource = None, gray = False):
@@ -30,15 +30,14 @@ def load_img_data(datadir, datasource = None, gray = False):
 
     # Using iterative approach to read image into a NumPy array helps to reduce memory cost.
     # Converting the entire image list into a NumPy array may result in a memory overflow.
-    img_trial = imgutils.load_image(imgfiles[0], gray)
-    h, w = np.array(img_trial).shape
+    h, w, _ = np.array(img_utils.load_image(imgfiles[0], gray)).shape
     img_array = np.empty((len(imgfiles), h, w), dtype = np.uint8)
     for i, imagefile in enumerate(imgfiles):
-        img_array[i, :, :] = np.array(imgutils.load_image(imagefile, gray))
+        img_array[i, :, :] = np.array(img_utils.load_image(imagefile, gray))
     imgs = np.stack(img_array, -1)
 
     if datasource == "Unreal" or datasource == "Blender":
-        imgtests = [imgutils.load_image(f, gray) for f in imgtests]
+        imgtests = [img_utils.load_image(f, gray) for f in imgtests]
         imgtests = np.stack(imgtests, -1)
 
     return imgs, imgtests

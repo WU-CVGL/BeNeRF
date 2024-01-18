@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.init as init
 from torch.nn import functional as F
-from utils.mathutils import safelog
+from utils.math_utils import safelog
 
 class CameraPose(nn.Module):
     def __init__(self, pose_num):

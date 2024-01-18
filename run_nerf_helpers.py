@@ -5,7 +5,7 @@ import torch
 from imageio.v3 import imwrite
 from tqdm import tqdm
 
-from utils import imgutils
+from utils import img_utils
 
 tonemap = lambda x: (
     np.log(np.clip(x, 0, 1) * 5000 + 1) / np.log(5000 + 1) * 255
@@ -156,7 +156,7 @@ def render_image_test(
         # ret_radience = graph.render_video(pose[:3, :4], H, W, K, args, type = "radience")
         rgbs = ret["rgb_map"].cpu().numpy()
         # radience = ret_radience['rgb_map'].cpu().numpy()
-        rgb8 = imgutils.to8bit(rgbs)
+        rgb8 = img_utils.to8bit(rgbs)
         # radience = tonemap(radience / np.max(radience))
         imwrite(
             os.path.join(img_dir, dir[11:] + "img_{:03d}.png".format(j)),
@@ -170,7 +170,7 @@ def render_image_test(
         if need_depth:
             depths = ret["disp_map"].cpu().numpy()
             depths_ = depths / np.max(depths)
-            depth8 = imgutils.to8bit(depths_)
+            depth8 = img_utils.to8bit(depths_)
             imwrite(os.path.join(img_dir, "depth_{:03d}.png".format(j)), depth8)
             depth.append(depth8)
     return imgs, depth

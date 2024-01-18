@@ -22,8 +22,8 @@ from model import nerf_linear_optimtrans
 from model import test_model
 from model.nerf import *
 from run_nerf_helpers import init_nerf, render_image_test, render_video_test
-from utils import imgutils
-from utils.mathutils import safelog
+from utils import img_utils
+from utils.math_utils import safelog
 
 
 def train(args):
@@ -32,7 +32,7 @@ def train(args):
 
     # transforms
     mse_loss = imgloss.MSELoss()
-    rgb2gray = imgutils.RGB2Gray()
+    rgb2gray = img_utils.RGB2Gray()
 
     print("Loading data...")
 
@@ -53,6 +53,10 @@ def train(args):
 
     if trans is not None and ev_poses is None:
         ev_poses = trans
+    
+    # Undistort Fisheye Camera
+    if args.dataset == "TUMVIE":
+        pass
 
     # Cast intrinsics to right types
     # rgb camera
@@ -182,7 +186,7 @@ def train(args):
             init_nerf(graph.nerf)
             init_nerf(graph.nerf_fine)
 
-        # interpolate, eta and render
+        # interpolate poses, ETA and render
         ret_event, ret_rgb, ray_idx_event, ray_idx_rgb, events_accu = graph.forward(
             i, events, H, W, K, K_event, args
         )
@@ -533,12 +537,12 @@ def train(args):
                 logdir, "{}_spiral_{:06d}_".format(args.expname, i)
             )
             imageio.mimsave(
-                moviebase + "rgb.mp4", imgutils.to8bit(rgbs), fps=30, quality=8
+                moviebase + "rgb.mp4", img_utils.to8bit(rgbs), fps=30, quality=8
             )
             # imageio.mimsave(moviebase + 'radience.mp4', radiences, fps = 30, quality = 8)
             imageio.mimsave(
                 moviebase + "disp.mp4",
-                imgutils.to8bit(disps / np.max(disps)),
+                img_utils.to8bit(disps / np.max(disps)),
                 fps=30,
                 quality=8,
             )

@@ -8,7 +8,7 @@ from torch import nn as nn
 
 from model import embedder
 from run_nerf_helpers import get_specific_rays, get_rays, ndc_rays, sample_pdf
-from utils.eventutils import accumulate_events
+from utils.event_utils import accumulate_events
 
 class Model:
     @abc.abstractmethod
