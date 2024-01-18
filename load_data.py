@@ -36,8 +36,8 @@ def load_img_data(datadir, datasource = None, gray = False):
     elif gray == False:
         h, w, _ = np.array(img_utils.load_image(imgfiles[0], gray)).shape
     imgs = np.empty((len(imgfiles), h, w), dtype = np.uint8)
-    for i, imagefile in tqdm(enumerate(imgfiles)):
-        imgs[i, :, :] = np.array(img_utils.load_image(imagefile, gray))
+    for i in tqdm(range(len(imgfiles))):
+        imgs[i, :, :] = np.array(img_utils.load_image(imgfiles[i], gray))
 
     if datasource == "Unreal" or datasource == "Blender":
         imgtests = [img_utils.load_image(f, gray) for f in imgtests]
@@ -260,11 +260,11 @@ def load_data(
         # select one image
         imgtests = np.expand_dims(imgtests[args.idx], 0)
         imgtests = torch.Tensor(imgtests)
-    print("Load images successfully")
+    print("Load images successfully!!")
 
     # load timestamps
     ts_start, ts_end = load_timestamps(datadir)
-    print("Load timestamps successfully")
+    print("Load timestamps successfully!!")
 
     # load events
     print("Loading events...")
@@ -291,19 +291,26 @@ def load_data(
 
         # select events corresponding to idx
         h5dataset_ts = h5group["t"]
-        indices = np.where(
-            (h5dataset_ts > ts_start[args.idx]) 
-            & (h5dataset_ts < ts_end[args.idx])
-        )
-        selected_indices = indices[0]
-        selected_indices_start = selected_indices[0]
-        selected_indices_end = selected_indices[len(selected_indices) - 1] + 1
+
+        # iteratively import timestamps of event data in chunks
+        selected_indices = np.array([])
+        chunk_size = 100000
+        for chunk_idx in tqdm(range(0, len(h5dataset_ts), chunk_size)):
+            chunk_indices = np.where(
+                (h5dataset_ts[chunk_idx : chunk_idx + chunk_size] >= ts_start[args.idx]) 
+                & (h5dataset_ts[chunk_idx : chunk_idx + chunk_size] <= ts_end[args.idx])
+            )
+            chunk_indices = chunk_indices[0]
+            chunk_indices[:] = chunk_indices[:] + chunk_idx
+            selected_indices = np.concatenate((selected_indices, chunk_indices)).astype(np.uint64)
+        selected_indices_start = np.array(selected_indices[0], dtype = np.uint64)
+        selected_indices_end = np.array(selected_indices[len(selected_indices) - 1] + 1, dtype = np.uint64)
 
         # creat events array
         events = np.zeros(len(selected_indices))
         h5group_order = ["x", "y", "t", "p"]
-        print(len(selected_indices))
-        for h5dataset_name in tqdm(h5group_order):
+        for i in tqdm(range(len(h5group_order))):
+            h5dataset_name = h5group_order[i]
             h5dataset = h5group[h5dataset_name][
                 selected_indices_start : selected_indices_end
             ]
