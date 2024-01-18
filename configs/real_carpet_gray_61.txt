@@ -2,6 +2,7 @@ project = real_carpet_gray_61
 expname = map_color_to_event_optim_T_hidden_0_2048_3072
 datadir = ~/ssd_data/wp-event/real/carpet_gray
 logdir = ./logs/real_carpet_gray_61
+dataset = HNU
 idx = 61
 viewer = wandb
 model = test

@@ -2,10 +2,11 @@ project = tumvie_running_hard_left_630
 expname = none_crf_1024_1024
 datadir = ~/Dataset/TUM_VIE/running-hard
 logdir = ./logs/tumvie_running_hard_left_630
+dataset = TUMVIE
 idx = 630
 viewer = wandb
 model = test
-depth = True
+depth = False
 debug = False
 
 # training parameters for nerf

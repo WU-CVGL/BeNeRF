@@ -2,6 +2,7 @@ project = real_lego_gray_315
 expname = two_crf_1024_1024
 datadir = ~/ssd_data/wp-event/real/e2nerf/lego_gray
 logdir = ./logs/real_lego_gray_315
+dataset = E2NeRF
 idx = 315
 viewer = wandb
 model = test

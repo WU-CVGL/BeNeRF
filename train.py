@@ -34,14 +34,7 @@ def train(args):
     mse_loss = imgloss.MSELoss()
     rgb2gray = imgutils.RGB2Gray()
 
-    print("Loading data")
-
-    # data source
-    data_source = None
-    if args.threshold == -1:
-        data_source = "Real"
-    else:
-        data_source = "Synthetic"
+    print("Loading data...")
 
     # imgtests:for render test
     events, images, imgtests, poses_ts, poses, ev_poses, trans = load_data(
@@ -50,7 +43,7 @@ def train(args):
         load_pose = args.loadpose,
         load_trans = args.loadtrans,
         cubic = "cubic" in args.model,
-        data_source = data_source,
+        datasource = args.dataset,
     )
 
     print(f"Loaded data {args.datadir} {args.idx} {images.shape}")
@@ -163,6 +156,7 @@ def train(args):
         print("Model Load Done!")
     else:
         graph = model.build_network(args, poses=poses, event_poses=ev_poses)
+
         (
             optimizer,
             optimizer_pose,
@@ -170,9 +164,10 @@ def train(args):
             optimizer_rgb_crf,
             optimizer_event_crf,
         ) = model.setup_optimizer(args)
-        print("Not Load Model!")
 
-    print("Begin")
+        print("No pre-trained weights are used!")
+
+    print("Training is executed")
     N_iters = args.max_iter + 1
 
     start = 0
@@ -241,8 +236,7 @@ def train(args):
 
             if args.channels == 3:
                 img_loss = mse_loss(
-                    safelog(rgb2gray(ret_gray2["rgb_map"]))
-                    - safelog(rgb2gray(ret_gray1["rgb_map"])),
+                    safelog(rgb2gray(ret_gray2["rgb_map"])) - safelog(rgb2gray(ret_gray1["rgb_map"])),
                     target_s,
                 )
             else:
@@ -256,8 +250,7 @@ def train(args):
             if "rgb0" in ret_event:
                 if args.channels == 3:
                     img_loss0 = mse_loss(
-                        safelog(rgb2gray(ret_gray2["rgb0"]))
-                        - safelog(rgb2gray(ret_gray1["rgb0"])),
+                        safelog(rgb2gray(ret_gray2["rgb0"])) - safelog(rgb2gray(ret_gray1["rgb0"])),
                         target_s,
                     )
                 else:
@@ -277,24 +270,18 @@ def train(args):
         # Real dataset
         else:
             if args.channels == 3:
-                render_brightness_diff = safelog(
-                    rgb2gray(ret_gray2["rgb_map"])
-                ) - safelog(rgb2gray(ret_gray1["rgb_map"]))
+                render_brightness_diff = safelog(rgb2gray(ret_gray2["rgb_map"])) - safelog(rgb2gray(ret_gray1["rgb_map"]))
                 render_norm = render_brightness_diff / (
-                    torch.linalg.norm(render_brightness_diff, dim=0, keepdim=True)
-                    + 1e-9
+                    torch.linalg.norm(render_brightness_diff, dim=0, keepdim=True) + 1e-9
                 )
                 target_s_norm = target_s / (
                     torch.linalg.norm(target_s, dim=0, keepdim=True) + 1e-9
                 )
                 img_loss = mse_loss(render_norm, target_s_norm)
             else:
-                render_brightness_diff = safelog(ret_gray2["rgb_map"]) - safelog(
-                    ret_gray1["rgb_map"]
-                )
+                render_brightness_diff = safelog(ret_gray2["rgb_map"]) - safelog(ret_gray1["rgb_map"])
                 render_norm = render_brightness_diff / (
-                    torch.linalg.norm(render_brightness_diff, dim=0, keepdim=True)
-                    + 1e-9
+                    torch.linalg.norm(render_brightness_diff, dim=0, keepdim=True) + 1e-9
                 )
                 target_s_norm = target_s / (
                     torch.linalg.norm(target_s, dim=0, keepdim=True) + 1e-9
@@ -306,24 +293,18 @@ def train(args):
 
             if "rgb0" in ret_event:
                 if args.channels == 3:
-                    render_brightness_diff = safelog(
-                        rgb2gray(ret_gray2["rgb0"])
-                    ) - safelog(rgb2gray(ret_gray1["rgb0"]))
+                    render_brightness_diff = safelog(rgb2gray(ret_gray2["rgb0"])) - safelog(rgb2gray(ret_gray1["rgb0"]))
                     render_norm = render_brightness_diff / (
-                        torch.linalg.norm(render_brightness_diff, dim=0, keepdim=True)
-                        + 1e-9
+                        torch.linalg.norm(render_brightness_diff, dim=0, keepdim=True) + 1e-9
                     )
                     target_s_norm = target_s / (
                         torch.linalg.norm(target_s, dim=0, keepdim=True) + 1e-9
                     )
                     img_loss0 = mse_loss(render_norm, target_s_norm)
                 else:
-                    render_brightness_diff = safelog(ret_gray2["rgb0"]) - safelog(
-                        ret_gray1["rgb0"]
-                    )
+                    render_brightness_diff = safelog(ret_gray2["rgb0"]) - safelog(ret_gray1["rgb0"])
                     render_norm = render_brightness_diff / (
-                        torch.linalg.norm(render_brightness_diff, dim=0, keepdim=True)
-                        + 1e-9
+                        torch.linalg.norm(render_brightness_diff, dim=0, keepdim=True) + 1e-9
                     )
                     target_s_norm = target_s / (
                         torch.linalg.norm(target_s, dim=0, keepdim=True) + 1e-9
@@ -432,7 +413,9 @@ def train(args):
         # update learning rate
         decay_rate = args.decay_rate
         decay_steps = args.lrate_decay * 1000
-        new_lrate = args.lrate * (decay_rate ** (global_step / decay_steps))
+        new_lrate = args.lrate * (
+            decay_rate ** (global_step / decay_steps)
+        )
         logger.write("lr_nerf", new_lrate)
         for param_group in optimizer.param_groups:
             param_group["lr"] = new_lrate
@@ -498,7 +481,7 @@ def train(args):
         if i % args.i_img == 0 and i > 0:
             test_poses = graph.get_pose_rgb(
                 args,
-                seg_num=args.deblur_images
+                seg_num = args.deblur_images
                 if args.deblur_images % 2 == 1
                 else args.deblur_images + 1,
             )
@@ -513,8 +496,8 @@ def train(args):
                     K_render,
                     args,
                     logdir,
-                    dir="images_test",
-                    need_depth=args.depth,
+                    dir = "images_test",
+                    need_depth = args.depth,
                 )
 
                 if len(imgs) > 0:
@@ -522,20 +505,18 @@ def train(args):
                     logger.write_imgs("test_img_all", imgs)
                     # logger.write_img("test_radience_mid", radiences[len(radiences) // 2])
                     # logger.write_imgs("test_radience_all", radiences)
+                    if args.dataset == "Unreal" or args.dataset == "Blender":
+                        img_mid = imgs[len(imgs) // 2] / 255.0
+                        img_mid = torch.unsqueeze(
+                            torch.tensor(img_mid, dtype=torch.float32), dim=0
+                        )
+                        test_mid_psnr = compute_img_metric(img_mid, imgtests, metric="psnr")
+                        # test_mid_ssim = compute_img_metric(img_mid, imgtests, metric="ssim")
+                        test_mid_lpips = compute_img_metric(img_mid, imgtests, metric="lpips")
 
-                    img_mid = imgs[len(imgs) // 2] / 255.0
-                    img_mid = torch.unsqueeze(
-                        torch.tensor(img_mid, dtype=torch.float32), dim=0
-                    )
-                    test_mid_psnr = compute_img_metric(img_mid, imgtests, metric="psnr")
-                    # test_mid_ssim = compute_img_metric(img_mid, imgtests, metric="ssim")
-                    test_mid_lpips = compute_img_metric(
-                        img_mid, imgtests, metric="lpips"
-                    )
-
-                    logger.write("test_mid_psnr", test_mid_psnr)
-                    # logger.write("test_mid_ssim", test_mid_ssim)
-                    logger.write("test_mid_lpips", test_mid_lpips)
+                        logger.write("test_mid_psnr", test_mid_psnr)
+                        # logger.write("test_mid_ssim", test_mid_ssim)
+                        logger.write("test_mid_lpips", test_mid_lpips)
                 if len(depth) > 0:
                     logger.write_img("test_depth_mid", depth[len(depth) // 2])
                     logger.write_imgs("test_depth_all", depth)

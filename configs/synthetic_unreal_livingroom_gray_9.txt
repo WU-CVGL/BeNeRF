@@ -2,6 +2,7 @@ project = synthetic_unreal_livingroom_gray_9
 expname = map_event_to_color_1024_1024
 datadir = ~/Dataset/synthetic_unreal/livingroom_gray
 logdir = ./logs/synthetic_unreal/livingroom_gray/cubic_optimpose/9
+dataset = Unreal
 idx = 9
 viewer = wandb
 model = test

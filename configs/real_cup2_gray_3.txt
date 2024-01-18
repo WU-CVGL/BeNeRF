@@ -2,6 +2,7 @@ project = real_cup2_gray_3
 expname = map_color_to_event_optim_T_hidden_0_2048_3072
 datadir = ~/ssd_data/wp-event/real/cup2_gray
 logdir = ./logs/real_cup2_gray_3
+dataset = HNU
 idx = 3
 viewer = wandb
 model = test

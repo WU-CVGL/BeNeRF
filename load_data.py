@@ -7,11 +7,11 @@ from pathlib import Path
 from utils import imgutils
 
 
-def load_img_data(datadir, data_source=None, gray=False):
+def load_img_data(datadir, datasource = None, gray = False):
     print("Loading images...")
     # Load images
     imgdir = os.path.join(datadir, "images")
-    if data_source == "Synthetic":
+    if datasource == "Unreal" or datasource == "Blender":
         testdir = os.path.join(datadir, "images" + "_test")
 
     imgfiles = [
@@ -21,7 +21,7 @@ def load_img_data(datadir, data_source=None, gray=False):
     ]
 
     imgtests = []
-    if data_source == "Synthetic":
+    if datasource == "Unreal" or datasource == "Blender":
         imgtests = [
             os.path.join(testdir, f)
             for f in sorted(os.listdir(testdir))
@@ -37,7 +37,7 @@ def load_img_data(datadir, data_source=None, gray=False):
         img_array[i, :, :] = np.array(imgutils.load_image(imagefile, gray))
     imgs = np.stack(img_array, -1)
 
-    if data_source == "Synthetic":
+    if datasource == "Unreal" or datasource == "Blender":
         imgtests = [imgutils.load_image(f, gray) for f in imgtests]
         imgtests = np.stack(imgtests, -1)
 
@@ -237,14 +237,14 @@ def spherify_poses(poses, bds):
 
 
 def load_data(
-    datadir, args, load_pose=False, load_trans=False, cubic=False, data_source=None
+    datadir, args, load_pose = False, load_trans = False, cubic = False, datasource = None
 ):
     datadir = os.path.expanduser(datadir)
     gray = args.channels == 1
 
     # load imges
     # [height, width, channel, num]
-    imgs, imgtests = load_img_data(datadir, data_source, gray=gray)
+    imgs, imgtests = load_img_data(datadir, datasource, gray = gray)
     # [num, height, width, channel]
     imgs = np.moveaxis(imgs, -1, 0).astype(np.float32)
     if gray:
@@ -253,7 +253,7 @@ def load_data(
     imgs = np.expand_dims(imgs[args.idx], 0)
     imgs = torch.Tensor(imgs)
 
-    if data_source == "Synthetic":
+    if datasource == "Unreal" or datasource == "Blender":
         imgtests = np.moveaxis(imgtests, -1, 0).astype(np.float32)
         if gray:
             imgtests = np.expand_dims(imgtests, -1)
@@ -275,7 +275,7 @@ def load_data(
         # ed = min(args.idx + args.event_shift_end, len(ts_end) - 1)
         # real timestamp of start and end
         # poses_ts = np.array((ts_start[st], ts_end[ed]))
-        # events = np.load(os.path.join(eventdir, "events.npy"))
+        events = np.load(os.path.join(eventdir, "events.npy"))
         # delta = (poses_ts[1] - poses_ts[0]) * args.event_time_shift
         # poses_ts = np.array([poses_ts[0] - delta, poses_ts[1] + delta])
         # get events

@@ -12,21 +12,24 @@ def config_parser():
     
     parser.add_argument("--seed", type=int, default=0,
                         help='cuda id to use')
-    # others
+    # data
     parser.add_argument('--config', is_config_file=True, default='./configs/tumvie_running_hard_left_630.txt',
                         help='config file path')
     
     parser.add_argument("--project", type=str, default="event-bad-nerf",
                         help='the viewer to use (wandb)')
     
-    parser.add_argument("--expname", type=str,
-                        help='experiment name')
+    parser.add_argument("--expname", type = str, 
+                        help = 'experiment name')
     
-    parser.add_argument("--datadir", type=str, default='./data/llff/fern',
-                        help='input data directory')
+    parser.add_argument("--datadir", type = str, 
+                        help = 'input data directory')
     
-    parser.add_argument("--logdir", type=str, default='./data/llff/fern',
-                        help='input data directory')
+    parser.add_argument("--logdir", type = str, 
+                        help = 'logs directory')
+    
+    parser.add_argument("--dataset", type = str, 
+                        help = 'use which dataset')
 
     # training options
     parser.add_argument("--model", type=str, default='cubic_optimpose',
