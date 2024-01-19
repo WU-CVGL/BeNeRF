@@ -46,14 +46,16 @@ def train(args):
         datasource = args.dataset,
     )
 
-    print(f"Loaded data {args.datadir} {args.idx} {images.shape}")
+    print(f"Loaded data from {args.datadir}")
+    print(f"Loaded image idx: {args.idx}")
+    print(f"Loaded image size: {images.shape}")
     print(f"Camera Pose: {poses}")
     print(f"Event Camera Pose: {ev_poses}")
     print(f"Camera Trans: {trans}")
 
     if trans is not None and ev_poses is None:
         ev_poses = trans
-    
+
     # Undistort Fisheye Camera
     if args.dataset == "TUMVIE":
         pass
@@ -171,7 +173,7 @@ def train(args):
 
         print("No pre-trained weights are used!")
 
-    print("Training is executed")
+    print("Training is executed...")
     N_iters = args.max_iter + 1
 
     start = 0
