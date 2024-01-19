@@ -210,7 +210,7 @@ def config_parser():
                         help='focal length of images')
     parser.add_argument("--event_cy", type=float, default=240.,
                         help='focal length of images')
-    parser.add_argument("--ev_dist", type=float, action="append",
+    parser.add_argument("--evt_dist", type=float, action="append",
                         help='focal length of images')
     parser.add_argument("--event_shift_start", type=int, default=5,
                         help='tv')
