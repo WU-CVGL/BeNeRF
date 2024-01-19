@@ -173,7 +173,6 @@ class Graph(nn.Module):
 
         # event temporal aggregate
         out = np.zeros((args.h_event, args.w_event))
-        out = np.zeros((720, 1280))
         accumulate_events(out, x_window, y_window, pol_window)
         img = event_stream_visualization(x_window, y_window, pol_window, 720, 1280)
         distorted_folder = "distorted_events"     

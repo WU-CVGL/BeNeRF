@@ -14,28 +14,30 @@ optimize_nerf = True
 lrate = 5e-4
 decay_rate = 0.1
 
-# training parameters for pose 
+# training parameters for image data 
 optimize_se3 = True
 loadpose = False
 pose_lrate = 5e-4
 decay_rate_pose = 0.1
-focal_x = 653.98456
-focal_y = 653.98456
-cx = 173
-cy = 130
+focal_x = 748.2795492349136
+focal_y = 748.3063076523761
+cx = 490.64767834480904
+cy = 506.27250845753406
+img_dist = [0.019121168898463155, -0.005217096042982034, 0.018410447034539666, -0.010799031642166947]
 
-# training parameters for transform
+# training parameters for event data 
 optimize_event = False
 loadtrans = False
 threshold = -1
 transform_lrate = 5e-4
 decay_rate_transform = 0.1
-focal_event_x = 653.98456
-focal_event_y = 653.98456
-event_cx = 173
-event_cy = 130
-w_event = 346
-h_event = 260
+focal_event_x = 1051.3170714099033
+focal_event_y = 1051.7952009807022
+event_cx = 636.1348547903337
+event_cy = 265.7059221322115
+w_event = 1280
+h_event = 720
+ev_dist = [-0.13104704164707634, 0.07279844505754081, -0.21109298825047648, 0.18493426446978858]
 event_shift_start = 0
 event_shift_end = 0
 event_time_shift = 0
