@@ -24,6 +24,8 @@ from model.nerf import *
 from run_nerf_helpers import init_nerf, render_image_test, render_video_test
 from utils import img_utils
 from utils.math_utils import safelog
+from undistort import UndistortFisheyeCamera
+
 
 
 def train(args):
@@ -56,9 +58,27 @@ def train(args):
     if trans is not None and ev_poses is None:
         ev_poses = trans
 
-    # Undistort Fisheye Camera
-    if args.dataset == "TUMVIE":
-        pass
+    # calibration parameters dict
+    img_calib = {
+        "fx": args.focal_x,
+        "fy": args.focal_y,
+        "cx": args.cx,
+        "cy": args.cy,
+        "k1": args.img_dist[0],
+        "k2": args.img_dist[1],
+        "k3": args.img_dist[2],
+        "k4": args.img_dist[3],
+    }
+    evt_calib = {
+        "fx": args.focal_event_x,
+        "fy": args.focal_event_y,
+        "cx": args.event_cx,
+        "cy": args.event_cy,
+        "k1": args.evt_dist[0],
+        "k2": args.evt_dist[1],
+        "k3": args.evt_dist[2],
+        "k4": args.evt_dist[3],
+    }
 
     # Cast intrinsics to right types
     # rgb camera
@@ -68,8 +88,8 @@ def train(args):
     # intrinsic matrix
     K = torch.Tensor(
         [
-            [args.focal_x, 0, args.cx], 
-            [0, args.focal_y, args.cy], 
+            [img_calib["fx"], 0, img_calib["cx"]], 
+            [0, img_calib["fy"], img_calib["fy"]], 
             [0, 0, 1]
         ]
     )
@@ -77,8 +97,8 @@ def train(args):
     # event camera
     K_event = torch.Tensor(
         [
-            [args.focal_event_x, 0, args.event_cx],
-            [0, args.focal_event_y, args.event_cy],
+            [evt_calib["fx"], 0, evt_calib["cx"]],
+            [0, evt_calib["fy"], evt_calib["fy"]],
             [0, 0, 1],
         ]
     )
@@ -91,6 +111,31 @@ def train(args):
             [0, 0, 1],
         ]
     )
+
+    # create undistorter    
+    undistorter = UndistortFisheyeCamera.KannalaBrandt(img_calib, evt_calib)
+
+    # undistortion if use TUMVIE dataset
+    if args.dataset == "TUMVIE":
+
+        print(f"camera intrinsic parameters before undistortion: \n{K}\n")
+        print(f"event camera intrinsic parameters before undistortion:: \n{K_event}\n")
+        
+        # Get new intrinsic parameters after undistortion
+        raw_img_res = np.array([H, W])
+        new_img_res = np.array([H, W])
+        raw_evt_res = np.array([args.h_event, args.w_event])
+        new_evt_res = np.array([args.h_event, args.w_event])
+        img_K_new, evt_K_new = undistorter.GetNewIntrinsicMatrix(
+            raw_img_res, raw_evt_res, new_img_res, new_evt_res
+        )
+        K = torch.Tensor(img_K_new)
+        K_event = torch.Tensor(evt_K_new)
+        
+        # Undistort image
+        img_dist = images[0].reshape(1024, 1024)
+        img_undist = undistorter.UndistortImage(img_dist, img_K_new, new_img_res)
+        images[0] = img_undist.reshape((1024, 1024, 1))
 
     H_render = args.render_h
     W_render = args.render_w
@@ -190,7 +235,7 @@ def train(args):
 
         # interpolate poses, ETA and render
         ret_event, ret_rgb, ray_idx_event, ray_idx_rgb, events_accu = graph.forward(
-            i, events, H, W, K, K_event, args
+            i, events, H, W, K, K_event, args, undistorter
         )
         pixels_num = ray_idx_event.shape[0]
 
@@ -329,7 +374,8 @@ def train(args):
 
         # RGB loss
         if args.rgb_loss:
-            target_s = images[0].reshape(-1, H * W, args.channels)
+            image = torch.Tensor(images[0])
+            target_s = image.reshape(-1, H * W, args.channels)
             target_s = target_s[:, ray_idx_rgb]
             target_s = target_s.reshape(-1, args.channels)
             interval = target_s.shape[0]
@@ -516,9 +562,13 @@ def train(args):
                         img_mid = torch.unsqueeze(
                             torch.tensor(img_mid, dtype=torch.float32), dim=0
                         )
-                        test_mid_psnr = compute_img_metric(img_mid, imgtests, metric="psnr")
+                        test_mid_psnr = compute_img_metric(
+                            img_mid, imgtests, metric="psnr"
+                        )
                         # test_mid_ssim = compute_img_metric(img_mid, imgtests, metric="ssim")
-                        test_mid_lpips = compute_img_metric(img_mid, imgtests, metric="lpips")
+                        test_mid_lpips = compute_img_metric(
+                            img_mid, imgtests, metric="lpips"
+                        )
 
                         logger.write("test_mid_psnr", test_mid_psnr)
                         # logger.write("test_mid_ssim", test_mid_ssim)
