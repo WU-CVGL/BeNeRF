@@ -32,12 +32,12 @@ def load_img_data(datadir, datasource = None, gray = False):
     # Using iterative approach to read image into a NumPy array helps to reduce memory cost.
     # Converting the entire image list into a NumPy array may result in a memory overflow.
     if gray == True:
-        h, w = np.array(img_utils.load_image(imgfiles[0], gray)).shape
+        h, w = img_utils.load_image(imgfiles[0], gray).shape
     elif gray == False:
-        h, w, _ = np.array(img_utils.load_image(imgfiles[0], gray)).shape
-    imgs = np.empty((len(imgfiles), h, w), dtype = np.uint8)
+        h, w, _ = img_utils.load_image(imgfiles[0], gray).shape
+    imgs = np.empty((len(imgfiles), h, w), dtype = np.float64)
     for i in tqdm(range(len(imgfiles))):
-        imgs[i, :, :] = np.array(img_utils.load_image(imgfiles[i], gray))
+        imgs[i, :, :] = img_utils.load_image(imgfiles[i], gray)
 
     if datasource == "Unreal" or datasource == "Blender":
         imgtests = [img_utils.load_image(f, gray) for f in imgtests]
@@ -251,7 +251,6 @@ def load_data(
         imgs = np.expand_dims(imgs, -1)
     # select one image: [1, height, width, channel]
     imgs = np.expand_dims(imgs[args.idx], 0)
-    imgs = torch.Tensor(imgs)
 
     if datasource == "Unreal" or datasource == "Blender":
         imgtests = np.moveaxis(imgtests, -1, 0).astype(np.float32)
@@ -259,7 +258,6 @@ def load_data(
             imgtests = np.expand_dims(imgtests, -1)
         # select one image
         imgtests = np.expand_dims(imgtests[args.idx], 0)
-        imgtests = torch.Tensor(imgtests)
     print("Load images successfully!!")
 
     # load timestamps
