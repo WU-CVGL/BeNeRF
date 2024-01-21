@@ -11,7 +11,8 @@ from torch import nn as nn
 from model import embedder
 from run_nerf_helpers import get_specific_rays, get_rays, ndc_rays, sample_pdf
 from utils.event_utils import accumulate_events
-from utils.event_utils import event_stream_visualization
+from utils.event_utils import event_data_visualization
+from undistort import UndistortFisheyeCamera
 
 class Model:
     @abc.abstractmethod
@@ -138,7 +139,7 @@ class Graph(nn.Module):
             self.nerf_fine = NeRF(D, W, input_ch, input_ch_views, output_ch, skips, use_viewdirs, args.channels)
         self.pose_eye = torch.eye(3, 4)
 
-    def forward(self, i, events, H, W, K, K_event, args):
+    def forward(self, i, events, H, W, K, K_event, args, undistorter: UndistortFisheyeCamera.KannalaBrandt):
         # select events in time windows(length: 0.1s)
         if args.time_window:
             window_t = args.window_percent
@@ -171,14 +172,18 @@ class Graph(nn.Module):
             y_window = events['y'][window_low_bound:window_up_bound]
             ts_window = events['ts'][window_low_bound:window_up_bound]
 
-        # event temporal aggregate
-        out = np.zeros((args.h_event, args.w_event))
-        accumulate_events(out, x_window, y_window, pol_window)
-        img = event_stream_visualization(x_window, y_window, pol_window, 720, 1280)
-        distorted_folder = "distorted_events"     
-        os.makedirs(distorted_folder, exist_ok = True)
-        cv.imwrite(os.path.join(distorted_folder, "%06d_raw" % i + ".png"), img)
-        events_accu = torch.tensor(out)
+        # event temporal aggregate and undistortion for tumvie 
+        if args.dataset == "TUMVIE":
+            out = np.zeros((args.h_event, args.w_event))
+            # 0:neg_pol 1: pos_pol in tumvie
+            pol_window[pol_window == 0] = -1
+            accumulate_events(out, x_window, y_window, pol_window)
+            out = undistorter.UndistortAccumulatedEvents(out, K_event, [args.h_event, args.w_event])
+            events_accu = torch.tensor(out).to(dtype = torch.float32)
+        elif args.dataset == "E2NeRF" or args.dataset == "HNU" or args.dataset == "Blender" or args.dataset == "Unreal":
+            out = np.zeros((args.h_event, args.w_event))
+            accumulate_events(out, x_window, y_window, pol_window)
+            events_accu = torch.tensor(out)
 
         # timestamps of event windows begin and end
         if args.time_window:
@@ -198,7 +203,7 @@ class Graph(nn.Module):
                                 ray_idx_event.reshape(-1, 1).squeeze(), 
                                 args.h_event, 
                                 args.w_event,
-                                K_event,
+                                torch.Tensor(K_event),
                                 args,
                                 enable_crf = True,
                                 sensor_type = "event",
@@ -234,7 +239,7 @@ class Graph(nn.Module):
                               ray_idx_rgb.reshape(-1, 1).squeeze(), 
                               H, 
                               W, 
-                              K, 
+                              torch.Tensor(K), 
                               args,
                               enable_crf = True, 
                               sensor_type = "rgb",

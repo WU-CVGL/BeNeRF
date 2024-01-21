@@ -72,10 +72,45 @@ class UndistortFisheyeCamera:
             )
             return img_undist
         
-        def UndistortAccumulatedEvents(self):
-            pass
+        def UndistortAccumulatedEvents(
+                self, evt_acc_dist, evt_new_K, new_evt_res
+            ) -> np.ndarray:
+            # map [-1,1] to [-255,0] and [0,255]
+            evt_acc_dist = np.asarray(evt_acc_dist * 255, dtype = np.int16)
+            array_neg_to_zero = np.where(evt_acc_dist <= 0, evt_acc_dist, 0)
+            array_zero_to_pos = np.where(evt_acc_dist >= 0, evt_acc_dist, 0)
 
+            # undistort as image
+            evt_neg_acc_undist = cv.fisheye.undistortImage(
+                distorted = (array_neg_to_zero * -1), 
+                K = self.evt_K, 
+                D = self.evt_D, 
+                Knew = evt_new_K, 
+                new_size = (new_evt_res[1], new_evt_res[0])
+            ) * -1
+            
+            evt_pos_acc_undist = cv.fisheye.undistortImage(
+                distorted = array_zero_to_pos, 
+                K = self.evt_K, 
+                D = self.evt_D, 
+                Knew = evt_new_K, 
+                new_size = (new_evt_res[1], new_evt_res[0])
+            )
 
+            # convert intensity to polarity
+            evt_acc_undist = np.asarray((evt_pos_acc_undist + evt_neg_acc_undist), dtype = np.float16)
+            mapping_rule = {
+                (-255, -128): -1,
+                (-127, 127): 0,
+                (128, 255): 1
+            }
+            evt_acc_undist = np.piecewise(
+                evt_acc_undist, 
+                [np.logical_and(evt_acc_undist >= start, evt_acc_undist <= end) for start, end in mapping_rule.keys()],
+                [mapping_rule[start, end] for start, end in mapping_rule.keys()]
+            )
+            return evt_acc_undist.astype(np.int16)
+            
         def UndistortStreamEvents(self):
             pass        
 

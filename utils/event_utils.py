@@ -228,7 +228,7 @@ class EventReader(EventReaderAbstract):
         self.t_start_us = t_end_us
         return events
 
-def event_stream_visualization(x: np.ndarray, y: np.ndarray, pol: np.ndarray, H: int, W: int) -> np.ndarray:
+def event_data_visualization(x: np.ndarray, y: np.ndarray, pol: np.ndarray, H: int, W: int) -> np.ndarray:
     assert x.size == y.size == pol.size
     assert H > 0
     assert W > 0
