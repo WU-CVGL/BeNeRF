@@ -26,7 +26,7 @@ cy = 506.27250845753406
 img_dist = [0.019121168898463155, -0.005217096042982034, 0.018410447034539666, -0.010799031642166947]
 
 # training parameters for event data 
-optimize_event = False
+optimize_event = True
 loadtrans = False
 threshold = -1
 transform_lrate = 5e-4
