@@ -86,30 +86,33 @@ def train(args):
     H, W = int(H), int(W)
 
     # intrinsic matrix
-    K = torch.Tensor(
+    K = np.array(
         [
             [img_calib["fx"], 0, img_calib["cx"]], 
             [0, img_calib["fy"], img_calib["fy"]], 
             [0, 0, 1]
-        ]
+        ],
+        dtype = np.float128
     )
 
     # event camera
-    K_event = torch.Tensor(
+    K_event = np.array(
         [
             [evt_calib["fx"], 0, evt_calib["cx"]],
             [0, evt_calib["fy"], evt_calib["fy"]],
             [0, 0, 1],
-        ]
+        ],
+        dtype = np.float128
     )
 
     # camera for rendering
-    K_render = torch.Tensor(
+    K_render = np.array(
         [
             [args.render_focal_x, 0, args.render_cx],
             [0, args.render_focal_y, args.render_cy],
             [0, 0, 1],
-        ]
+        ],
+        dtype = np.float128
     )
 
     # create undistorter    
@@ -129,12 +132,12 @@ def train(args):
         img_K_new, evt_K_new = undistorter.GetNewIntrinsicMatrix(
             raw_img_res, raw_evt_res, new_img_res, new_evt_res
         )
-        K = torch.Tensor(img_K_new)
-        K_event = torch.Tensor(evt_K_new)
+        K = img_K_new
+        K_event = evt_K_new
         
         # Undistort image
         img_dist = images[0].reshape(1024, 1024)
-        img_undist = undistorter.UndistortImage(img_dist, img_K_new, new_img_res)
+        img_undist = undistorter.UndistortImage(img_dist, K, new_img_res)
         images[0] = img_undist.reshape((1024, 1024, 1))
 
     H_render = args.render_h
