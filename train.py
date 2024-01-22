@@ -92,7 +92,7 @@ def train(args):
             [0, img_calib["fy"], img_calib["fy"]], 
             [0, 0, 1]
         ],
-        dtype = np.float128
+        dtype = np.float32
     )
 
     # event camera
@@ -102,7 +102,7 @@ def train(args):
             [0, evt_calib["fy"], evt_calib["fy"]],
             [0, 0, 1],
         ],
-        dtype = np.float128
+        dtype = np.float32
     )
 
     # camera for rendering
@@ -112,7 +112,7 @@ def train(args):
             [0, args.render_focal_y, args.render_cy],
             [0, 0, 1],
         ],
-        dtype = np.float128
+        dtype = np.float32
     )
 
     # create undistorter    
