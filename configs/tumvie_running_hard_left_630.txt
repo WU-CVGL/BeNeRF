@@ -1,6 +1,6 @@
 project = tumvie_running_hard_left_630
 expname = none_crf_1024_1024
-datadir = ~/Dataset/TUM_VIE/running-hard
+datadir = ~/ssd_data/BeNeRF_datasets/TUMVIE/running-hard
 logdir = ./logs/tumvie_running_hard_left_630
 dataset = TUMVIE
 idx = 630
@@ -44,14 +44,14 @@ event_time_shift = 0
 dataset_event_split = 500
 
 # training parameters for rgb_crf
-optimize_rgb_crf = True
+optimize_rgb_crf = False
 rgb_crf_net_hidden = 0
 rgb_crf_net_width = 128
 rgb_crf_lrate = 5e-4
 decay_rate_rgb_crf = 0.1
 
 # training parameters for event_crf
-optimize_event_crf = True
+optimize_event_crf = False
 event_crf_net_hidden = 0
 event_crf_net_width = 128
 event_crf_lrate = 5e-4
