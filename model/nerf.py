@@ -1,18 +1,16 @@
 import abc
 import os
-from datetime import datetime
-
+import torch
 import numpy as np
 import cv2 as cv
-import torch
 import torch.nn.functional as F
 from torch import nn as nn
-
 from model import embedder
-from run_nerf_helpers import get_specific_rays, get_rays, ndc_rays, sample_pdf
-from utils.event_utils import accumulate_events
-from utils.event_utils import event_data_visualization
+from datetime import datetime
 from undistort import UndistortFisheyeCamera
+from utils import event_utils
+from run_nerf_helpers import get_specific_rays, get_rays, ndc_rays, sample_pdf
+
 
 class Model:
     @abc.abstractmethod
@@ -139,7 +137,10 @@ class Graph(nn.Module):
             self.nerf_fine = NeRF(D, W, input_ch, input_ch_views, output_ch, skips, use_viewdirs, args.channels)
         self.pose_eye = torch.eye(3, 4)
 
-    def forward(self, i, events, H, W, K, K_event, args, undistorter: UndistortFisheyeCamera.KannalaBrandt):
+    def forward(
+            self, i, events, rgb_exp_ts, H, W, K, K_event, args, 
+            undistorter: UndistortFisheyeCamera.KannalaBrandt
+        ):
         # select events in time windows(length: 0.1s)
         if args.time_window:
             window_t = args.window_percent
@@ -177,29 +178,31 @@ class Graph(nn.Module):
             out = np.zeros((args.h_event, args.w_event))
             # 0:neg_pol 1: pos_pol in tumvie
             pol_window[pol_window == 0] = -1
-            accumulate_events(out, x_window, y_window, pol_window)
-            out = undistorter.UndistortAccumulatedEvents(out, K_event, [args.h_event, args.w_event])
-            events_accu = torch.tensor(out).to(dtype = torch.float32)
+            out_tensor = event_utils.accumulate_events_on_gpu(out, x_window, y_window, pol_window)
+            out_array = out_tensor.cpu().detach().numpy()
+            out_undist = undistorter.UndistortAccumulatedEvents(out_array, K_event, [args.h_event, args.w_event])
+            events_accu = torch.tensor(out_undist).to(dtype = torch.float32)
         elif args.dataset == "E2NeRF" or args.dataset == "HNU" or args.dataset == "Blender" or args.dataset == "Unreal":
             out = np.zeros((args.h_event, args.w_event))
-            accumulate_events(out, x_window, y_window, pol_window)
-            events_accu = torch.tensor(out)
+            out_tensor = event_utils.accumulate_events_on_gpu(out, x_window, y_window, pol_window)
+            out_array = out_tensor.cpu().detach().numpy()
+            events_accu = torch.tensor(out_array)
 
         # timestamps of event windows begin and end
         if args.time_window:
             events_ts = np.stack((low_t, upper_t)).reshape(2)
         else:
             events_ts = ts_window[np.array([0, int(N_window) - 1])]
-        
+
+        # interpolated event pose 
+        spline_evt_poses = self.get_pose_evt(args, torch.tensor(events_ts, dtype = torch.float32))
+        # interpolated rgb pose 
+        spline_rgb_poses = self.get_pose_rgb(args, torch.tensor(rgb_exp_ts, dtype = torch.float32))
+
         # index of event rays
         ray_idx_event = torch.randperm(args.h_event * args.w_event)[:args.pix_event]
-        # interpolated rgb pose 
-        spline_rgb_poses = self.get_pose_rgb(args)
-        # interpolated event pose 
-        spline_poses = self.get_pose(args, torch.tensor(events_ts, dtype=torch.float32))
-
         # render event
-        ret_event = self.render(spline_poses, 
+        ret_event = self.render(spline_evt_poses, 
                                 ray_idx_event.reshape(-1, 1).squeeze(), 
                                 args.h_event, 
                                 args.w_event,
@@ -233,8 +236,9 @@ class Graph(nn.Module):
                                    additional_idx.reshape(-1, 1).squeeze(), H, W, K, args,
                                    training=True)
 
-        # render rgb
+        # index of event rays
         ray_idx_rgb = torch.randperm(H * W)[:args.pix_rgb // args.deblur_images]
+        # render rgb
         ret_rgb = self.render(spline_rgb_poses, 
                               ray_idx_rgb.reshape(-1, 1).squeeze(), 
                               H, 

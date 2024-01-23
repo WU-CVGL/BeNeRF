@@ -29,17 +29,17 @@ from undistort import UndistortFisheyeCamera
 
 
 def train(args):
-    # Load data images are groundtruth
+    # start wandb
     logger = WandbLogger(args)
 
-    # transforms
+    # loss
     mse_loss = imgloss.MSELoss()
     rgb2gray = img_utils.RGB2Gray()
 
     print("Loading data...")
 
     # imgtests:for render test
-    events, images, imgtests, poses_ts, poses, ev_poses, trans = load_data(
+    events, images, imgtests, rgb_exp_ts, poses_ts, poses, ev_poses, trans = load_data(
         args.datadir,
         args,
         load_pose = args.loadpose,
@@ -238,7 +238,7 @@ def train(args):
 
         # interpolate poses, ETA and render
         ret_event, ret_rgb, ray_idx_event, ray_idx_rgb, events_accu = graph.forward(
-            i, events, H, W, K, K_event, args, undistorter
+            i, events, rgb_exp_ts, H, W, K, K_event, args, undistorter
         )
         pixels_num = ray_idx_event.shape[0]
 
@@ -536,6 +536,7 @@ def train(args):
         if i % args.i_img == 0 and i > 0:
             test_poses = graph.get_pose_rgb(
                 args,
+                rgb_exp_ts,
                 seg_num = args.deblur_images
                 if args.deblur_images % 2 == 1
                 else args.deblur_images + 1,
@@ -581,7 +582,7 @@ def train(args):
                     logger.write_imgs("test_depth_all", depth)
 
         if i % args.i_video == 0 and i > 0:
-            render_poses = graph.get_pose_rgb(args, 90)
+            render_poses = graph.get_pose_rgb(args, rgb_exp_ts, 90)
 
             with torch.no_grad():
                 rgbs, disps = render_video_test(
