@@ -260,9 +260,16 @@ def load_data(
         imgtests = np.expand_dims(imgtests[args.idx], 0)
     print("Load images successfully!!")
 
-    # load timestamps
+    # load start and end timestamps of exposure time
     ts_start, ts_end = load_timestamps(datadir)
     print("Load timestamps successfully!!")
+
+    # record exposure time    
+    img_ts_start = ts_start[args.idx]
+    img_ts_end = ts_start[args.idx]
+    # usually,select more events will be better
+    evt_ts_start = ts_start[args.idx] - args.event_shift_start * 1e3 
+    evt_ts_end = ts_end[args.idx] + args.event_shift_end * 1e3
 
     # load events
     print("Loading events...")
@@ -295,15 +302,14 @@ def load_data(
         chunk_size = 100000
         for chunk_idx in tqdm(range(0, len(h5dataset_ts), chunk_size)):
             chunk_indices = np.where(
-                (h5dataset_ts[chunk_idx : chunk_idx + chunk_size] >= ts_start[args.idx]) 
-                & (h5dataset_ts[chunk_idx : chunk_idx + chunk_size] <= ts_end[args.idx])
+                (h5dataset_ts[chunk_idx : chunk_idx + chunk_size] >= evt_ts_start) 
+                & (h5dataset_ts[chunk_idx : chunk_idx + chunk_size] <= evt_ts_end)
             )
             chunk_indices = chunk_indices[0]
             chunk_indices[:] = chunk_indices[:] + chunk_idx
             selected_indices = np.concatenate((selected_indices, chunk_indices)).astype(np.uint64)
         selected_indices_start = np.array(selected_indices[0], dtype = np.uint64)
         selected_indices_end = np.array(selected_indices[len(selected_indices) - 1] + 1, dtype = np.uint64)
-
         # creat events array
         events = np.zeros(len(selected_indices))
         h5group_order = ["x", "y", "t", "p"]
@@ -338,7 +344,7 @@ def load_data(
         "x": events[:, 0].astype(int),
         "y": events[:, 1].astype(int),
         # norm ts(0~1)
-        "ts": (events[:, 2] - ts_start[args.idx]) / (ts_end[args.idx] - ts_start[args.idx]),
+        "ts": (events[:, 2] - evt_ts_start) / (evt_ts_end - evt_ts_start),
         "pol": events[:, 3],
     }
     print("Load events successfully")
@@ -362,7 +368,12 @@ def load_data(
         # trans = recenter_poses(trans_arr)[0]
         trans = trans_arr.astype(np.float32)
 
-    return events, imgs, imgtests, poses_ts, poses, ev_poses, trans
+    # normlize exposure time of image accroding to eventstream time
+    img_ts_start = (img_ts_start - evt_ts_start) / (evt_ts_end - evt_ts_start)
+    img_ts_end = (img_ts_end - evt_ts_start) / (evt_ts_end - evt_ts_start)
+    rgb_exp_time = np.array([img_ts_start, img_ts_end])
+
+    return events, imgs, imgtests, rgb_exp_time, poses_ts, poses, ev_poses, trans
 
 
 def regenerate_pose(
