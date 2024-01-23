@@ -1,6 +1,6 @@
 project = tumvie_running_hard_left_630
-expname = none_crf_1024_1024
-datadir = ~/ssd_data/BeNeRF_datasets/TUMVIE/running-hard
+expname = none_crf_time_unaligned_optim_event_pose_and_T
+datadir = ~/Dataset/TUM_VIE/running-hard
 logdir = ./logs/tumvie_running_hard_left_630
 dataset = TUMVIE
 idx = 630
@@ -38,8 +38,8 @@ event_cy = 265.7059221322115
 w_event = 1280
 h_event = 720
 evt_dist = [-0.13104704164707634, 0.07279844505754081, -0.21109298825047648, 0.18493426446978858]
-event_shift_start = 0
-event_shift_end = 0
+event_shift_start = 10  # ms
+event_shift_end = 10    # ms
 event_time_shift = 0
 dataset_event_split = 500
 
@@ -71,7 +71,7 @@ channels = 1
 pix_event = 1024
 pix_rgb = 1024
 
-window_percent = 0.3
+window_percent = 0.25
 random_window = True
 time_window = True
 
