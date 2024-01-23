@@ -1,4 +1,5 @@
 import numba
+import torch
 import math
 import h5py
 import weakref
@@ -245,6 +246,21 @@ def event_data_visualization(x: np.ndarray, y: np.ndarray, pol: np.ndarray, H: i
     img[mask == -1] = [255, 0, 0]
     img[mask == 1] = [0, 0, 255] 
     return img
+
+@torch.no_grad()
+def accumulate_events_on_gpu(out, xs, ys, ps) -> torch.Tensor:
+    # spare tensor
+    indices_array = np.array([ys, xs])
+    indices_tensor = torch.tensor(indices_array, dtype = torch.long)
+    values = torch.tensor(ps, dtype = torch.float32)
+    size = torch.Size([out.shape[0], out.shape[1]])
+    out_sparse = torch.sparse_coo_tensor(indices_tensor, values, size)
+
+    # dense tensor
+    out_tensor = torch.from_numpy(out).to('cuda')
+    out_tensor += out_sparse.to_dense().to('cuda')
+
+    return out_tensor
 
 @numba.jit(nopython=True)
 def accumulate_events(out, xs, ys, ps):
