@@ -285,7 +285,7 @@ def load_data(
         # poses_ts = np.array([poses_ts[0] - delta, poses_ts[1] + delta])
         # get events
         events = np.array(
-            [ event for event in events if ts_start[args.idx] <= event[2] <= ts_end[args.idx]]
+            [ event for event in events if evt_ts_start <= event[2] <= evt_ts_end]
         )
     # TUM-VIE
     elif os.path.exists(os.path.join(eventdir, "events.h5")):
