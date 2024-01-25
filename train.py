@@ -24,6 +24,7 @@ from model.nerf import *
 from run_nerf_helpers import init_nerf, render_image_test, render_video_test
 from utils import img_utils
 from utils.math_utils import safelog
+from utils.math_utils import lin_log
 from undistort import UndistortFisheyeCamera
 
 
@@ -542,6 +543,15 @@ def train(args):
                 else args.deblur_images + 1,
             )
 
+            # test_poses = graph.get_pose_evt(
+            #     args,
+            #     [0, 1],
+            #     seg_num = args.deblur_images
+            #     if args.deblur_images % 2 == 1
+            #     else args.deblur_images + 1,
+            # )
+
+
             with torch.no_grad():
                 imgs, depth = render_image_test(
                     i,
@@ -562,6 +572,7 @@ def train(args):
                     # logger.write_img("test_radience_mid", radiences[len(radiences) // 2])
                     # logger.write_imgs("test_radience_all", radiences)
                     if args.dataset == "Unreal" or args.dataset == "Blender":
+                        imgtests = torch.Tensor(imgtests)
                         img_mid = imgs[len(imgs) // 2] / 255.0
                         img_mid = torch.unsqueeze(
                             torch.tensor(img_mid, dtype=torch.float32), dim=0
@@ -583,6 +594,7 @@ def train(args):
 
         if i % args.i_video == 0 and i > 0:
             render_poses = graph.get_pose_rgb(args, rgb_exp_ts, 90)
+            #render_poses = graph.get_pose_evt(args, [0, 1], 90)
 
             with torch.no_grad():
                 rgbs, disps = render_video_test(
