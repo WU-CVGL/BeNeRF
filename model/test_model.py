@@ -20,12 +20,12 @@ class Model(nerf.Model):
                                                    input_type = "Gray")
 
         parm_evt = torch.concatenate(
-            (torch.rand(1, 1, 6) * 0.01, torch.rand(1, 1, 6) * 0.01, torch.rand(1, 1, 6) * 0.01, torch.rand(1, 1, 6) * 0.01))
+            (torch.rand(1, 6) * 0.01, torch.rand(1, 6) * 0.01, torch.rand(1, 6) * 0.01, torch.rand(1, 6) * 0.01))
         self.graph.evt_knot_pose_se3.params.weight.data = torch.nn.Parameter(parm_evt)
 
         # assign zero weights to graph.transform.params
-        #parm_e = torch.nn.Parameter(torch.zeros(1, 6))
-        parm_trans = torch.nn.Parameter(torch.rand(1, 1, 6) * 0.01)
+        #parm_trans = torch.nn.Parameter(torch.zeros(1, 6))
+        parm_trans = torch.nn.Parameter(torch.rand(1, 6) * 0.01)
         self.graph.transform.params.weight.data = torch.nn.Parameter(parm_trans)
 
         self.graph.rgb_crf.weights_biases_init()
@@ -55,11 +55,20 @@ class Model(nerf.Model):
         return self.optim, self.optim_pose, self.optim_transform, self.optim_rgb_crf, self.optim_event_crf
 
 class Graph(nerf.Graph):
-    def get_pose_evt(self, args, events_ts):
-        se3_knot_0 = self.evt_knot_pose_se3.params.weight[0].reshape((1, 1, 6))
-        se3_knot_1 = self.evt_knot_pose_se3.params.weight[1].reshape((1, 1, 6))
-        se3_knot_2 = self.evt_knot_pose_se3.params.weight[2].reshape((1, 1, 6))
-        se3_knot_3 = self.evt_knot_pose_se3.params.weight[3].reshape((1, 1, 6))
+    def get_pose_evt(self, args, events_ts, seg_num = None):
+        se3_knot_0 = self.evt_knot_pose_se3.params.weight[0].reshape(1, 1, 6)
+        se3_knot_1 = self.evt_knot_pose_se3.params.weight[1].reshape(1, 1, 6)
+        se3_knot_2 = self.evt_knot_pose_se3.params.weight[2].reshape(1, 1, 6)
+        se3_knot_3 = self.evt_knot_pose_se3.params.weight[3].reshape(1, 1, 6)
+
+        # decide number of interpolation
+        pose_nums = None
+        if seg_num is None:
+            pose_nums = 2
+        else:
+            pose_nums = seg_num
+
+        events_ts = torch.linspace(events_ts[0], events_ts[1], pose_nums) 
 
         # interpolate pose at start and end of event time window
         spline_poses = spline.cubic_spline_pose_per_unit_time(
@@ -69,17 +78,12 @@ class Graph(nerf.Graph):
         # SE3
         return spline_poses
 
-    def get_pose_rgb(self, args, exposure_ts, seg_num=None):
+    def get_pose_rgb(self, args, exposure_ts, seg_num = None):
         # transform in se3 domain
-        se3_knot_0 = self.evt_knot_pose_se3.params.weight[0] + self.transform.params.weight
-        se3_knot_1 = self.evt_knot_pose_se3.params.weight[1] + self.transform.params.weight
-        se3_knot_2 = self.evt_knot_pose_se3.params.weight[2] + self.transform.params.weight
-        se3_knot_3 = self.evt_knot_pose_se3.params.weight[3] + self.transform.params.weight
-
-        se3_knot_0 = se3_knot_0.reshape((1, 1, 6))
-        se3_knot_1 = se3_knot_1.reshape((1, 1, 6))
-        se3_knot_2 = se3_knot_2.reshape((1, 1, 6))
-        se3_knot_3 = se3_knot_3.reshape((1, 1, 6))
+        se3_knot_0 = self.evt_knot_pose_se3.params.weight[0].reshape(1, 1, 6) + self.transform.params.weight.reshape(1, 1, 6)
+        se3_knot_1 = self.evt_knot_pose_se3.params.weight[1].reshape(1, 1, 6) + self.transform.params.weight.reshape(1, 1, 6)
+        se3_knot_2 = self.evt_knot_pose_se3.params.weight[2].reshape(1, 1, 6) + self.transform.params.weight.reshape(1, 1, 6)
+        se3_knot_3 = self.evt_knot_pose_se3.params.weight[3].reshape(1, 1, 6) + self.transform.params.weight.reshape(1, 1, 6)
 
         # decide number of interpolation
         pose_nums = None

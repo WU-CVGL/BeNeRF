@@ -266,7 +266,7 @@ def load_data(
 
     # record exposure time    
     img_ts_start = ts_start[args.idx]
-    img_ts_end = ts_start[args.idx]
+    img_ts_end = ts_end[args.idx]
     # usually,select more events will be better
     evt_ts_start = ts_start[args.idx] - args.event_shift_start * 1e3 
     evt_ts_end = ts_end[args.idx] + args.event_shift_end * 1e3
