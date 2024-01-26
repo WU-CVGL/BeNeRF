@@ -212,9 +212,9 @@ def config_parser():
                         help='focal length of images')
     parser.add_argument("--evt_dist", type=float, action="append",
                         help='focal length of images')
-    parser.add_argument("--event_shift_start", type=int, default=5,
+    parser.add_argument("--event_shift_start", type=float, default=5,
                         help='tv')
-    parser.add_argument("--event_shift_end", type=int, default=5,
+    parser.add_argument("--event_shift_end", type=float, default=5,
                         help='tv')
     parser.add_argument("--event_time_shift", type=float, default=.0,
                         help='tv')
