@@ -48,6 +48,7 @@ def train(args):
         cubic = "cubic" in args.model,
         datasource = args.dataset,
     )
+    print("exposure time of rgb image", rgb_exp_ts)
 
     print(f"Loaded data from {args.datadir}")
     print(f"Loaded image idx: {args.idx}")
