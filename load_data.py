@@ -299,7 +299,7 @@ def load_data(
 
         # iteratively import timestamps of event data in chunks
         selected_indices = np.array([])
-        chunk_size = 100000
+        chunk_size = 500000
         for chunk_idx in tqdm(range(0, len(h5dataset_ts), chunk_size)):
             chunk_indices = np.where(
                 (h5dataset_ts[chunk_idx : chunk_idx + chunk_size] >= evt_ts_start) 
