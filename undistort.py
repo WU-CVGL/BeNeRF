@@ -72,6 +72,22 @@ class UndistortFisheyeCamera:
             )
             return img_undist
         
+        def UndistortImageCoordinate(self, w, h) -> np.ndarray:
+            # create coordinate
+            xs, ys = np.meshgrid(np.arange(w), np.arange(h))
+            xys = np.stack((xs, ys), axis = -1) # (H, W, 2)
+            xys = xys.astype(np.float32)
+            # undistort
+            xys_remap = cv.fisheye.undistortPoints(
+                distorted = xys,
+                K = self.img_K, 
+                D = self.img_D, 
+                R = np.eye(3),
+                P = self.img_K
+            )
+
+            return xys_remap.astype(np.float32)
+
         def UndistortAccumulatedEvents(
                 self, evt_acc_dist, evt_new_K, new_evt_res
             ) -> np.ndarray:
@@ -111,8 +127,22 @@ class UndistortFisheyeCamera:
             )
             return evt_acc_undist.astype(np.int16)
             
-        def UndistortStreamEvents(self):
-            pass        
+        def UndistortStreamEventsCoordinate(self, w, h) -> np.ndarray:
+            # create coordinate
+            xs, ys = np.meshgrid(np.arange(w), np.arange(h))
+            xys = np.stack((xs, ys), axis = -1) # (H, W, 2)
+            xys = xys.astype(np.float32)
+            # undistort
+            xys_remap = cv.fisheye.undistortPoints(
+                distorted = xys,
+                K = self.evt_K, 
+                D = self.evt_D, 
+                R = np.eye(3),
+                P = self.evt_K
+            )
+
+            return xys_remap.astype(np.float32)
+               
 
     class Unified:
         def __init__(self) -> None:
