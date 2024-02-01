@@ -10,7 +10,7 @@ from datetime import datetime
 from undistort import UndistortFisheyeCamera
 from utils import event_utils
 from run_nerf_helpers import get_specific_rays, get_rays, ndc_rays, sample_pdf
-
+from run_nerf_helpers import random_sample_right_half, random_sample_right_half_indices
 
 class Model:
     @abc.abstractmethod
@@ -138,8 +138,7 @@ class Graph(nn.Module):
         self.pose_eye = torch.eye(3, 4)
 
     def forward(
-            self, i, events, rgb_exp_ts, H, W, K, K_event, args, 
-            undistorter: UndistortFisheyeCamera.KannalaBrandt
+            self, i, events, rgb_exp_ts, H, W, K, K_event, args, img_xy_remap, evt_xy_remap
         ):
         # select events in time windows(length: 0.1s)
         if args.time_window:
@@ -174,19 +173,36 @@ class Graph(nn.Module):
             ts_window = events['ts'][window_low_bound:window_up_bound]
 
         # event temporal aggregate and undistortion for tumvie 
+        # if args.dataset == "TUMVIE":
+        #     out = np.zeros((args.h_event, args.w_event))
+        #     # 0:neg_pol 1: pos_pol in tumvie
+        #     pol_window[pol_window == 0] = -1
+        #     out_tensor = event_utils.accumulate_events_on_gpu(out, x_window, y_window, pol_window)
+        #     out_array = out_tensor.cpu().detach().numpy()
+        #     out_undist = undistorter.UndistortAccumulatedEvents(out_array, K_event, [args.h_event, args.w_event])
+        #     events_accu = torch.tensor(out_undist).to(dtype = torch.float32)
+        # elif args.dataset == "E2NeRF" or args.dataset == "HNU" or args.dataset == "Blender" or args.dataset == "Unreal":
+        #     out = np.zeros((args.h_event, args.w_event))
+        #     out_tensor = event_utils.accumulate_events_on_gpu(out, x_window, y_window, pol_window)
+        #     out_array = out_tensor.cpu().detach().numpy()
+        #     events_accu = torch.tensor(out_array)
+            
+        out = np.zeros((args.h_event, args.w_event))
         if args.dataset == "TUMVIE":
-            out = np.zeros((args.h_event, args.w_event))
             # 0:neg_pol 1: pos_pol in tumvie
+            #pol_window = pol_window.astype('int')
             pol_window[pol_window == 0] = -1
-            out_tensor = event_utils.accumulate_events_on_gpu(out, x_window, y_window, pol_window)
-            out_array = out_tensor.cpu().detach().numpy()
-            out_undist = undistorter.UndistortAccumulatedEvents(out_array, K_event, [args.h_event, args.w_event])
-            events_accu = torch.tensor(out_undist).to(dtype = torch.float32)
-        elif args.dataset == "E2NeRF" or args.dataset == "HNU" or args.dataset == "Blender" or args.dataset == "Unreal":
-            out = np.zeros((args.h_event, args.w_event))
-            out_tensor = event_utils.accumulate_events_on_gpu(out, x_window, y_window, pol_window)
-            out_array = out_tensor.cpu().detach().numpy()
-            events_accu = torch.tensor(out_array)
+        out_tensor = event_utils.accumulate_events_on_gpu(out, x_window, y_window, pol_window)
+        out_array = out_tensor.cpu().detach().numpy()
+        # img = np.full((720,1280,3), fill_value=255,dtype='uint8')
+        # img[out_array==0]=[255,255,255]
+        # img[out_array==-1]=[255,0,0]
+        # img[out_array==1]=[0,0,255]
+        # #cv.imwrite("output_image.png", img)
+        # distorted_folder = "./undistorted_events"
+        # os.makedirs(distorted_folder, exist_ok=True)
+        # cv.imwrite(os.path.join(distorted_folder,  "%06d_raw" % i + ".png"), img)
+        events_accu = torch.tensor(out_array)
 
         # timestamps of event windows begin and end
         if args.time_window:
@@ -196,13 +212,13 @@ class Graph(nn.Module):
 
         # interpolated event pose 
         spline_evt_poses = self.get_pose_evt(args, torch.tensor(events_ts, dtype = torch.float32))
-        #spline_evt_poses = self.get_pose(args, torch.tensor(events_ts, dtype = torch.float32))
+
         # interpolated rgb pose 
         spline_rgb_poses = self.get_pose_rgb(args, torch.tensor(rgb_exp_ts, dtype = torch.float32))
-        #spline_rgb_poses = self.get_pose_rgb(args)
 
         # index of event rays
         ray_idx_event = torch.randperm(args.h_event * args.w_event)[:args.pix_event]
+        #ray_idx_event = random_sample_right_half_indices(args.h_event, args.w_event, args.pix_event)
         # render event
         ret_event = self.render(spline_evt_poses, 
                                 ray_idx_event.reshape(-1, 1).squeeze(), 
@@ -212,6 +228,7 @@ class Graph(nn.Module):
                                 args,
                                 enable_crf = True,
                                 sensor_type = "event",
+                                remap = torch.tensor(evt_xy_remap),
                                 training = True)
         
         # warping loss
@@ -240,6 +257,7 @@ class Graph(nn.Module):
 
         # index of event rays
         ray_idx_rgb = torch.randperm(H * W)[:args.pix_rgb // args.deblur_images]
+        #ray_idx_rgb = random_sample_right_half_indices(H, W, (args.pix_rgb //args.deblur_images))
         # render rgb
         ret_rgb = self.render(spline_rgb_poses, 
                               ray_idx_rgb.reshape(-1, 1).squeeze(), 
@@ -249,16 +267,27 @@ class Graph(nn.Module):
                               args,
                               enable_crf = True, 
                               sensor_type = "rgb",
+                              remap = torch.tensor(img_xy_remap),
                               training = True)
 
         return ret_event, ret_rgb, ray_idx_event, ray_idx_rgb, events_accu
 
-    def render(self, poses, ray_idx, H, W, K, args, enable_crf: bool, sensor_type: str, near=0., far=1., training=False):
+    def render(
+            self, poses, ray_idx, H, W, K, args, 
+            enable_crf: bool, sensor_type: str, remap: torch.Tensor, 
+            near=0., far=1., training=False,
+        ):
         if training:
             ray_idx_ = ray_idx.repeat(poses.shape[0])
             poses = poses.unsqueeze(1).repeat(1, ray_idx.shape[0], 1, 1).reshape(-1, 3, 4)
             j = ray_idx_.reshape(-1, 1).squeeze() // W
             i = ray_idx_.reshape(-1, 1).squeeze() % W
+
+            if args.dataset == "TUMVIE":
+                rect = remap[j, i]
+                i = rect[..., 0]
+                j = rect[..., 1]
+            
             rays_o_, rays_d_ = get_specific_rays(i, j, K, poses)
             rays_o_d = torch.stack([rays_o_, rays_d_], 0)
             batch_rays = torch.permute(rays_o_d, [1, 0, 2])
@@ -266,7 +295,7 @@ class Graph(nn.Module):
         else:
             rays_list = []
             for p in poses[:, :3, :4]:
-                rays_o_, rays_d_ = get_rays(H, W, K, p)
+                rays_o_, rays_d_ = get_rays(H, W, K, p, args, remap)
                 rays_o_d = torch.stack([rays_o_, rays_d_], 0)
                 rays_list.append(rays_o_d)
 
@@ -362,7 +391,7 @@ class Graph(nn.Module):
             return luminance
             
     @torch.no_grad()
-    def render_video(self, poses, H, W, K, args, type):
+    def render_video(self, poses, H, W, K, args, remap, type):
         all_ret = {}
         ray_idx = torch.arange(0, H * W)
         type = str(type)
@@ -376,7 +405,8 @@ class Graph(nn.Module):
                                 K, 
                                 args, 
                                 enable_crf = False, 
-                                sensor_type = None, 
+                                sensor_type = None,
+                                remap = torch.tensor(remap), 
                                 training = False)
             elif type == "rgb":
                 ret = self.render(poses, 
@@ -386,7 +416,8 @@ class Graph(nn.Module):
                                 K, 
                                 args, 
                                 enable_crf = True, 
-                                sensor_type = "rgb", 
+                                sensor_type = "rgb",
+                                remap = torch.tensor(remap),  
                                 training = False)              
             
             for k in ret:

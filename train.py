@@ -91,7 +91,7 @@ def train(args):
     K = np.array(
         [
             [img_calib["fx"], 0, img_calib["cx"]], 
-            [0, img_calib["fy"], img_calib["fy"]], 
+            [0, img_calib["fy"], img_calib["cy"]], 
             [0, 0, 1]
         ],
         dtype = np.float32
@@ -101,8 +101,8 @@ def train(args):
     K_event = np.array(
         [
             [evt_calib["fx"], 0, evt_calib["cx"]],
-            [0, evt_calib["fy"], evt_calib["fy"]],
-            [0, 0, 1],
+            [0, evt_calib["fy"], evt_calib["cy"]],
+            [0, 0, 1]
         ],
         dtype = np.float32
     )
@@ -112,35 +112,45 @@ def train(args):
         [
             [args.render_focal_x, 0, args.render_cx],
             [0, args.render_focal_y, args.render_cy],
-            [0, 0, 1],
+            [0, 0, 1]
         ],
         dtype = np.float32
     )
 
-    # create undistorter    
-    undistorter = UndistortFisheyeCamera.KannalaBrandt(img_calib, evt_calib)
+    print(f"distortion coefficients of rgb camera: \n{args.img_dist[0],args.img_dist[1],args.img_dist[2],args.img_dist[3]}\n")
+    print(f"distortion coefficients of evt camera: \n{args.evt_dist[0],args.evt_dist[1],args.evt_dist[2],args.evt_dist[3]}\n")
 
+    # create undistorter
+    img_xy_remap = np.array([])
+    evt_xy_remap = np.array([])
+    if args.dataset == "TUMVIE":    
+        undistorter = UndistortFisheyeCamera.KannalaBrandt(img_calib, evt_calib)
+        # lookup table
+        img_xy_remap = undistorter.UndistortImageCoordinate(W, H)
+        evt_xy_remap = undistorter.UndistortStreamEventsCoordinate(args.w_event, args.h_event)
+    print("shape of image remap", img_xy_remap.shape)
+    print("shape of event remap", evt_xy_remap.shape)
     # undistortion if use TUMVIE dataset
-    if args.dataset == "TUMVIE":
+    # if args.dataset == "TUMVIE":
 
-        print(f"camera intrinsic parameters before undistortion: \n{K}\n")
-        print(f"event camera intrinsic parameters before undistortion:: \n{K_event}\n")
+    #     print(f"camera intrinsic parameters before undistortion: \n{K}\n")
+    #     print(f"event camera intrinsic parameters before undistortion:: \n{K_event}\n")
         
-        # Get new intrinsic parameters after undistortion
-        raw_img_res = np.array([H, W])
-        new_img_res = np.array([H, W])
-        raw_evt_res = np.array([args.h_event, args.w_event])
-        new_evt_res = np.array([args.h_event, args.w_event])
-        img_K_new, evt_K_new = undistorter.GetNewIntrinsicMatrix(
-            raw_img_res, raw_evt_res, new_img_res, new_evt_res
-        )
-        K = img_K_new
-        K_event = evt_K_new
+    #     # Get new intrinsic parameters after undistortion
+    #     raw_img_res = np.array([H, W])
+    #     new_img_res = np.array([H, W])
+    #     raw_evt_res = np.array([args.h_event, args.w_event])
+    #     new_evt_res = np.array([args.h_event, args.w_event])
+    #     img_K_new, evt_K_new = undistorter.GetNewIntrinsicMatrix(
+    #         raw_img_res, raw_evt_res, new_img_res, new_evt_res
+    #     )
+    #     K = img_K_new
+    #     K_event = evt_K_new
         
-        # Undistort image
-        img_dist = images[0].reshape(1024, 1024)
-        img_undist = undistorter.UndistortImage(img_dist, K, new_img_res)
-        images[0] = img_undist.reshape((1024, 1024, 1))
+    #     # Undistort image
+    #     img_dist = images[0].reshape(1024, 1024)
+    #     img_undist = undistorter.UndistortImage(img_dist, K, new_img_res)
+    #     images[0] = img_undist.reshape((1024, 1024, 1))
 
     H_render = args.render_h
     W_render = args.render_w
@@ -149,6 +159,8 @@ def train(args):
         H_render = H
         W_render = W
 
+    print("hight of render image", H_render)
+    print("weight of render image", W_render)
     print(f"camera intrinsic parameters: \n{K}\n")
     print(f"event camera intrinsic parameters: \n{K_event}\n")
     print(f"render camera intrinsic parameters: \n{K_render}\n")
@@ -211,7 +223,7 @@ def train(args):
 
         print("Model Load Done!")
     else:
-        graph = model.build_network(args, poses=poses, event_poses=ev_poses)
+        graph = model.build_network(args, poses = poses, event_poses = ev_poses)
 
         (
             optimizer,
@@ -240,7 +252,7 @@ def train(args):
 
         # interpolate poses, ETA and render
         ret_event, ret_rgb, ray_idx_event, ray_idx_rgb, events_accu = graph.forward(
-            i, events, rgb_exp_ts, H, W, K, K_event, args, undistorter
+            i, events, rgb_exp_ts, H, W, K, K_event, args, img_xy_remap, evt_xy_remap 
         )
         pixels_num = ray_idx_event.shape[0]
 
@@ -563,6 +575,7 @@ def train(args):
                     K_render,
                     args,
                     logdir,
+                    img_xy_remap,
                     dir = "images_test",
                     need_depth = args.depth,
                 )
@@ -599,7 +612,7 @@ def train(args):
 
             with torch.no_grad():
                 rgbs, disps = render_video_test(
-                    graph, render_poses, H_render, W_render, K_render, args
+                    graph, render_poses, H_render, W_render, K_render, args, img_xy_remap,
                 )
             print("Done, saving", rgbs.shape, disps.shape)
             moviebase = os.path.join(

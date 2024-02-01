@@ -12,10 +12,18 @@ tonemap = lambda x: (
 ).astype(np.uint8)
 
 # Ray helpers
-def get_rays(H, W, K, c2w):
+def get_rays(H, W, K, c2w, args, remap):
     i, j = torch.meshgrid(torch.linspace(0, W - 1, W), torch.linspace(0, H - 1, H))
-    i = i.t()
-    j = j.t()
+    i = i.t().long()
+    j = j.t().long()         
+    if args.dataset == "TUMVIE":
+        idx = torch.linspace(0, H * W - 1, H * W).long()
+        i = idx % W
+        j = idx // W
+        rect = remap[j, i]
+        i = rect[..., 0]
+        j = rect[..., 1]
+
     dirs = torch.stack(
         [(i - K[0][2]) / K[0][0], -(j - K[1][2]) / K[1][1], -torch.ones_like(i)], -1
     )
@@ -113,13 +121,13 @@ def sample_pdf(bins, weights, N_samples, det=False, pytest=False):
 
 
 @torch.no_grad()
-def render_video_test(graph, render_poses, H, W, K, args):
+def render_video_test(graph, render_poses, H, W, K, args, remap):
     rgbs = []
     disps = []
     # radiences = []
     for i, pose in enumerate(tqdm(render_poses)):
         pose = pose[None, :3, :4]
-        ret = graph.render_video(pose[:3, :4], H, W, K, args, type="rgb")
+        ret = graph.render_video(pose[:3, :4], H, W, K, args, remap, type="rgb")
         if args.optimize_rgb_crf:
             ret["rgb_map"] = graph.rgb_crf.forward(ret["rgb_map"])
         # ret_radience = graph.render_video(pose[:3, :4], H, W, K, args, type = "radience")
@@ -140,7 +148,7 @@ def render_video_test(graph, render_poses, H, W, K, args):
 
 @torch.no_grad()
 def render_image_test(
-    i, graph, render_poses, H, W, K, args, logdir, dir=None, need_depth=True
+    i, graph, render_poses, H, W, K, args, logdir, remap, dir=None, need_depth=True
 ):
     img_dir = os.path.join(logdir, dir, "img_test_{:06d}".format(i))
     os.makedirs(img_dir, exist_ok=True)
@@ -150,7 +158,7 @@ def render_image_test(
 
     for j, pose in enumerate(tqdm(render_poses)):
         pose = pose[None, :3, :4]
-        ret = graph.render_video(pose[:3, :4], H, W, K, args, type="rgb")
+        ret = graph.render_video(pose[:3, :4], H, W, K, args, remap, type="rgb")
         if args.optimize_rgb_crf:
             ret["rgb_map"] = graph.rgb_crf.forward(ret["rgb_map"])
         # ret_radience = graph.render_video(pose[:3, :4], H, W, K, args, type = "radience")
@@ -216,3 +224,27 @@ def init_nerf(nerf):
     init_weights(nerf.feature_linear)
     init_weights(nerf.alpha_linear)
     init_weights(nerf.rgb_linear)
+
+def random_sample_right_half(height, width, num_samples):
+    # 右半边的列范围
+    right_half_cols = torch.randint(width // 2, width, size=(num_samples,))
+    
+    # 整个图像的行范围
+    rows = torch.randint(0, height, size=(num_samples,))
+    
+    # 合并行和列，得到采样点坐标
+    coordinates = torch.stack((rows, right_half_cols), dim=1)
+    
+    return coordinates
+
+def random_sample_right_half_indices(height, width, num_samples):
+    # 计算右半边的列范围
+    right_half_cols = torch.randint(width // 2, width, size=(num_samples,))
+    
+    # 计算整个图像中的行范围
+    rows = torch.randint(0, height, size=(num_samples,))
+    
+    # 将行和列索引合并为一维索引
+    indices = rows * width + right_half_cols
+    
+    return indices
