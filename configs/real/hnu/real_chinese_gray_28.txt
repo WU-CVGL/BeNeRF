@@ -1,9 +1,9 @@
-project = real_lego_gray_54
-expname = none_crf_seperated_1024_1024
-datadir = ~/ssd_data/wp-event/real/e2nerf/lego_gray
-logdir = ./logs/real_lego_gray_54
-dataset = E2NeRF
-idx = 54
+project = real_chinese_gray_28
+expname = only_evtloss_pinhole_iter_200000_rays_1024
+datadir = ~/ssd_data/wp-event/real/chinese_gray
+logdir = ./logs/real_chinese_gray_28
+dataset = HNU
+idx = 28
 viewer = wandb
 model = test
 depth = True
@@ -12,17 +12,17 @@ debug = False
 # training parameters for nerf
 optimize_nerf = True
 lrate = 5e-4
-decay_rate = 0.1
+decay_rate = 0.01
 
 # training parameters for pose 
 optimize_se3 = True
 loadpose = False
 pose_lrate = 5e-4
-decay_rate_pose = 0.1
-focal_x = 653.98456
-focal_y = 653.98456
-cx = 173
-cy = 130
+decay_rate_pose = 0.01
+focal_x = 1729.1345268456203
+focal_y = 1752.1234711115255
+cx = 673.7278590501172
+cy = 575.5896997116522
 img_dist = [0, 0, 0, 0]
 
 # training parameters for transform
@@ -30,13 +30,13 @@ optimize_event = True
 loadtrans = False
 threshold = -1
 transform_lrate = 5e-4
-decay_rate_transform = 0.1
-focal_event_x = 653.98456
-focal_event_y = 653.98456
-event_cx = 173
-event_cy = 130
-w_event = 346
-h_event = 260
+decay_rate_transform = 0.01
+focal_event_x = 658.9011017061267
+focal_event_y = 671.1520052459462
+event_cx = 327.0754595713844
+event_cy = 240.16714544917463
+w_event = 640
+h_event = 480
 evt_dist = [0, 0, 0, 0]
 event_shift_start = 0
 event_shift_end = 0
@@ -48,22 +48,29 @@ optimize_rgb_crf = False
 rgb_crf_net_hidden = 0
 rgb_crf_net_width = 128
 rgb_crf_lrate = 5e-4
-decay_rate_rgb_crf = 0.1
+decay_rate_rgb_crf = 0.01
 
 # training parameters for event_crf
 optimize_event_crf = False
 event_crf_net_hidden = 0
 event_crf_net_width = 128
 event_crf_lrate = 5e-4
-decay_rate_event_crf = 0.1
+decay_rate_event_crf = 0.01
 
 i_print = 100
 i_img = 5000
-i_video = 80000
-i_weights = 80000
-max_iter = 80000
+i_video = 200000
+i_weights = 200000
+max_iter = 200000
 
-rgb_loss = True
+render_h = 480
+render_w = 640
+render_focal_x = 658.9011017061267
+render_focal_y = 671.1520052459462
+render_cx = 327.0754595713844
+render_cy = 240.16714544917463
+
+rgb_loss = False
 rgb_blur_loss = False
 
 channels = 1
