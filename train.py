@@ -234,6 +234,12 @@ def train(args):
         ) = model.setup_optimizer(args)
 
         print("No pre-trained weights are used!")
+        # initial optimizer
+        optimizer_pose.zero_grad()
+        optimizer_trans.zero_grad()
+        optimizer.zero_grad()
+        optimizer_rgb_crf.zero_grad()
+        optimizer_event_crf.zero_grad()
 
     print("Training is executed...")
     N_iters = args.max_iter + 1
@@ -244,7 +250,7 @@ def train(args):
     global_step_ = global_step
 
     for i in trange(start, N_iters):
-        i = i + global_step_
+        i = i + global_step_          
         if i == 0:
             # init weights of nn using Xavier value
             init_nerf(graph.nerf)
@@ -304,12 +310,12 @@ def train(args):
 
             if args.channels == 3:
                 img_loss = mse_loss(
-                    safelog(rgb2gray(ret_gray2["rgb_map"])) - safelog(rgb2gray(ret_gray1["rgb_map"])),
+                    lin_log(rgb2gray(ret_gray2["rgb_map"])) - lin_log(rgb2gray(ret_gray1["rgb_map"])),
                     target_s,
                 )
             else:
                 img_loss = mse_loss(
-                    safelog(ret_gray2["rgb_map"]) - safelog(ret_gray1["rgb_map"]),
+                    lin_log(ret_gray2["rgb_map"]) - lin_log(ret_gray1["rgb_map"]),
                     target_s,
                 )
             img_loss *= args.event_coefficient
@@ -318,12 +324,12 @@ def train(args):
             if "rgb0" in ret_event:
                 if args.channels == 3:
                     img_loss0 = mse_loss(
-                        safelog(rgb2gray(ret_gray2["rgb0"])) - safelog(rgb2gray(ret_gray1["rgb0"])),
+                        lin_log(rgb2gray(ret_gray2["rgb0"])) - lin_log(rgb2gray(ret_gray1["rgb0"])),
                         target_s,
                     )
                 else:
                     img_loss0 = mse_loss(
-                        safelog(ret_gray2["rgb0"]) - safelog(ret_gray1["rgb0"]),
+                        lin_log(ret_gray2["rgb0"]) - lin_log(ret_gray1["rgb0"]),
                         target_s,
                     )
                 img_loss0 *= args.event_coefficient
@@ -338,7 +344,7 @@ def train(args):
         # Real dataset
         else:
             if args.channels == 3:
-                render_brightness_diff = safelog(rgb2gray(ret_gray2["rgb_map"])) - safelog(rgb2gray(ret_gray1["rgb_map"]))
+                render_brightness_diff = lin_log(rgb2gray(ret_gray2["rgb_map"])) - lin_log(rgb2gray(ret_gray1["rgb_map"]))
                 render_norm = render_brightness_diff / (
                     torch.linalg.norm(render_brightness_diff, dim=0, keepdim=True) + 1e-9
                 )
@@ -347,7 +353,7 @@ def train(args):
                 )
                 img_loss = mse_loss(render_norm, target_s_norm)
             else:
-                render_brightness_diff = safelog(ret_gray2["rgb_map"]) - safelog(ret_gray1["rgb_map"])
+                render_brightness_diff = lin_log(ret_gray2["rgb_map"]) - lin_log(ret_gray1["rgb_map"])
                 render_norm = render_brightness_diff / (
                     torch.linalg.norm(render_brightness_diff, dim=0, keepdim=True) + 1e-9
                 )
@@ -361,7 +367,7 @@ def train(args):
 
             if "rgb0" in ret_event:
                 if args.channels == 3:
-                    render_brightness_diff = safelog(rgb2gray(ret_gray2["rgb0"])) - safelog(rgb2gray(ret_gray1["rgb0"]))
+                    render_brightness_diff = lin_log(rgb2gray(ret_gray2["rgb0"])) - lin_log(rgb2gray(ret_gray1["rgb0"]))
                     render_norm = render_brightness_diff / (
                         torch.linalg.norm(render_brightness_diff, dim=0, keepdim=True) + 1e-9
                     )
@@ -370,7 +376,7 @@ def train(args):
                     )
                     img_loss0 = mse_loss(render_norm, target_s_norm)
                 else:
-                    render_brightness_diff = safelog(ret_gray2["rgb0"]) - safelog(ret_gray1["rgb0"])
+                    render_brightness_diff = lin_log(ret_gray2["rgb0"]) - lin_log(ret_gray1["rgb0"])
                     render_norm = render_brightness_diff / (
                         torch.linalg.norm(render_brightness_diff, dim=0, keepdim=True) + 1e-9
                     )
