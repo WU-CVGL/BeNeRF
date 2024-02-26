@@ -24,8 +24,8 @@ class Model(nerf.Model):
         self.graph.evt_knot_pose_se3.params.weight.data = torch.nn.Parameter(parm_evt)
 
         # assign zero weights to graph.transform.params
-        #parm_trans = torch.nn.Parameter(torch.zeros(1, 6))
-        parm_trans = torch.nn.Parameter(torch.rand(1, 6) * 0.01)
+        parm_trans = torch.nn.Parameter(torch.zeros(1, 6))
+        #parm_trans = torch.nn.Parameter(torch.rand(1, 6) * 0.01)
         self.graph.transform.params.weight.data = torch.nn.Parameter(parm_trans)
 
         self.graph.rgb_crf.weights_biases_init()
