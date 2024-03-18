@@ -8,7 +8,7 @@ import numpy as np
 #     x = torch.max(x, torch.Tensor(eps))
 #     return torch.log(x)
 
-def safelog(x, eps=1e-3):
+def safelog(x, eps=1e-9):
     return torch.log(x + eps)
 
 def lin_log(color, linlog_thres=20):
@@ -21,8 +21,8 @@ def lin_log(color, linlog_thres=20):
     color = color * 255
     # Compute the required slope for linear region (below luma_thres)
     # we need natural log (v2e writes ln and "it comes from exponential relation")
-    lin_slope = np.log(linlog_thres) / linlog_thres
+    lin_slope = safelog(torch.tensor(linlog_thres)) / linlog_thres
 
     # Peform linear-map for smaller thres, and log-mapping for above thresh
-    lin_log_rgb = torch.where(color < linlog_thres, lin_slope * color, torch.log(color))
+    lin_log_rgb = torch.where(color < linlog_thres, lin_slope * color, safelog(color))
     return lin_log_rgb
