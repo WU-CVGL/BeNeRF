@@ -12,7 +12,7 @@ def load_img_data(datadir, datasource = None, gray = False):
     print("Loading images...")
     # Load images
     imgdir = os.path.join(datadir, "images")
-    if datasource == "Unreal" or datasource == "Blender":
+    if datasource == "Unreal" or datasource == "Blender" or datasource == "E2NeRF_Synthetic":
         testdir = os.path.join(datadir, "images" + "_test")
 
     imgfiles = [
@@ -21,9 +21,9 @@ def load_img_data(datadir, datasource = None, gray = False):
         if f.lower().endswith(("jpg", "png"))
     ]
 
-    imgtests = []
-    if datasource == "Unreal" or datasource == "Blender":
-        imgtests = [
+    imgtests_file = []
+    if datasource == "Unreal" or datasource == "Blender" or datasource == "E2NeRF_Synthetic":
+        imgtests_file = [
             os.path.join(testdir, f)
             for f in sorted(os.listdir(testdir))
             if f.lower().endswith(("jpg", "png"))
@@ -33,15 +33,29 @@ def load_img_data(datadir, datasource = None, gray = False):
     # Converting the entire image list into a NumPy array may result in a memory overflow.
     if gray == True:
         h, w = img_utils.load_image(imgfiles[0], gray).shape
+        imgs = np.empty((len(imgfiles), h, w), dtype = np.float64)
+        for i in tqdm(range(len(imgfiles))):
+            imgs[i, :, :] = img_utils.load_image(imgfiles[i], gray)
     elif gray == False:
         h, w, _ = img_utils.load_image(imgfiles[0], gray).shape
-    imgs = np.empty((len(imgfiles), h, w), dtype = np.float64)
-    for i in tqdm(range(len(imgfiles))):
-        imgs[i, :, :] = img_utils.load_image(imgfiles[i], gray)
-
-    if datasource == "Unreal" or datasource == "Blender":
-        imgtests = [img_utils.load_image(f, gray) for f in imgtests]
-        imgtests = np.stack(imgtests, -1)
+        imgs = np.empty((len(imgfiles), h, w, 3), dtype = np.float64)
+        for i in tqdm(range(len(imgfiles))):
+            imgs[i, :, :, :] = img_utils.load_image(imgfiles[i], gray)
+    
+    imgtests = []
+    if datasource == "Unreal" or datasource == "Blender" or datasource == "E2NeRF_Synthetic":
+        # imgtests = [img_utils.load_image(f, gray) for f in imgtests]
+        # imgtests = np.stack(imgtests, -1)
+        if gray == True:
+            h, w = img_utils.load_image(imgtests_file[0], gray).shape
+            imgtests = np.empty((len(imgtests_file), h, w), dtype = np.float64)
+            for i in tqdm(range(len(imgtests_file))):
+                imgtests[i, :, :] = img_utils.load_image(imgtests_file[i], gray)
+        elif gray == False:
+            h, w, _ = img_utils.load_image(imgtests_file[0], gray).shape
+            imgtests = np.empty((len(imgtests_file), h, w, 3), dtype = np.float64)
+            for i in tqdm(range(len(imgtests_file))):
+                imgtests[i, :, :, :] = img_utils.load_image(imgtests_file[i], gray)
 
     return imgs, imgtests
 
@@ -79,7 +93,7 @@ def load_camera_trans(basedir):
     return trans_arr
 
 
-def load_timestamps(basedir):
+def load_timestamps(basedir, args):
     print("Loading timestamps...")
     # file path
     time_ts_path = os.path.join(basedir, "poses_ts.txt")
@@ -103,6 +117,27 @@ def load_timestamps(basedir):
         exposures = np.loadtxt(exposures_path)
         times_start = timestamps[:] - 0.5 * exposures[:]
         times_end = timestamps[:] + 0.5 * exposures[:]
+    # E2NeRF_Real
+    elif args.dataset == "E2NeRF_Real":
+        time_start_path = os.path.join(basedir, "exposure_start_ts.txt")
+        time_end_path = os.path.join(basedir, "exposure_end_ts.txt")
+        times_start = np.loadtxt(time_start_path)
+        times_end = np.loadtxt(time_end_path)
+    # E2NeRF_Synthetic
+    elif args.dataset == "E2NeRF_Synthetic":
+        eventdir = os.path.join(basedir, "events")
+        eventdir_idx = eventdir + "/r_{}".format(args.idx * 2)
+        events_txt = np.loadtxt(os.path.join(eventdir_idx, "v2e-dvs-events.txt"))
+        st, _, _ ,_ = events_txt[0]
+        ed, _, _ ,_ = events_txt[len(events_txt) - 1]
+        times_start = int(st * 1e19)
+        times_end = int(ed * 1e19)
+    elif args.dataset == "HNU":
+        eventdir = os.path.join(basedir, "events")
+        eventdir_idx = eventdir + "/{:06d}.txt".format(args.idx)
+        events_txt = np.loadtxt(eventdir_idx)
+        times_start, _, _ ,_ = events_txt[0]
+        times_end, _, _ ,_ = events_txt[len(events_txt) - 1]
     else:
         print("Cannot load timestamps for images")
         assert False
@@ -253,7 +288,7 @@ def load_data(
     imgs = np.expand_dims(imgs[args.idx], 0)
 
     if datasource == "Unreal" or datasource == "Blender":
-        imgtests = np.moveaxis(imgtests, -1, 0).astype(np.float32)
+        #imgtests = np.moveaxis(imgtests, -1, 0).astype(np.float32)
         if gray:
             imgtests = np.expand_dims(imgtests, -1)
         # select one image
@@ -261,15 +296,23 @@ def load_data(
     print("Load images successfully!!")
 
     # load start and end timestamps of exposure time
-    ts_start, ts_end = load_timestamps(datadir)
+    ts_start, ts_end = load_timestamps(datadir, args)
     print("Load timestamps successfully!!")
 
-    # record exposure time    
-    img_ts_start = ts_start[args.idx]
-    img_ts_end = ts_end[args.idx]
-    # usually,select more events will be better
-    evt_ts_start = ts_start[args.idx] - args.event_shift_start * 1e3 
-    evt_ts_end = ts_end[args.idx] + args.event_shift_end * 1e3
+    if args.dataset == "E2NeRF_Synthetic" or args.dataset == "HNU":
+        # record exposure time    
+        img_ts_start = ts_start
+        img_ts_end = ts_end
+        # usually,select more events will be better
+        evt_ts_start = ts_start - args.event_shift_start * 1e3 
+        evt_ts_end = ts_end + args.event_shift_end * 1e3
+    else:
+        # record exposure time    
+        img_ts_start = ts_start[args.idx]
+        img_ts_end = ts_end[args.idx]
+        # usually,select more events will be better
+        evt_ts_start = ts_start[args.idx] - args.event_shift_start * 1e3 
+        evt_ts_end = ts_end[args.idx] + args.event_shift_end * 1e3
 
     # load events
     print("Loading events...")
@@ -287,6 +330,31 @@ def load_data(
         events = np.array(
             [ event for event in events if evt_ts_start <= event[2] <= evt_ts_end]
         )
+    # E2NeRF Real
+    elif args.dataset == "E2NeRF_Real":
+        events_tensor = torch.load(os.path.join(eventdir, "events.pt"))
+        events_numpy = events_tensor.numpy()
+        events =  np.array(
+            [event for event in tqdm(events_numpy) if evt_ts_start <= event[2] <= evt_ts_end]
+        )
+    elif args.dataset == "E2NeRF_Synthetic":
+        eventdir_idx = eventdir + "/r_{}".format(args.idx * 2)
+        events_txt = np.loadtxt(os.path.join(eventdir_idx, "v2e-dvs-events.txt"))
+        events_list = []
+        for row in tqdm(events_txt):
+            t, x, y, p = row
+            t = t * 1e19
+            p = 2 * p - 1
+            events_list.append(np.array([x, y, t, p], dtype = np.int64))
+        events = np.array(events_list)
+    elif args.dataset == "HNU":
+        eventdir_idx = eventdir + "/{:06d}.txt".format(args.idx)
+        events_txt = np.loadtxt(eventdir_idx)
+        events_list = []
+        for row in tqdm(events_txt):
+            t, x, y, p = row
+            events_list.append(np.array([x, y, t, p], dtype = np.float64))
+        events = np.array(events_list)
     # TUM-VIE
     elif os.path.exists(os.path.join(eventdir, "events.h5")):
         # import h5 file
