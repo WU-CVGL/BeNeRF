@@ -13,7 +13,7 @@ def config_parser():
     parser.add_argument("--seed", type=int, default=0,
                         help='cuda id to use')
     # data
-    parser.add_argument('--config', is_config_file=True, default='./configs/tumvie_running_hard_left_630.txt',
+    parser.add_argument('--config', is_config_file=True, default='./configs/e2nerf/synthetic/ficus/11.txt',
                         help='config file path')
     
     parser.add_argument("--project", type=str, default="event-bad-nerf",
