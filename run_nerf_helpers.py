@@ -167,7 +167,7 @@ def render_image_test(
         rgb8 = img_utils.to8bit(rgbs)
         # radience = tonemap(radience / np.max(radience))
         imwrite(
-            os.path.join(img_dir, dir[11:] + "img_{:03d}.png".format(j)),
+            os.path.join(img_dir, dir[11:] + "{:03d}.png".format(j)),
             rgb8.squeeze(),
             mode="L" if args.channels == 1 else "RGB",
         )
