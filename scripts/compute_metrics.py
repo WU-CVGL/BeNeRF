@@ -8,7 +8,7 @@ from tqdm.contrib import tzip
 
 from metrics import compute_img_metric
 from imageio.v3 import imread, imwrite
-from utils.imgutils import to8bit
+from utils.img_utils import to8bit
 
 
 def read_img(img, channels):

@@ -1,15 +1,16 @@
 import abc
-from datetime import datetime
-
-import numpy as np
+import os
 import torch
+import numpy as np
+import cv2 as cv
 import torch.nn.functional as F
 from torch import nn as nn
-
 from model import embedder
+from datetime import datetime
+from undistort import UndistortFisheyeCamera
+from utils import event_utils
 from run_nerf_helpers import get_specific_rays, get_rays, ndc_rays, sample_pdf
-from utils.eventutils import accumulate_events
-
+from run_nerf_helpers import random_sample_right_half, random_sample_right_half_indices
 
 class Model:
     @abc.abstractmethod
@@ -22,7 +23,6 @@ class Model:
 
     def after_train(self):
         print(f"Successfully finished model on {datetime.now()}")
-
 
 class NeRF(nn.Module):
     def __init__(self, D=8, W=256, input_ch=63, input_ch_views=27, output_ch=4, skips=[4], use_viewdirs=False,
@@ -95,7 +95,7 @@ class NeRF(nn.Module):
 
         return outputs
 
-    def raw2output(self, raw, z_vals, rays_d, raw_noise_std=1.0):
+    def raw2output(self, crf_func, enable_crf: bool, sensor_type, raw, z_vals, rays_d, raw_noise_std=1.0):
         raw2alpha = lambda raw, dists, act_fn=F.relu: 1. - torch.exp(-act_fn(raw) * dists)
 
         dists = z_vals[..., 1:] - z_vals[..., :-1]
@@ -104,6 +104,11 @@ class NeRF(nn.Module):
         dists = dists * torch.norm(rays_d[..., None, :], dim=-1)
 
         rgb = torch.sigmoid(raw[..., :self.channels])
+        # if enable_crf == True:
+        #     rgb = crf_func(rgb, sensor_type)
+        #     rgb = torch.sigmoid(rgb)
+        # elif enable_crf == False:
+        #     rgb = torch.exp(rgb)
 
         noise = 0.
         if raw_noise_std > 0.:
@@ -122,7 +127,6 @@ class NeRF(nn.Module):
 
         return rgb_map, disp_map, acc_map, weights, depth_map, sigma
 
-
 class Graph(nn.Module):
 
     def __init__(self, args, D=8, W=256, input_ch=63, input_ch_views=27, output_ch=4, skips=[4], use_viewdirs=False):
@@ -133,7 +137,10 @@ class Graph(nn.Module):
             self.nerf_fine = NeRF(D, W, input_ch, input_ch_views, output_ch, skips, use_viewdirs, args.channels)
         self.pose_eye = torch.eye(3, 4)
 
-    def forward(self, i, events, H, W, K, K_event, args):
+    def forward(
+            self, i, events, rgb_exp_ts, H, W, K, K_event, args, img_xy_remap, evt_xy_remap
+        ):
+        # select events in time windows(length: 0.1s)
         if args.time_window:
             window_t = args.window_percent
             if args.random_window:
@@ -146,6 +153,7 @@ class Graph(nn.Module):
             idx_b = events["ts"] <= upper_t
             idx = idx_a * idx_b
             indices = np.where(idx)
+            # get element in time window
             pol_window = events['pol'][indices]
             x_window = events['x'][indices]
             y_window = events['y'][indices]
@@ -164,27 +172,67 @@ class Graph(nn.Module):
             y_window = events['y'][window_low_bound:window_up_bound]
             ts_window = events['ts'][window_low_bound:window_up_bound]
 
+        # event temporal aggregate and undistortion for tumvie 
+        # if args.dataset == "TUMVIE":
+        #     out = np.zeros((args.h_event, args.w_event))
+        #     # 0:neg_pol 1: pos_pol in tumvie
+        #     pol_window[pol_window == 0] = -1
+        #     out_tensor = event_utils.accumulate_events_on_gpu(out, x_window, y_window, pol_window)
+        #     out_array = out_tensor.cpu().detach().numpy()
+        #     out_undist = undistorter.UndistortAccumulatedEvents(out_array, K_event, [args.h_event, args.w_event])
+        #     events_accu = torch.tensor(out_undist).to(dtype = torch.float32)
+        # elif args.dataset == "E2NeRF" or args.dataset == "HNU" or args.dataset == "Blender" or args.dataset == "Unreal":
+        #     out = np.zeros((args.h_event, args.w_event))
+        #     out_tensor = event_utils.accumulate_events_on_gpu(out, x_window, y_window, pol_window)
+        #     out_array = out_tensor.cpu().detach().numpy()
+        #     events_accu = torch.tensor(out_array)
+            
         out = np.zeros((args.h_event, args.w_event))
-        accumulate_events(out, x_window, y_window, pol_window)
-        events_accu = torch.tensor(out)
+        if args.dataset == "TUMVIE":
+            # 0:neg_pol 1: pos_pol in tumvie
+            #pol_window = pol_window.astype('int')
+            pol_window[pol_window == 0] = -1
+        out_tensor = event_utils.accumulate_events_on_gpu(out, x_window, y_window, pol_window)
+        out_array = out_tensor.cpu().detach().numpy()
+        # img = np.full((720,1280,3), fill_value=255,dtype='uint8')
+        # img[out_array==0]=[255,255,255]
+        # img[out_array==-1]=[255,0,0]
+        # img[out_array==1]=[0,0,255]
+        # #cv.imwrite("output_image.png", img)
+        # distorted_folder = "./undistorted_events"
+        # os.makedirs(distorted_folder, exist_ok=True)
+        # cv.imwrite(os.path.join(distorted_folder,  "%06d_raw" % i + ".png"), img)
+        events_accu = torch.tensor(out_array)
 
         # timestamps of event windows begin and end
         if args.time_window:
             events_ts = np.stack((low_t, upper_t)).reshape(2)
         else:
             events_ts = ts_window[np.array([0, int(N_window) - 1])]
-        # modify it
-        ray_idx_event = torch.randperm(args.h_event * args.w_event)[:args.pix_event]
-        spline_poses = self.get_pose(args, torch.tensor(events_ts, dtype=torch.float32))
-        spline_rgb_poses = self.get_pose_rgb(args)
 
+        # interpolated event pose 
+        spline_evt_poses = self.get_pose_evt(args, torch.tensor(events_ts, dtype = torch.float32))
+
+        # interpolated rgb pose 
+        spline_rgb_poses = self.get_pose_rgb(args, torch.tensor(rgb_exp_ts, dtype = torch.float32))
+
+        # index of event rays
+        ray_idx_event = torch.randperm(args.h_event * args.w_event)[:args.pix_event]
+        #ray_idx_event = random_sample_right_half_indices(args.h_event, args.w_event, args.pix_event)
         # render event
-        ret_event = self.render(spline_poses, ray_idx_event.reshape(-1, 1).squeeze(), args.h_event, args.w_event,
-                                K_event,
+        ret_event = self.render(spline_evt_poses, 
+                                ray_idx_event.reshape(-1, 1).squeeze(), 
+                                args.h_event, 
+                                args.w_event,
+                                torch.Tensor(K_event),
                                 args,
-                                training=True)
+                                enable_crf = True,
+                                sensor_type = "event",
+                                remap = torch.tensor(evt_xy_remap),
+                                training = True)
+        
         # warping loss
-        if True:
+        if False:
             # get the pixel of event camera image
             uv = torch.vstack((ray_idx_event // args.w_event, ray_idx_event % args.w_event)).t().unsqueeze(0).float()
             # get the depth of event camera image
@@ -207,19 +255,39 @@ class Graph(nn.Module):
                                    additional_idx.reshape(-1, 1).squeeze(), H, W, K, args,
                                    training=True)
 
-        # render rgb
+        # index of event rays
         ray_idx_rgb = torch.randperm(H * W)[:args.pix_rgb // args.deblur_images]
-        ret_rgb = self.render(spline_rgb_poses, ray_idx_rgb.reshape(-1, 1).squeeze(), H, W, K, args,
-                              training=True)
+        #ray_idx_rgb = random_sample_right_half_indices(H, W, (args.pix_rgb //args.deblur_images))
+        # render rgb
+        ret_rgb = self.render(spline_rgb_poses, 
+                              ray_idx_rgb.reshape(-1, 1).squeeze(), 
+                              H, 
+                              W, 
+                              torch.Tensor(K), 
+                              args,
+                              enable_crf = True, 
+                              sensor_type = "rgb",
+                              remap = torch.tensor(img_xy_remap),
+                              training = True)
 
         return ret_event, ret_rgb, ray_idx_event, ray_idx_rgb, events_accu
 
-    def render(self, poses, ray_idx, H, W, K, args, near=0., far=1., training=False):
+    def render(
+            self, poses, ray_idx, H, W, K, args, 
+            enable_crf: bool, sensor_type: str, remap: torch.Tensor, 
+            near=0., far=1., training=False,
+        ):
         if training:
             ray_idx_ = ray_idx.repeat(poses.shape[0])
             poses = poses.unsqueeze(1).repeat(1, ray_idx.shape[0], 1, 1).reshape(-1, 3, 4)
             j = ray_idx_.reshape(-1, 1).squeeze() // W
             i = ray_idx_.reshape(-1, 1).squeeze() % W
+
+            if args.dataset == "TUMVIE":
+                rect = remap[j, i]
+                i = rect[..., 0]
+                j = rect[..., 1]
+            
             rays_o_, rays_d_ = get_specific_rays(i, j, K, poses)
             rays_o_d = torch.stack([rays_o_, rays_d_], 0)
             batch_rays = torch.permute(rays_o_d, [1, 0, 2])
@@ -227,7 +295,7 @@ class Graph(nn.Module):
         else:
             rays_list = []
             for p in poses[:, :3, :4]:
-                rays_o_, rays_d_ = get_rays(H, W, K, p)
+                rays_o_, rays_d_ = get_rays(H, W, K, p, args, remap)
                 rays_o_d = torch.stack([rays_o_, rays_d_], 0)
                 rays_list.append(rays_o_d)
 
@@ -281,7 +349,12 @@ class Graph(nn.Module):
 
         raw_output = self.nerf.forward(pts, viewdirs, args)
 
-        rgb_map, disp_map, acc_map, weights, depth_map, sigma = self.nerf.raw2output(raw_output, z_vals, rays_d)
+        rgb_map, disp_map, acc_map, weights, depth_map, sigma = self.nerf.raw2output(self.camera_response_func,
+                                                                                     enable_crf,
+                                                                                     sensor_type,
+                                                                                     raw_output, 
+                                                                                     z_vals, 
+                                                                                     rays_d)
 
         if args.N_importance > 0:
             rgb_map_0, disp_map_0, acc_map_0 = rgb_map, disp_map, acc_map
@@ -294,9 +367,12 @@ class Graph(nn.Module):
             pts = rays_o[..., None, :] + rays_d[..., None, :] * z_vals[..., :, None]
 
             raw_output = self.nerf_fine.forward(pts, viewdirs, args)
-            rgb_map, disp_map, acc_map, weights, depth_map, sigma = self.nerf_fine.raw2output(raw_output, z_vals,
+            rgb_map, disp_map, acc_map, weights, depth_map, sigma = self.nerf_fine.raw2output(self.camera_response_func,
+                                                                                              enable_crf,
+                                                                                              sensor_type,
+                                                                                              raw_output, 
+                                                                                              z_vals,
                                                                                               rays_d)
-
         ret = {'rgb_map': rgb_map, 'disp_map': disp_map, 'acc_map': acc_map}
         if args.N_importance > 0:
             ret['rgb0'] = rgb_map_0
@@ -305,13 +381,45 @@ class Graph(nn.Module):
             ret['sigma'] = sigma
 
         return ret
-
+    
+    def camera_response_func(self, radience, sensor_type):
+        if sensor_type == "rgb":
+            color = self.rgb_crf.forward(radience)
+            return color 
+        elif sensor_type == "event":
+            luminance = self.event_crf.forward(radience)
+            return luminance
+            
     @torch.no_grad()
-    def render_video(self, poses, H, W, K, args):
+    def render_video(self, poses, H, W, K, args, remap, type):
         all_ret = {}
         ray_idx = torch.arange(0, H * W)
+        type = str(type)
         for i in range(0, ray_idx.shape[0], args.chunk):
-            ret = self.render(poses, ray_idx[i:i + args.chunk], H, W, K, args)
+            
+            if type == "radience":
+                ret = self.render(poses, 
+                                ray_idx[i:i + args.chunk], 
+                                H, 
+                                W, 
+                                K, 
+                                args, 
+                                enable_crf = False, 
+                                sensor_type = None,
+                                remap = torch.tensor(remap), 
+                                training = False)
+            elif type == "rgb":
+                ret = self.render(poses, 
+                                ray_idx[i:i + args.chunk], 
+                                H, 
+                                W, 
+                                K, 
+                                args, 
+                                enable_crf = True, 
+                                sensor_type = "rgb",
+                                remap = torch.tensor(remap),  
+                                training = False)              
+            
             for k in ret:
                 if k not in all_ret:
                     all_ret[k] = []

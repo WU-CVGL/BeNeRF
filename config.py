@@ -1,60 +1,103 @@
 import configargparse
 
-
 def config_parser():
     parser = configargparse.ArgumentParser()
 
     # device
     parser.add_argument("--device", type=int, default=0,
                         help='cuda id to use')
+    
     parser.add_argument("--debug", action='store_true',
                         help='random seed')
+    
     parser.add_argument("--seed", type=int, default=0,
                         help='cuda id to use')
-    # others
-    parser.add_argument('--config', is_config_file=True, default='./configs/testconfig.txt',
+    # data
+    parser.add_argument('--config', is_config_file=True, default='./configs/e2nerf/synthetic/ficus/11.txt',
                         help='config file path')
+    
     parser.add_argument("--project", type=str, default="event-bad-nerf",
                         help='the viewer to use (wandb)')
-    parser.add_argument("--expname", type=str,
-                        help='experiment name')
-    parser.add_argument("--datadir", type=str, default='./data/llff/fern',
-                        help='input data directory')
-    parser.add_argument("--logdir", type=str, default='./data/llff/fern',
-                        help='input data directory')
+    
+    parser.add_argument("--expname", type = str, 
+                        help = 'experiment name')
+    
+    parser.add_argument("--datadir", type = str, 
+                        help = 'input data directory')
+    
+    parser.add_argument("--logdir", type = str, 
+                        help = 'logs directory')
+    
+    parser.add_argument("--dataset", type = str, 
+                        help = 'use which dataset')
 
     # training options
     parser.add_argument("--model", type=str, default='cubic_optimpose',
                         help='model type to use')
+    
     parser.add_argument("--deblur_images", type=int, default=7,
                         help='the number of sharp images one blur image corresponds to')
+    
     parser.add_argument("--netdepth", type=int, default=8,
                         help='layers in network')
+    
     parser.add_argument("--netwidth", type=int, default=256,
                         help='channels per layer')
+    
     parser.add_argument("--netdepth_fine", type=int, default=8,
                         help='layers in fine network')
+    
     parser.add_argument("--netwidth_fine", type=int, default=256,
                         help='channels per layer in fine network')
+    
+    parser.add_argument("--rgb_crf_net_hidden", type = int, default = 0,
+                        help = "the number of hidden layer in rgb_crf")
+    
+    parser.add_argument("--rgb_crf_net_width", type = int, default = 128,
+                        help = "the width of linear layer in rgb_crf")
+    
+    parser.add_argument("--event_crf_net_hidden", type = int, default = 0,
+                        help = "the number of hidden layer in event_crf")
+    
+    parser.add_argument("--event_crf_net_width", type = int, default = 128,
+                        help = "the width of linear layer in event_crf")   
+     
     parser.add_argument("--lrate", type=float, default=5e-4,
                         help='learning rate of NeRF')
+    
     parser.add_argument("--pose_lrate", type=float, default=1e-3,
                         help='learning rate of rgb camera pose')
+    
     parser.add_argument("--transform_lrate", type=float, default=1e-6,
                         help='learning rate of the transform between event camera and rgb camera')
+    
+    parser.add_argument("--rgb_crf_lrate", type = float, default = 5e-4,
+                        help = "learning rate of rgb_crf")
+    
+    parser.add_argument("--event_crf_lrate", type = float, default = 5e-4,
+                        help = "learning rate of event_crf")
 
     parser.add_argument("--decay_rate", type=float, default=0.1,
                         help='learning rate decay of NeRF')
+    
     parser.add_argument("--decay_rate_pose", type=float, default=0.01,
                         help='learning rate decay of rgb camera pose')
+    
     parser.add_argument("--decay_rate_transform", type=float, default=0.01,
                         help='learning rate decay of the transform between event camera and rgb camera')
+    
+    parser.add_argument("--decay_rate_rgb_crf", type = float, default = 0.1,
+                        help = "learning rate decay of rgb_crf")
+    
+    parser.add_argument("--decay_rate_event_crf", type = float, default = 0.1,
+                        help = "learning rate decay of event_crf")
 
     parser.add_argument("--lrate_decay", type=int, default=200,
                         help='exponential learning rate decay (in 1000 steps)')
 
     parser.add_argument("--chunk", type=int, default=1024 * 2,
                         help='number of rays processed in parallel, decrease if running out of memory')
+    
     parser.add_argument("--netchunk", type=int, default=1024 * 32,
                         help='number of pts sent through network in parallel, decrease if running out of memory')
 
@@ -97,9 +140,11 @@ def config_parser():
                         help='focal length of images')
     parser.add_argument("--cy", type=float, default=240.,
                         help='focal length of images')
+    parser.add_argument("--img_dist", type=float, action="append",
+                        help='focal length of images')
     parser.add_argument("--dataset_event_split", type=int, default=500,
                         help='tv')
-
+    
     parser.add_argument("--render_h", type=int, default=0,
                         help='channels per layer')
     parser.add_argument("--render_w", type=int, default=0,
@@ -135,7 +180,11 @@ def config_parser():
                         help='whether to optimize NeRF network')
     parser.add_argument("--optimize_event", action='store_true',
                         help='whether to optimize transformation matrix')
-
+    parser.add_argument("--optimize_rgb_crf", action='store_true',
+                        help = "whether to optimize rgb_crf")
+    parser.add_argument("--optimize_event_crf", action='store_true',
+                        help = "whether to optimize event_crf")
+    
     # event parameter
     parser.add_argument("--threshold", type=float, default=0.1,
                         help='threshold set for events spiking')
@@ -161,9 +210,11 @@ def config_parser():
                         help='focal length of images')
     parser.add_argument("--event_cy", type=float, default=240.,
                         help='focal length of images')
-    parser.add_argument("--event_shift_start", type=int, default=5,
+    parser.add_argument("--evt_dist", type=float, action="append",
+                        help='focal length of images')
+    parser.add_argument("--event_shift_start", type=float, default=5,
                         help='tv')
-    parser.add_argument("--event_shift_end", type=int, default=5,
+    parser.add_argument("--event_shift_end", type=float, default=5,
                         help='tv')
     parser.add_argument("--event_time_shift", type=float, default=.0,
                         help='tv')

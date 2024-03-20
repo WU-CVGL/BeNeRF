@@ -3,7 +3,7 @@ import cv2 as cv
 import numpy as np
 from matplotlib import pyplot as plt
 
-from utils import eventutils
+from utils import event_utils
 
 
 def dvsarray_to_image(events, height, width, init_map=None):
@@ -14,7 +14,7 @@ def dvsarray_to_image(events, height, width, init_map=None):
     else:
         dvs_image = init_map
     map = np.zeros((width, height))
-    eventutils.accumulate_events_no_numba(map, events[:, 0].astype(int), events[:, 1].astype(int), events[:, 3])
+    event_utils.accumulate_events_no_numba(map, events[:, 0].astype(int), events[:, 1].astype(int), events[:, 3])
     pos_map = map > 0
     neg_map = map < 0
     dvs_image[pos_map] = [0, 0, 255]

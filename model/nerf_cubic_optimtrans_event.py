@@ -3,8 +3,9 @@ import torch
 import spline
 from model import nerf
 from model.component import CameraPose, EventPose
+from model.component import ColorToneMapper, LuminanceToneMapper
 
-
+# based on a abstract class
 class Model(nerf.Model):
     def __init__(self, args):
         self.graph = Graph(args, D=8, W=256, input_ch=63, input_ch_views=27, output_ch=4, skips=[4], use_viewdirs=True)
@@ -12,6 +13,12 @@ class Model(nerf.Model):
     def build_network(self, args, poses=None, event_poses=None):
         self.graph.rgb_pose = CameraPose(4)
         self.graph.transform = EventPose(1)
+        self.graph.rgb_crf = ColorToneMapper(hidden = args.rgb_crf_net_hidden, 
+                                             width = args.rgb_crf_net_width, 
+                                             input_type = "Gray")
+        self.graph.event_crf = LuminanceToneMapper(hidden = args.event_crf_net_hidden, 
+                                                   width = args.event_crf_net_width, 
+                                                   input_type = "Gray")
 
         parm_rgb = torch.concatenate(
             (torch.rand(1, 6) * 0.01, torch.rand(1, 6) * 0.01, torch.rand(1, 6) * 0.01, torch.rand(1, 6) * 0.01))
@@ -20,6 +27,9 @@ class Model(nerf.Model):
         parm_e = torch.nn.Parameter(torch.zeros(1, 6))
 
         self.graph.transform.params.weight.data = torch.nn.Parameter(parm_e)
+
+        self.graph.rgb_crf.weights_biases_init()
+        self.graph.event_crf.weights_biases_init()  
 
         return self.graph
 
@@ -35,7 +45,13 @@ class Model(nerf.Model):
         grad_vars_transform = list(self.graph.transform.parameters())
         self.optim_transform = torch.optim.Adam(params=grad_vars_transform, lr=args.transform_lrate)
 
-        return self.optim, self.optim_pose, self.optim_transform
+        grad_vars_event_crf = list(self.graph.event_crf.mlp_luminance.parameters())
+        self.optim_event_crf = torch.optim.Adam(params = grad_vars_event_crf, lr = args.event_crf_lrate)
+
+        grad_vars_rgb_crf = list(self.graph.rgb_crf.mlp_gray.parameters())
+        self.optim_rgb_crf = torch.optim.Adam(params = grad_vars_rgb_crf, lr = args.rgb_crf_lrate)
+
+        return self.optim, self.optim_pose, self.optim_transform, self.optim_rgb_crf, self.optim_event_crf
 
 
 class Graph(nerf.Graph):
@@ -50,27 +66,32 @@ class Graph(nerf.Graph):
         return spline_poses
 
     def get_pose_rgb(self, args, seg_num=None):
-        i_0 = torch.tensor((.0, .0, .0, 1.)).reshape(1, 4)
-        SE3_0_from = spline.se3_to_SE3(self.rgb_pose.params.weight[0].reshape(1, 1, 6)).squeeze()
-        SE3_0_from = torch.cat((SE3_0_from, i_0), dim=0)
-        SE3_1_from = spline.se3_to_SE3(self.rgb_pose.params.weight[1].reshape(1, 1, 6)).squeeze()
-        SE3_1_from = torch.cat((SE3_1_from, i_0), dim=0)
-        SE3_2_from = spline.se3_to_SE3(self.rgb_pose.params.weight[2].reshape(1, 1, 6)).squeeze()
-        SE3_2_from = torch.cat((SE3_2_from, i_0), dim=0)
-        SE3_3_from = spline.se3_to_SE3(self.rgb_pose.params.weight[3].reshape(1, 1, 6)).squeeze()
-        SE3_3_from = torch.cat((SE3_3_from, i_0), dim=0)
+        # i_0 = torch.tensor((.0, .0, .0, 1.)).reshape(1, 4)
+        # SE3_0_from = spline.se3_to_SE3(self.rgb_pose.params.weight[0].reshape(1, 1, 6)).squeeze()
+        # SE3_0_from = torch.cat((SE3_0_from, i_0), dim=0)
+        # SE3_1_from = spline.se3_to_SE3(self.rgb_pose.params.weight[1].reshape(1, 1, 6)).squeeze()
+        # SE3_1_from = torch.cat((SE3_1_from, i_0), dim=0)
+        # SE3_2_from = spline.se3_to_SE3(self.rgb_pose.params.weight[2].reshape(1, 1, 6)).squeeze()
+        # SE3_2_from = torch.cat((SE3_2_from, i_0), dim=0)
+        # SE3_3_from = spline.se3_to_SE3(self.rgb_pose.params.weight[3].reshape(1, 1, 6)).squeeze()
+        # SE3_3_from = torch.cat((SE3_3_from, i_0), dim=0)
 
-        SE3_trans = spline.se3_to_SE3(self.transform.params.weight.reshape(1, 1, 6)).squeeze()
-        SE3_trans = torch.cat((SE3_trans, i_0), dim=0)
+        # SE3_trans = spline.se3_to_SE3(self.transform.params.weight.reshape(1, 1, 6)).squeeze()
+        # SE3_trans = torch.cat((SE3_trans, i_0), dim=0)
 
-        SE3_0 = SE3_0_from @ SE3_trans
-        se3_0 = torch.unsqueeze(spline.SE3_to_se3(SE3_0[:3, :4].reshape(1, 3, 4)), dim=0)
-        SE3_1 = SE3_1_from @ SE3_trans
-        se3_1 = torch.unsqueeze(spline.SE3_to_se3(SE3_1[:3, :4].reshape(1, 3, 4)), dim=0)
-        SE3_2 = SE3_2_from @ SE3_trans
-        se3_2 = torch.unsqueeze(spline.SE3_to_se3(SE3_2[:3, :4].reshape(1, 3, 4)), dim=0)
-        SE3_3 = SE3_3_from @ SE3_trans
-        se3_3 = torch.unsqueeze(spline.SE3_to_se3(SE3_3[:3, :4].reshape(1, 3, 4)), dim=0)
+        # SE3_0 = SE3_0_from @ SE3_trans
+        # se3_0 = torch.unsqueeze(spline.SE3_to_se3(SE3_0[:3, :4].reshape(1, 3, 4)), dim=0)
+        # SE3_1 = SE3_1_from @ SE3_trans
+        # se3_1 = torch.unsqueeze(spline.SE3_to_se3(SE3_1[:3, :4].reshape(1, 3, 4)), dim=0)
+        # SE3_2 = SE3_2_from @ SE3_trans
+        # se3_2 = torch.unsqueeze(spline.SE3_to_se3(SE3_2[:3, :4].reshape(1, 3, 4)), dim=0)
+        # SE3_3 = SE3_3_from @ SE3_trans
+        # se3_3 = torch.unsqueeze(spline.SE3_to_se3(SE3_3[:3, :4].reshape(1, 3, 4)), dim=0)
+
+        se3_0 = self.rgb_pose.params.weight[0].reshape(1, 1, 6) + self.transform.params.weight.reshape(1, 1, 6)
+        se3_1 = self.rgb_pose.params.weight[1].reshape(1, 1, 6) + self.transform.params.weight.reshape(1, 1, 6)
+        se3_2 = self.rgb_pose.params.weight[2].reshape(1, 1, 6) + self.transform.params.weight.reshape(1, 1, 6)
+        se3_3 = self.rgb_pose.params.weight[3].reshape(1, 1, 6) + self.transform.params.weight.reshape(1, 1, 6)
 
         # spline
         if seg_num is None:

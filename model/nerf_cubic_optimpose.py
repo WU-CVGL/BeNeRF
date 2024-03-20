@@ -1,9 +1,7 @@
 import torch
-
 import spline
 from model import nerf
 from model.component import CameraPose, EventPose
-
 
 class Model(nerf.Model):
     def __init__(self, args):

@@ -326,8 +326,66 @@ def spline_event_cubic(pose0, pose1, pose2, pose3, sample_time):
 
     return poses
 
+def cubic_spline_pose_per_unit_time(pose0, pose1, pose2, pose3, sample_time):
+    # parallel
+    pos_0 = torch.where(sample_time == 0)
+    sample_time[pos_0] = sample_time[pos_0] + 0.000001
+    pos_1 = torch.where(sample_time == 1)
+    sample_time[pos_1] = sample_time[pos_1] - 0.000001
+    sample_time = sample_time.unsqueeze(-1)
+
+    q0, t0 = se3_2_qt_parallel(pose0)
+    q1, t1 = se3_2_qt_parallel(pose1)
+    q2, t2 = se3_2_qt_parallel(pose2)
+    q3, t3 = se3_2_qt_parallel(pose3)
+
+    u = sample_time
+    uu = sample_time ** 2
+    uuu = sample_time ** 3
+    one_over_six = 1. / 6.
+    half_one = 0.5
+
+    # t
+    coeff0 = one_over_six - half_one * u + half_one * uu - one_over_six * uuu
+    coeff1 = 4 * one_over_six - uu + half_one * uuu
+    coeff2 = one_over_six + half_one * u + half_one * uu - half_one * uuu
+    coeff3 = one_over_six * uuu
+
+    # spline t
+    t_t = coeff0 * t0 + coeff1 * t1 + coeff2 * t2 + coeff3 * t3
+
+    # R
+    coeff1_r = 5 * one_over_six + half_one * u - half_one * uu + one_over_six * uuu
+    coeff2_r = one_over_six + half_one * u + half_one * uu - 2 * one_over_six * uuu
+    coeff3_r = one_over_six * uuu
+
+    # spline R
+    q_01 = q_to_Q_parallel(q_to_q_conj_parallel(q0)) @ q1[..., None]  # [1]
+    q_12 = q_to_Q_parallel(q_to_q_conj_parallel(q1)) @ q2[..., None]  # [2]
+    q_23 = q_to_Q_parallel(q_to_q_conj_parallel(q2)) @ q3[..., None]  # [3]
+
+    r_01 = log_q2r_parallel(q_01.squeeze(-1)) * coeff1_r  # [4]
+    r_12 = log_q2r_parallel(q_12.squeeze(-1)) * coeff2_r  # [5]
+    r_23 = log_q2r_parallel(q_23.squeeze(-1)) * coeff3_r  # [6]
+
+    q_t_0 = exp_r2q_parallel(r_01)  # [7]
+    q_t_1 = exp_r2q_parallel(r_12)  # [8]
+    q_t_2 = exp_r2q_parallel(r_23)  # [9]
+
+    q_product1 = q_to_Q_parallel(q_t_1) @ q_t_2[..., None]  # [10]
+    q_product2 = q_to_Q_parallel(q_t_0) @ q_product1  # [10]
+    q_t = q_to_Q_parallel(q0) @ q_product2  # [10]
+
+    R = q_to_R_parallel(q_t.squeeze(-1))  # [3,3]
+    t = t_t.unsqueeze(dim=-1)
+
+    pose_spline = torch.cat([R, t], -1)  # [3, 4]
+    poses = pose_spline.reshape([-1, 3, 4])  # [35, 6, 3, 4]
+
+    return poses
 
 def spline_cubic(pose0, pose1, pose2, pose3, poses_number, NUM):
+    # sample_time: [0, 1] 
     sample_time = poses_number / (NUM - 1)
     # parallel
     pos_0 = torch.where(sample_time == 0)
