@@ -3,105 +3,79 @@ import configargparse
 def config_parser():
     parser = configargparse.ArgumentParser()
 
-    # device
+    ## config 
     parser.add_argument("--device", type=int, default=0,
                         help='cuda id to use')
-    
     parser.add_argument("--debug", action='store_true',
-                        help='random seed')
-    
+                        help='whether to use random seed')
     parser.add_argument("--seed", type=int, default=0,
-                        help='cuda id to use')
-    # data
-    parser.add_argument('--config', is_config_file=True, default='./configs/e2nerf/synthetic/ficus/11.txt',
+                        help='which seed to use')
+    parser.add_argument('--config', is_config_file=True, default='./configs/e2nerf/real/camera/0.txt',
                         help='config file path')
-    
-    parser.add_argument("--project", type=str, default="event-bad-nerf",
-                        help='the viewer to use (wandb)')
-    
+    parser.add_argument("--project", type=str, default="None",
+                        help='the project name')
     parser.add_argument("--expname", type = str, 
-                        help = 'experiment name')
-    
+                        help = 'the experiment name')
     parser.add_argument("--datadir", type = str, 
                         help = 'input data directory')
-    
     parser.add_argument("--logdir", type = str, 
                         help = 'logs directory')
-    
     parser.add_argument("--dataset", type = str, 
-                        help = 'use which dataset')
+                        help = 'the dataset name')
+    parser.add_argument("--index", type=int, default=0,
+                        help='the index of the image in the dataset to deblur')
+    
+    ## viewer
+    parser.add_argument("--viewer", type=str, default="wandb",
+                        help='the viewer to use')
+    parser.add_argument("--depth", action='store_true',
+                        help='whether to view depth rendering results')
 
-    # training options
-    parser.add_argument("--model", type=str, default='cubic_optimpose',
+    ## model options
+    parser.add_argument("--model", type=str, default='benerf',
                         help='model type to use')
-    
-    parser.add_argument("--deblur_images", type=int, default=7,
-                        help='the number of sharp images one blur image corresponds to')
-    
+    parser.add_argument("--load_checkpoint", action='store_true',
+                        help='whethet to use model checkpoint already exists')
+    parser.add_argument("--loadpose", action='store_true',
+                        help='the viewer to use (wandb)')
+    parser.add_argument("--loadtrans", action='store_true',
+                        help='the viewer to use (wandb)')
+    parser.add_argument("--traj", type=str, default='spline',
+                        help='representation for camera trajectory')
+    parser.add_argument("--num_interpolated_pose", type=int, default=19,
+                        help='the number of poses interpolated from spline trajectory')
+    parser.add_argument("--use_barf_c2f", action='store_true',
+                        help = "whether to use barf strategy to optimize pose")
+    parser.add_argument("--barf_c2f_start", type=float, default=0.1,
+                        help='iteration step when starts coarse to fine pose optimization')
+    parser.add_argument("--barf_c2f_end", type=float, default=0.5,
+                        help='iteration step when ends coarse to fine pose optimization')
     parser.add_argument("--netdepth", type=int, default=8,
                         help='layers in network')
-    
     parser.add_argument("--netwidth", type=int, default=256,
                         help='channels per layer')
-    
     parser.add_argument("--netdepth_fine", type=int, default=8,
                         help='layers in fine network')
-    
     parser.add_argument("--netwidth_fine", type=int, default=256,
                         help='channels per layer in fine network')
-    
     parser.add_argument("--rgb_crf_net_hidden", type = int, default = 0,
                         help = "the number of hidden layer in rgb_crf")
-    
     parser.add_argument("--rgb_crf_net_width", type = int, default = 128,
                         help = "the width of linear layer in rgb_crf")
-    
     parser.add_argument("--event_crf_net_hidden", type = int, default = 0,
                         help = "the number of hidden layer in event_crf")
-    
     parser.add_argument("--event_crf_net_width", type = int, default = 128,
-                        help = "the width of linear layer in event_crf")   
-     
-    parser.add_argument("--lrate", type=float, default=5e-4,
-                        help='learning rate of NeRF')
-    
-    parser.add_argument("--pose_lrate", type=float, default=1e-3,
-                        help='learning rate of rgb camera pose')
-    
-    parser.add_argument("--transform_lrate", type=float, default=1e-6,
-                        help='learning rate of the transform between event camera and rgb camera')
-    
-    parser.add_argument("--rgb_crf_lrate", type = float, default = 5e-4,
-                        help = "learning rate of rgb_crf")
-    
-    parser.add_argument("--event_crf_lrate", type = float, default = 5e-4,
-                        help = "learning rate of event_crf")
-
-    parser.add_argument("--decay_rate", type=float, default=0.1,
-                        help='learning rate decay of NeRF')
-    
-    parser.add_argument("--decay_rate_pose", type=float, default=0.01,
-                        help='learning rate decay of rgb camera pose')
-    
-    parser.add_argument("--decay_rate_transform", type=float, default=0.01,
-                        help='learning rate decay of the transform between event camera and rgb camera')
-    
-    parser.add_argument("--decay_rate_rgb_crf", type = float, default = 0.1,
-                        help = "learning rate decay of rgb_crf")
-    
-    parser.add_argument("--decay_rate_event_crf", type = float, default = 0.1,
-                        help = "learning rate decay of event_crf")
-
-    parser.add_argument("--lrate_decay", type=int, default=200,
-                        help='exponential learning rate decay (in 1000 steps)')
-
-    parser.add_argument("--chunk", type=int, default=1024 * 2,
+                        help = "the width of linear layer in event_crf") 
+    parser.add_argument("--chunk", type=int, default=1024 * 4,
                         help='number of rays processed in parallel, decrease if running out of memory')
-    
     parser.add_argument("--netchunk", type=int, default=1024 * 32,
-                        help='number of pts sent through network in parallel, decrease if running out of memory')
-
-    # rendering options
+                        help='number of pts sent through network in parallel, decrease if running out of memory')  
+    parser.add_argument("--channels", type=int, default=3,
+                        help='whether to use 3-channel or single-channel images')
+    parser.add_argument("--sampling_event_rays", type=int, default=2048,
+                        help='number of sampled rays for Event camera')
+    parser.add_argument("--sampling_rgb_rays", type=int, default=1024,
+                        help='number of sampled rays for RGB camera')
     parser.add_argument("--N_samples", type=int, default=64,
                         help='number of coarse samples per ray')
     parser.add_argument("--N_importance", type=int, default=0,
@@ -118,7 +92,8 @@ def config_parser():
                         help='log2 of max freq for positional encoding (2D direction)')
     parser.add_argument("--raw_noise_std", type=float, default=0.,
                         help='std dev of noise added to regularize sigma_a output, 1e0 recommended')
-
+    
+    ## render test
     parser.add_argument("--render_only", action='store_true',
                         help='do not optimize, reload weights and render out render_poses path')
     parser.add_argument("--render_test", action='store_true',
@@ -127,124 +102,121 @@ def config_parser():
                         help='downsampling factor to speed up rendering, set 4 or 8 for fast preview')
     parser.add_argument("--ndc", type=bool, default=True,
                         help='downsampling factor to speed up rendering, set 4 or 8 for fast preview')
-
-    # idx
-    parser.add_argument("--idx", type=int, default=0,
-                        help='idx in the dataset to deblur')
-
-    parser.add_argument("--focal_x", type=float, default=548.409,
-                        help='focal length of images')
-    parser.add_argument("--focal_y", type=float, default=548.409,
-                        help='focal length of images')
-    parser.add_argument("--cx", type=float, default=384.,
-                        help='focal length of images')
-    parser.add_argument("--cy", type=float, default=240.,
-                        help='focal length of images')
-    parser.add_argument("--img_dist", type=float, action="append",
-                        help='focal length of images')
-    parser.add_argument("--dataset_event_split", type=int, default=500,
-                        help='tv')
-    
-    parser.add_argument("--render_h", type=int, default=0,
-                        help='channels per layer')
-    parser.add_argument("--render_w", type=int, default=0,
-                        help='channels per layer')
-    parser.add_argument("--render_focal_x", type=float, default=0,
-                        help='channels per layer')
-    parser.add_argument("--render_focal_y", type=float, default=0,
-                        help='channels per layer')
+    parser.add_argument("--render_height", type=int, default=0,
+                        help='the height of image for rendering')
+    parser.add_argument("--render_width", type=int, default=0,
+                        help='the width of image for rendering')
+    parser.add_argument("--render_fx", type=float, default=0,
+                        help='focal length in x-axis for rendering')
+    parser.add_argument("--render_fy", type=float, default=0,
+                        help='focal length in y-axis for rendering')
     parser.add_argument("--render_cx", type=float, default=0,
-                        help='channels per layer')
+                        help='optical center in x-axis for rendering')
     parser.add_argument("--render_cy", type=float, default=0,
-                        help='channels per layer')
-    # logging/saving options
-    parser.add_argument("--i_print", type=int, default=100,
-                        help='frequency of console printout and metric logging')
-    parser.add_argument("--i_img", type=int, default=25000,
-                        help='frequency of tensorboard image logging')
-    parser.add_argument("--i_weights", type=int, default=10000,
-                        help='frequency of weight ckpt saving')
-    parser.add_argument("--i_video", type=int, default=50000,
-                        help='frequency of render_poses video saving')
-    parser.add_argument("--load_weights", action='store_true',
-                        help='frequency of weight ckpt loading')
-    parser.add_argument("--weight_iter", type=int, default=10000,
-                        help='weight_iter')
-    parser.add_argument("--max_iter", type=int, default=200000,
-                        help='max_iter')
-
-    # optimize
-    parser.add_argument("--optimize_se3", action='store_true',
-                        help='whether to optimize SE3 network')
+                        help='optical center in y-axis for rendering')
+ 
+    ## optimization options    
     parser.add_argument("--optimize_nerf", action='store_true',
                         help='whether to optimize NeRF network')
-    parser.add_argument("--optimize_event", action='store_true',
-                        help='whether to optimize transformation matrix')
+    parser.add_argument("--optimize_pose", action='store_true',
+                        help='whether to optimize camera pose')
+    parser.add_argument("--optimize_trans", action='store_true',
+                        help='whether to optimize transform between RGB camera and Event camera')
     parser.add_argument("--optimize_rgb_crf", action='store_true',
-                        help = "whether to optimize rgb_crf")
+                        help = "whether to optimize response function for RGB camera")
     parser.add_argument("--optimize_event_crf", action='store_true',
-                        help = "whether to optimize event_crf")
-    
-    # event parameter
-    parser.add_argument("--threshold", type=float, default=0.1,
-                        help='threshold set for events spiking')
-    parser.add_argument("--rgb_loss", action='store_true',
-                        help='')
-    parser.add_argument("--rgb_blur_loss", action='store_true',
-                        help='')
-    parser.add_argument("--channels", type=int, default=3,
-                        help='whether to use 3-channel or single-channel images')
-    parser.add_argument("--pix_event", type=int, default=2048,
-                        help='number of sampled rays where with events spiking')
-    parser.add_argument("--pix_rgb", type=int, default=1024,
-                        help='number of sampled rays for computation of image loss function')
-    parser.add_argument("--h_event", type=int, default=480,
-                        help='whether to use 3-channel or single-channel images')
-    parser.add_argument("--w_event", type=int, default=768,
-                        help='whether to use 3-channel or single-channel images')
-    parser.add_argument("--focal_event_x", type=float, default=548.409,
-                        help='focal length of images')
-    parser.add_argument("--focal_event_y", type=float, default=548.409,
-                        help='focal length of images')
+                        help = "whether to optimize response function for Event camera")
+    parser.add_argument("--lrate", type=float, default=5e-4,
+                        help='learning rate of NeRF')
+    parser.add_argument("--pose_lrate", type=float, default=1e-3,
+                        help='learning rate of camera pose')
+    parser.add_argument("--transform_lrate", type=float, default=1e-6,
+                        help='learning rate of the transform between Event camera and RGB camera')
+    parser.add_argument("--rgb_crf_lrate", type = float, default = 5e-4,
+                        help = "learning rate of rgb_crf")
+    parser.add_argument("--event_crf_lrate", type = float, default = 5e-4,
+                        help = "learning rate of event_crf")
+    parser.add_argument("--decay_rate", type=float, default=0.1,
+                        help='learning rate decay of NeRF')
+    parser.add_argument("--decay_rate_pose", type=float, default=0.01,
+                        help='learning rate decay of RGB camera pose')
+    parser.add_argument("--decay_rate_transform", type=float, default=0.01,
+                        help='learning rate decay of the transform between event camera and RGB camera')
+    parser.add_argument("--decay_rate_rgb_crf", type = float, default = 0.1,
+                        help = "learning rate decay of rgb_crf")
+    parser.add_argument("--decay_rate_event_crf", type = float, default = 0.1,
+                        help = "learning rate decay of event_crf")
+    parser.add_argument("--lrate_decay", type=int, default=200,
+                        help='exponential learning rate decay (in 1000 steps)')
+
+    ## camera paramaters
+    parser.add_argument("--rgb_fx", type=float, default=548.409,
+                        help='focal length of RGB camera in x-axis')
+    parser.add_argument("--rgb_fy", type=float, default=548.409,
+                        help='focal length of RGB camera in y-axis')
+    parser.add_argument("--rgb_cx", type=float, default=384.,
+                        help='optical center of RGB camera in x-axis')
+    parser.add_argument("--rgb_cy", type=float, default=240.,
+                        help='optical center of RGB camera in y-axis')
+    parser.add_argument("--rgb_width", type=float, default=240.,
+                        help='the width of RGB camera image')
+    parser.add_argument("--rgb_height", type=float, default=240.,
+                        help='the height of RGB camera image')
+    parser.add_argument("--rgb_dist", type=float, action="append",
+                        help='distortion parameters of RGB camera')
+    parser.add_argument("--event_fx", type=float, default=548.409,
+                        help='focal length of Event camera in x-axis')
+    parser.add_argument("--event_fy", type=float, default=548.409,
+                        help='focal length of Event camera in y-axis')
     parser.add_argument("--event_cx", type=float, default=384.,
-                        help='focal length of images')
+                        help='optical center of Event camera in x-axis')
     parser.add_argument("--event_cy", type=float, default=240.,
-                        help='focal length of images')
-    parser.add_argument("--evt_dist", type=float, action="append",
-                        help='focal length of images')
+                        help='optical center of Event camera in y-axis')
+    parser.add_argument("--event_width", type=int, default=480,
+                        help='the width of Event camera image')
+    parser.add_argument("--event_height", type=int, default=768,
+                        help='the height of Event camera image')
+    parser.add_argument("--event_dist", type=float, action="append",
+                        help='distortion parameters of Event camera')
+    
+    ## event stream parameters
+    parser.add_argument("--event_threshold", type=float, default=0.1,
+                        help='threshold set for events spiking')
     parser.add_argument("--event_shift_start", type=float, default=5,
-                        help='tv')
+                        help='shift the start timestamp for event stream')
     parser.add_argument("--event_shift_end", type=float, default=5,
-                        help='tv')
-    parser.add_argument("--event_time_shift", type=float, default=.0,
-                        help='tv')
-
-    # window
-    parser.add_argument("--window_percent", type=float, default=0.1,
+                        help='shift the end timestamp for event stream')
+    parser.add_argument("--accumulate_time_length", type=float, default=0.1,
                         help='the percentage of the window')
-    parser.add_argument("--random_window", action='store_true',
+    parser.add_argument("--random_sampling_window", action='store_true',
                         help='whether to use fixed windows or sliding window')
-    parser.add_argument("--time_window", action='store_true',
+    parser.add_argument("--event_time_window", action='store_true',
                         help='whether to use fixed windows or sliding window')
 
-    # coefficient for loss
-    parser.add_argument("--event_coefficient", type=float, default=1.0,
-                        help='coefficient for event loss')
-    parser.add_argument("--rgb_coefficient", type=float, default=1.0,
-                        help='coefficient for rgb loss')
-    parser.add_argument("--rgb_blur_coefficient", type=float, default=0.5,
-                        help='coefficient for rgb loss')
+    ## logging/saving options
+    parser.add_argument("--max_iter", type=int, default=200000,
+                        help='maximum number of training iterations')
+    parser.add_argument("--console_log_iter", type=int, default=100,
+                        help='number of iterations for printing logs on console')
+    parser.add_argument("--render_image_iter", type=int, default=25000,
+                        help='number of iterations for rendering image for test')
+    parser.add_argument("--save_model_iter", type=int, default=10000,
+                        help='number of iterations for saving model checkpoint')
+    parser.add_argument("--render_video_iter", type=int, default=50000,
+                        help='number of iterations for rendering video for test')
 
-    # viewer
-    parser.add_argument("--viewer", type=str, default="wandb",
-                        help='the viewer to use (wandb)')
-    parser.add_argument("--depth", action='store_true',
-                        help='the viewer to use (wandb)')
-    parser.add_argument("--loadpose", action='store_true',
-                        help='the viewer to use (wandb)')
-    parser.add_argument("--loadtrans", action='store_true',
-                        help='the viewer to use (wandb)')
-
-    parser.add_argument("--real_coeff", type=float, default=20.,
-                        help='learning rate of rgb camera pose')
+    # loss options
+    parser.add_argument("--rgb_loss", action='store_true',
+                        help='whether to compute RGB image loss')
+    parser.add_argument("--event_loss", action='store_true',
+                        help='whether to compute event stream loss')
+    parser.add_argument("--event_coeff_syn", type=float, default=1.0,
+                        help='coefficient for event stream loss on synthetic dataset')
+    parser.add_argument("--event_coeff_real", type=float, default=1.0,
+                        help='coefficient for event stream loss on real-world dataset')
+    parser.add_argument("--rgb_coeff", type=float, default=1.0,
+                        help='coefficient for RGB image loss')
+    
+    # parser.add_argument("--weight_iter", type=int, default=10000,
+    #                     help='weight_iter')
     return parser

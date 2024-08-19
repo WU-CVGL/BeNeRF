@@ -7,12 +7,11 @@ from tqdm import tqdm
 from pathlib import Path
 from utils import img_utils
 
-
 def load_img_data(datadir, datasource = None, gray = False):
-    print("Loading images...")
+
     # Load images
     imgdir = os.path.join(datadir, "images")
-    if datasource == "Unreal" or datasource == "Blender" or datasource == "E2NeRF_Synthetic":
+    if datasource == "BeNeRF_Blender" or datasource == "BeNeRF_Unreal" or datasource == "E2NeRF_Synthetic":
         testdir = os.path.join(datadir, "images" + "_test")
 
     imgfiles = [
@@ -22,7 +21,7 @@ def load_img_data(datadir, datasource = None, gray = False):
     ]
 
     imgtests_file = []
-    if datasource == "Unreal" or datasource == "Blender" or datasource == "E2NeRF_Synthetic":
+    if datasource == "BeNeRF_Blender" or datasource == "BeNeRF_Unreal" or datasource == "E2NeRF_Synthetic":
         imgtests_file = [
             os.path.join(testdir, f)
             for f in sorted(os.listdir(testdir))
@@ -43,9 +42,7 @@ def load_img_data(datadir, datasource = None, gray = False):
             imgs[i, :, :, :] = img_utils.load_image(imgfiles[i], gray)
     
     imgtests = []
-    if datasource == "Unreal" or datasource == "Blender" or datasource == "E2NeRF_Synthetic":
-        # imgtests = [img_utils.load_image(f, gray) for f in imgtests]
-        # imgtests = np.stack(imgtests, -1)
+    if datasource == "BeNeRF_Blender" or datasource == "BeNeRF_Unreal" or datasource == "E2NeRF_Synthetic":
         if gray == True:
             h, w = img_utils.load_image(imgtests_file[0], gray).shape
             imgtests = np.empty((len(imgtests_file), h, w), dtype = np.float64)
@@ -58,7 +55,6 @@ def load_img_data(datadir, datasource = None, gray = False):
                 imgtests[i, :, :, :] = img_utils.load_image(imgtests_file[i], gray)
 
     return imgs, imgtests
-
 
 def load_camera_pose(basedir, H, W, cubic):
     sh = H, W
@@ -86,33 +82,23 @@ def load_camera_pose(basedir, H, W, cubic):
 
     return poses, ev_poses
 
-
 def load_camera_trans(basedir):
     # load trans
     trans_arr = np.load(os.path.join(basedir, "trans.npy"))
     return trans_arr
 
-
 def load_timestamps(basedir, args):
-    print("Loading timestamps...")
-    # file path
-    time_ts_path = os.path.join(basedir, "poses_ts.txt")
-    time_start_path = os.path.join(basedir, "poses_start_ts.txt")
-    time_end_path = os.path.join(basedir, "poses_end_ts.txt")
-    timestamps_path = os.path.join(basedir, "image_timestamps.txt")
-    exposures_path = os.path.join(basedir, "image_exposures.txt")
 
-    # synthetic dataset
-    if os.path.exists(time_ts_path):
+    # BeNeRF_Synthetic 
+    if args.dataset in ["BeNeRF_Blender", "BeNeRF_Unreal"]:
+        time_ts_path = os.path.join(basedir, "poses_ts.txt")
         times_ts = np.loadtxt(time_ts_path)
         times_start = times_ts[:-1]
         times_end = times_ts[1:]
-    # real dataset
-    elif os.path.exists(time_start_path) and os.path.exists(time_end_path):
-        times_start = np.loadtxt(time_start_path)
-        times_end = np.loadtxt(time_end_path)
     # TUM-VIE
-    elif os.path.exists(timestamps_path):
+    elif args.dataset == "TUM_VIE":
+        timestamps_path = os.path.join(basedir, "image_timestamps.txt")
+        exposures_path = os.path.join(basedir, "image_exposures.txt")
         timestamps = np.loadtxt(timestamps_path)
         exposures = np.loadtxt(exposures_path)
         times_start = timestamps[:] - 0.5 * exposures[:]
@@ -126,28 +112,35 @@ def load_timestamps(basedir, args):
     # E2NeRF_Synthetic
     elif args.dataset == "E2NeRF_Synthetic":
         eventdir = os.path.join(basedir, "events")
-        eventdir_idx = eventdir + "/r_{}".format(args.idx * 2)
+        eventdir_idx = eventdir + "/r_{}".format(args.index * 2)
         events_txt = np.loadtxt(os.path.join(eventdir_idx, "v2e-dvs-events.txt"))
         st, _, _ ,_ = events_txt[0]
         ed, _, _ ,_ = events_txt[len(events_txt) - 1]
         times_start = int(st * 1e19)
         times_end = int(ed * 1e19)
-    elif args.dataset == "HNU":
-        eventdir = os.path.join(basedir, "events")
-        eventdir_idx = eventdir + "/{:06d}.txt".format(args.idx)
-        events_txt = np.loadtxt(eventdir_idx)
-        times_start, _, _ ,_ = events_txt[0]
-        times_end, _, _ ,_ = events_txt[len(events_txt) - 1]
     else:
         print("Cannot load timestamps for images")
         assert False
 
-    return times_start, times_end
+    if args.dataset == "E2NeRF_Synthetic":
+        # record exposure time for rgb camera
+        img_ts_start = times_start
+        img_ts_end = times_end
+        # usually,select more events will be better
+        evt_ts_start = times_start - args.event_shift_start * 1e3 
+        evt_ts_end = times_end + args.event_shift_end * 1e3
+    else:
+        # record exposure time for rgb camera    
+        img_ts_start = times_start[args.index]
+        img_ts_end = times_end[args.index]
+        # usually,select more events will be better
+        evt_ts_start = times_start[args.index] - args.event_shift_start * 1e3 
+        evt_ts_end = times_end[args.index] + args.event_shift_end * 1e3
 
+    return img_ts_start, img_ts_end, evt_ts_start, evt_ts_end
 
 def normalize(x):
     return x / np.linalg.norm(x)
-
 
 def viewmatrix(z, up, pos):
     vec2 = normalize(z)
@@ -157,11 +150,9 @@ def viewmatrix(z, up, pos):
     m = np.stack([vec0, vec1, vec2, pos], 1)
     return m
 
-
 def ptstocam(pts, c2w):
     tt = np.matmul(c2w[:3, :3].T, (pts - c2w[:3, 3])[..., np.newaxis])[..., 0]
     return tt
-
 
 def poses_avg(poses):
     hwf = poses[0, :3, -1:]
@@ -172,7 +163,6 @@ def poses_avg(poses):
     c2w = np.concatenate([viewmatrix(vec2, up, center), hwf], 1)
 
     return c2w
-
 
 def render_path_spiral(c2w, up, rads, focal, zdelta, zrate, rots, N):
     render_poses = []
@@ -189,7 +179,6 @@ def render_path_spiral(c2w, up, rads, focal, zdelta, zrate, rots, N):
         render_poses.append(np.concatenate([viewmatrix(z, up, c), hwf], 1))
     return render_poses
 
-
 def recenter_poses(poses):
     poses_ = poses + 0
     bottom = np.reshape([0, 0, 0, 1.0], [1, 4])
@@ -202,7 +191,6 @@ def recenter_poses(poses):
     poses_[:, :3, :4] = poses[:, :3, :4]
     poses = poses_
     return poses
-
 
 def spherify_poses(poses, bds):
     p34_to_44 = lambda p: np.concatenate(
@@ -272,7 +260,6 @@ def spherify_poses(poses, bds):
 
     return poses_reset, new_poses, bds
 
-
 def load_data(
     datadir, args, load_pose = False, load_trans = False, cubic = False, datasource = None
 ):
@@ -281,64 +268,46 @@ def load_data(
 
     # load imges
     # [num, height, width, channel]
+    print("Loading images...")
+    img = []            # input
+    imgtest = []        # groundtruth
     imgs, imgtests = load_img_data(datadir, datasource, gray = gray)
     if gray:
         imgs = np.expand_dims(imgs, -1)
     # select one image: [1, height, width, channel]
-    imgs = np.expand_dims(imgs[args.idx], 0)
+    img = np.expand_dims(imgs[args.index], 0)
 
-    if datasource == "Unreal" or datasource == "Blender":
-        #imgtests = np.moveaxis(imgtests, -1, 0).astype(np.float32)
+    if datasource in ["BeNeRF_Blender", "BeNeRF_Unreal", "E2NeRF_Synthetic"]:
         if gray:
             imgtests = np.expand_dims(imgtests, -1)
         # select one image
-        imgtests = np.expand_dims(imgtests[args.idx], 0)
+        imgtest = np.expand_dims(imgtests[args.index], 0)
     print("Load images successfully!!")
 
     # load start and end timestamps of exposure time
-    ts_start, ts_end = load_timestamps(datadir, args)
+    print("Loading timestamps...")
+    img_ts_start, img_ts_end, evt_ts_start, evt_ts_end = load_timestamps(datadir, args)
     print("Load timestamps successfully!!")
-
-    if args.dataset == "E2NeRF_Synthetic" or args.dataset == "HNU":
-        # record exposure time    
-        img_ts_start = ts_start
-        img_ts_end = ts_end
-        # usually,select more events will be better
-        evt_ts_start = ts_start - args.event_shift_start * 1e3 
-        evt_ts_end = ts_end + args.event_shift_end * 1e3
-    else:
-        # record exposure time    
-        img_ts_start = ts_start[args.idx]
-        img_ts_end = ts_end[args.idx]
-        # usually,select more events will be better
-        evt_ts_start = ts_start[args.idx] - args.event_shift_start * 1e3 
-        evt_ts_end = ts_end[args.idx] + args.event_shift_end * 1e3
 
     # load events
     print("Loading events...")
     eventdir = os.path.join(datadir, "events")
-    if os.path.exists(os.path.join(eventdir, "events.npy")):
-        # event shift, selecting more events means better result
-        # st = max(args.idx - args.event_shift_start, 0)
-        # ed = min(args.idx + args.event_shift_end, len(ts_end) - 1)
-        # real timestamp of start and end
-        # poses_ts = np.array((ts_start[st], ts_end[ed]))
+    # BeNeRF Synthetic
+    if datasource in ["BeNeRF_Blender", "BeNeRF_Unreal"]:
         events = np.load(os.path.join(eventdir, "events.npy"))
-        # delta = (poses_ts[1] - poses_ts[0]) * args.event_time_shift
-        # poses_ts = np.array([poses_ts[0] - delta, poses_ts[1] + delta])
-        # get events
         events = np.array(
             [ event for event in events if evt_ts_start <= event[2] <= evt_ts_end]
         )
     # E2NeRF Real
-    elif args.dataset == "E2NeRF_Real":
+    elif datasource == "E2NeRF_Real":
         events_tensor = torch.load(os.path.join(eventdir, "events.pt"))
         events_numpy = events_tensor.numpy()
         events =  np.array(
             [event for event in tqdm(events_numpy) if evt_ts_start <= event[2] <= evt_ts_end]
         )
-    elif args.dataset == "E2NeRF_Synthetic":
-        eventdir_idx = eventdir + "/r_{}".format(args.idx * 2)
+    # E2NeRF_Synthetic
+    elif datasource == "E2NeRF_Synthetic":
+        eventdir_idx = eventdir + "/r_{}".format(args.index * 2)
         events_txt = np.loadtxt(os.path.join(eventdir_idx, "v2e-dvs-events.txt"))
         events_list = []
         for row in tqdm(events_txt):
@@ -347,16 +316,8 @@ def load_data(
             p = 2 * p - 1
             events_list.append(np.array([x, y, t, p], dtype = np.int64))
         events = np.array(events_list)
-    elif args.dataset == "HNU":
-        eventdir_idx = eventdir + "/{:06d}.txt".format(args.idx)
-        events_txt = np.loadtxt(eventdir_idx)
-        events_list = []
-        for row in tqdm(events_txt):
-            t, x, y, p = row
-            events_list.append(np.array([x, y, t, p], dtype = np.float64))
-        events = np.array(events_list)
     # TUM-VIE
-    elif os.path.exists(os.path.join(eventdir, "events.h5")):
+    elif datasource == "TUM_VIE":
         # import h5 file
         h5file = h5py.File(os.path.join(eventdir, "events.h5"))
         # h5group contains h5dataset: [x y t p]
@@ -389,22 +350,7 @@ def load_data(
             events = np.vstack((events, h5dataset))
         events = np.delete(events, 0, axis = 0)
         events = np.transpose(events)
-    else:
-        poses_ts = np.array((ts_start[args.idx], ts_end[args.idx]))
-        eventfiles = [
-            os.path.join(eventdir, f)
-            for f in sorted(os.listdir(eventdir))
-            if f.endswith("npy")
-            and f.startswith(("0", "1", "2", "3", "4", "5", "6", "7", "8", "9"))
-        ]
-        eventfiles = eventfiles[
-            args.dataset_event_split
-            * args.idx : args.dataset_event_split
-            * (args.idx + 1)
-        ]
 
-        event_list = [np.load(e) for e in eventfiles]
-        events = np.concatenate(event_list)
     # sorted according to time
     events = events[events[:, 2].argsort()]
     # create dictionary
@@ -415,7 +361,7 @@ def load_data(
         "ts": (events[:, 2] - evt_ts_start) / (evt_ts_end - evt_ts_start),
         "pol": events[:, 3],
     }
-    print("Load events successfully")
+    print("Load events successfully!!")
     # process poses
     poses, ev_poses, trans, poses_ts = None, None, None, None
     if load_pose:
@@ -423,7 +369,7 @@ def load_data(
         # recenter for rgb
         poses_num = 4 if cubic else 2
         poses_all = np.concatenate(
-            (poses[args.idx : args.idx + 2], ev_poses[args.idx : args.idx + 2]), axis=0
+            (poses[args.index : args.index + 2], ev_poses[args.index : args.index + 2]), axis=0
         )
         poses_all = recenter_poses(poses_all)
         poses = poses_all[0:poses_num]
@@ -432,8 +378,7 @@ def load_data(
         ev_poses = poses_all[poses_num : 2 * poses_num]
     elif load_trans:
         trans_arr = load_camera_trans(datadir)
-        # trans_arr = np.expand_dims(trans_arr, axis=0)
-        # trans = recenter_poses(trans_arr)[0]
+
         trans = trans_arr.astype(np.float32)
 
     # normlize exposure time of image accroding to eventstream time
@@ -441,8 +386,7 @@ def load_data(
     img_ts_end = (img_ts_end - evt_ts_start) / (evt_ts_end - evt_ts_start)
     rgb_exp_time = np.array([img_ts_start, img_ts_end])
 
-    return events, imgs, imgtests, rgb_exp_time, poses_ts, poses, ev_poses, trans
-
+    return events, img, imgtest, rgb_exp_time, poses_ts, poses, ev_poses, trans
 
 def regenerate_pose(
     poses, bds, recenter=True, bd_factor=0.75, spherify=False, path_zflat=False

@@ -1,11 +1,9 @@
 import os
-
-import numpy as np
 import torch
-from imageio.v3 import imwrite
+import numpy as np
 from tqdm import tqdm
-
 from utils import img_utils
+from imageio.v3 import imwrite
 
 tonemap = lambda x: (
     np.log(np.clip(x, 0, 1) * 5000 + 1) / np.log(5000 + 1) * 255
@@ -16,7 +14,7 @@ def get_rays(H, W, K, c2w, args, remap):
     i, j = torch.meshgrid(torch.linspace(0, W - 1, W), torch.linspace(0, H - 1, H))
     i = i.t().long()
     j = j.t().long()         
-    if args.dataset == "TUMVIE":
+    if args.dataset == "TUM_VIE":
         idx = torch.linspace(0, H * W - 1, H * W).long()
         i = idx % W
         j = idx // W
@@ -33,7 +31,6 @@ def get_rays(H, W, K, c2w, args, remap):
     rays_o = c2w[:3, -1].expand(rays_d.shape)
     return rays_o, rays_d
 
-
 # Ray helpers only get specific rays
 def get_specific_rays(i, j, K, c2w):
     dirs = torch.stack(
@@ -45,7 +42,6 @@ def get_specific_rays(i, j, K, c2w):
     # Translate camera frame's origin to the world frame. It is the origin of all rays.
     rays_o = c2w[..., :3, -1]
     return rays_o, rays_d
-
 
 def ndc_rays(H, W, focal, near, rays_o, rays_d):
     # Shift ray origins to near plane
@@ -73,7 +69,6 @@ def ndc_rays(H, W, focal, near, rays_o, rays_d):
     rays_d = torch.stack([d0, d1, d2], -1)
 
     return rays_o, rays_d
-
 
 # Hierarchical sampling (section 5.2)
 def sample_pdf(bins, weights, N_samples, det=False, pytest=False):
@@ -119,15 +114,14 @@ def sample_pdf(bins, weights, N_samples, det=False, pytest=False):
 
     return samples
 
-
 @torch.no_grad()
-def render_video_test(graph, render_poses, H, W, K, args, remap):
+def render_video_test(iter_step, graph, render_poses, H, W, K, args, remap):
     rgbs = []
     disps = []
     # radiences = []
     for i, pose in enumerate(tqdm(render_poses)):
         pose = pose[None, :3, :4]
-        ret = graph.render_video(pose[:3, :4], H, W, K, args, remap, type="rgb")
+        ret = graph.render_video(iter_step, pose[:3, :4], H, W, K, args, remap, type="rgb")
         if args.optimize_rgb_crf:
             ret["rgb_map"] = graph.rgb_crf.forward(ret["rgb_map"])
         # ret_radience = graph.render_video(pose[:3, :4], H, W, K, args, type = "radience")
@@ -145,12 +139,8 @@ def render_video_test(graph, render_poses, H, W, K, args, remap):
     # radiences = np.stack(radiences, 0)
     return rgbs, disps
 
-
-@torch.no_grad()
-def render_image_test(
-    i, graph, render_poses, H, W, K, args, logdir, remap, dir=None, need_depth=True
-):
-    img_dir = os.path.join(logdir, dir, "img_test_{:06d}".format(i))
+def render_image_test(iter_step, graph, render_poses, H, W, K, args, logdir, remap, dir=None, need_depth=True):  
+    img_dir = os.path.join(logdir, dir, "img_test_{:06d}".format(iter_step))
     os.makedirs(img_dir, exist_ok=True)
     imgs = []
     # radiences = []
@@ -158,7 +148,7 @@ def render_image_test(
 
     for j, pose in enumerate(tqdm(render_poses)):
         pose = pose[None, :3, :4]
-        ret = graph.render_video(pose[:3, :4], H, W, K, args, remap, type="rgb")
+        ret = graph.render_video(iter_step, pose[:3, :4], H, W, K, args, remap, type="rgb")
         if args.optimize_rgb_crf:
             ret["rgb_map"] = graph.rgb_crf.forward(ret["rgb_map"])
         # ret_radience = graph.render_video(pose[:3, :4], H, W, K, args, type = "radience")
@@ -166,11 +156,7 @@ def render_image_test(
         # radience = ret_radience['rgb_map'].cpu().numpy()
         rgb8 = img_utils.to8bit(rgbs)
         # radience = tonemap(radience / np.max(radience))
-        imwrite(
-            os.path.join(img_dir, dir[11:] + "{:03d}.png".format(j)),
-            rgb8.squeeze(),
-            mode="L" if args.channels == 1 else "RGB",
-        )
+        imwrite(os.path.join(img_dir, dir[11:] + "{:03d}.png".format(j)), rgb8.squeeze(), mode="L" if args.channels == 1 else "RGB")
         # imwrite(os.path.join(img_dir, dir[11:] + 'radience_{:03d}.png'.format(j)), rgb8.squeeze(),
         #         mode="L" if args.channels == 1 else "RGB")
         imgs.append(rgb8)
@@ -184,14 +170,12 @@ def render_image_test(
     return imgs, depth
     # return imgs, radiences, depth
 
-
 def compute_poses_idx(img_idx, args):
     poses_idx = torch.arange(img_idx.shape[0] * args.deblur_images)
     for i in range(img_idx.shape[0]):
         for j in range(args.deblur_images):
             poses_idx[i * args.deblur_images + j] = img_idx[i] * args.deblur_images + j
     return poses_idx
-
 
 def compute_ray_idx(width, H, W):
     ray_idx_start = torch.randint(H * W, (1,))
@@ -207,12 +191,10 @@ def compute_ray_idx(width, H, W):
     ray_idx = ray_idx.squeeze()
     return ray_idx
 
-
 def init_weights(linear):
     # use Xavier init instead of Kaiming init
     torch.nn.init.xavier_uniform_(linear.weight)
     torch.nn.init.zeros_(linear.bias)
-
 
 def init_nerf(nerf):
     for linear_pt in nerf.pts_linears:
@@ -226,25 +208,13 @@ def init_nerf(nerf):
     init_weights(nerf.rgb_linear)
 
 def random_sample_right_half(height, width, num_samples):
-    # 右半边的列范围
     right_half_cols = torch.randint(width // 2, width, size=(num_samples,))
-    
-    # 整个图像的行范围
     rows = torch.randint(0, height, size=(num_samples,))
-    
-    # 合并行和列，得到采样点坐标
     coordinates = torch.stack((rows, right_half_cols), dim=1)
-    
     return coordinates
 
 def random_sample_right_half_indices(height, width, num_samples):
-    # 计算右半边的列范围
     right_half_cols = torch.randint(width // 2, width, size=(num_samples,))
-    
-    # 计算整个图像中的行范围
     rows = torch.randint(0, height, size=(num_samples,))
-    
-    # 将行和列索引合并为一维索引
     indices = rows * width + right_half_cols
-    
     return indices

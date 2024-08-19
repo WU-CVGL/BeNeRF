@@ -2,17 +2,17 @@ import torch
 import torch.nn as nn
 import torch.nn.init as init
 from torch.nn import functional as F
-from utils.math_utils import safelog
+from utils.math_utils import safe_log
 
-class CameraPose(nn.Module):
-    def __init__(self, pose_num):
-        super(CameraPose, self).__init__()
-        self.params = nn.Embedding(pose_num, 6)
+class ControlKnotLieAlgebra(nn.Module):
+    def __init__(self, knot_num):
+        super(ControlKnotLieAlgebra, self).__init__()
+        self.params = nn.Embedding(knot_num, 6)
 
-class EventPose(nn.Module):
-    def __init__(self, pose_num):
-        super(EventPose, self).__init__()
-        self.params = nn.Embedding(pose_num, 6)
+class TransformationLieAlgebra(nn.Module):
+    def __init__(self, trans_num):
+        super(TransformationLieAlgebra, self).__init__()
+        self.params = nn.Embedding(trans_num, 6)
 
 class ExposureTime(nn.Module):
     def __init__(self):

@@ -1,7 +1,16 @@
-import numpy as np
 import torch.hub
-from lpips.lpips import LPIPS
+import urllib
+import numpy as np
 from skimage import metrics
+
+
+proxy = urllib.request.ProxyHandler({'http': '192.168.233.8:8889', 'https': '192.168.233.8:8889'})
+# construct a new opener using your proxy settings
+opener = urllib.request.build_opener(proxy)
+# install the openen on the module-level
+urllib.request.install_opener(opener)
+
+from lpips.lpips import LPIPS
 
 photometric = {
     "mse": None,

@@ -1,172 +1,114 @@
 import os
 import random
-
 import imageio
 import torch.nn
 from tqdm import trange, tqdm
 
-from config import config_parser
-from load_data import load_data
-from logger.wandb_logger import WandbLogger
 from loss import imgloss
-from metrics import compute_img_metric
-from model import nerf_cubic_optimpose
-from model import nerf_cubic_optimexposure
-from model import nerf_cubic_optimtrans_event
-from model import nerf_cubic_optimposeset
-from model import nerf_cubic_optimtrans
-from model import nerf_cubic_rigidtrans
-from model import nerf_linear_optimpose
-from model import nerf_linear_optimposeset
-from model import nerf_linear_optimtrans
-from model import test_model
-from model.nerf import *
-from run_nerf_helpers import init_nerf, render_image_test, render_video_test
 from utils import img_utils
-from utils.math_utils import safelog
-from utils.math_utils import lin_log
+from model.nerf import *
+from model import optimize
+from load_data import load_data
+from config import config_parser
+from metrics import compute_img_metric
+from utils.math_utils import rgb2brightlog
+from logger.wandb_logger import WandbLogger
 from undistort import UndistortFisheyeCamera
-
-
+from utils.pose_utils import save_poses_as_kitti_format
+from run_nerf_helpers import init_nerf, render_image_test, render_video_test
 
 def train(args):
     # start wandb
-    #logger = WandbLogger(args)
+    logger = WandbLogger(args)
 
     # loss
     mse_loss = imgloss.MSELoss()
     rgb2gray = img_utils.RGB2Gray()
 
     print("Loading data...")
-
-    # imgtests:for render test
-    events, images, imgtests, rgb_exp_ts, poses_ts, poses, ev_poses, trans = load_data(
-        args.datadir,
-        args,
-        load_pose = args.loadpose,
-        load_trans = args.loadtrans,
-        cubic = "cubic" in args.model,
-        datasource = args.dataset,
+    # imgtest: groundtruth shape image
+    events, img, imgtest, rgb_exp_ts, poses_ts, poses, ev_poses, trans = load_data(
+        args.datadir, args, load_pose = args.loadpose, load_trans = args.loadtrans,
+        cubic = "cubic" in args.model, datasource = args.dataset,
     )
-    print("exposure time of rgb image", rgb_exp_ts)
+    print("Load data successfully!!")
 
+    print("exposure time of rgb image", rgb_exp_ts)
     print(f"Loaded data from {args.datadir}")
-    print(f"Loaded image idx: {args.idx}")
-    print(f"Loaded image size: {images.shape}")
-    print(f"Camera Pose: {poses}")
-    print(f"Event Camera Pose: {ev_poses}")
-    print(f"Camera Trans: {trans}")
+    print(f"Loaded image idx: {args.index}")
+    print(f"Loaded image size: {img.shape}")
+    print(f"Loaded RGB camera pose: {poses}")
+    print(f"Loaded Event camera pose: {ev_poses}")
+    print(f"Loaded camera Transform: {trans}")
 
     if trans is not None and ev_poses is None:
         ev_poses = trans
 
-    # calibration parameters dict
-    img_calib = {
-        "fx": args.focal_x,
-        "fy": args.focal_y,
-        "cx": args.cx,
-        "cy": args.cy,
-        "k1": args.img_dist[0],
-        "k2": args.img_dist[1],
-        "k3": args.img_dist[2],
-        "k4": args.img_dist[3],
-    }
-    evt_calib = {
-        "fx": args.focal_event_x,
-        "fy": args.focal_event_y,
-        "cx": args.event_cx,
-        "cy": args.event_cy,
-        "k1": args.evt_dist[0],
-        "k2": args.evt_dist[1],
-        "k3": args.evt_dist[2],
-        "k4": args.evt_dist[3],
-    }
-
     # Cast intrinsics to right types
     # rgb camera
-    H, W = images[0].shape[0], images[0].shape[1]
+    H, W = img[0].shape[0], img[0].shape[1]
     H, W = int(H), int(W)
 
-    # intrinsic matrix
-    K = np.array(
-        [
-            [img_calib["fx"], 0, img_calib["cx"]], 
-            [0, img_calib["fy"], img_calib["cy"]], 
-            [0, 0, 1]
-        ],
-        dtype = np.float32
-    )
+    # calibration parameters dict
+    img_calib = {
+        "fx": args.rgb_fx, "fy": args.rgb_fy, "cx": args.rgb_cx, "cy": args.rgb_cy,
+        "k1": args.rgb_dist[0], "k2": args.rgb_dist[1], "k3": args.rgb_dist[2], "k4": args.rgb_dist[3],
+    }
+    evt_calib = {
+        "fx": args.event_fx, "fy": args.event_fy, "cx": args.event_cx, "cy": args.event_cy,
+        "k1": args.event_dist[0], "k2": args.event_dist[1], "k3": args.event_dist[2], "k4": args.event_dist[3],
+    }
 
-    # event camera
-    K_event = np.array(
-        [
-            [evt_calib["fx"], 0, evt_calib["cx"]],
-            [0, evt_calib["fy"], evt_calib["cy"]],
-            [0, 0, 1]
-        ],
-        dtype = np.float32
-    )
-
-    # camera for rendering
-    K_render = np.array(
-        [
-            [args.render_focal_x, 0, args.render_cx],
-            [0, args.render_focal_y, args.render_cy],
-            [0, 0, 1]
-        ],
-        dtype = np.float32
-    )
-
-    print(f"distortion coefficients of rgb camera: \n{args.img_dist[0],args.img_dist[1],args.img_dist[2],args.img_dist[3]}\n")
-    print(f"distortion coefficients of evt camera: \n{args.evt_dist[0],args.evt_dist[1],args.evt_dist[2],args.evt_dist[3]}\n")
+    print(f"distortion coefficients of rgb camera: \n{args.rgb_dist[0],args.rgb_dist[1],args.rgb_dist[2],args.rgb_dist[3]}\n")
+    print(f"distortion coefficients of evt camera: \n{args.event_dist[0],args.event_dist[1],args.event_dist[2],args.event_dist[3]}\n")
 
     # create undistorter
     img_xy_remap = np.array([])
     evt_xy_remap = np.array([])
-    if args.dataset == "TUMVIE":    
+    if args.dataset == "TUM_VIE":    
         undistorter = UndistortFisheyeCamera.KannalaBrandt(img_calib, evt_calib)
         # lookup table
         img_xy_remap = undistorter.UndistortImageCoordinate(W, H)
-        evt_xy_remap = undistorter.UndistortStreamEventsCoordinate(args.w_event, args.h_event)
+        evt_xy_remap = undistorter.UndistortStreamEventsCoordinate(args.event_width, args.event_height)
     print("shape of image remap", img_xy_remap.shape)
     print("shape of event remap", evt_xy_remap.shape)
-    # undistortion if use TUMVIE dataset
-    # if args.dataset == "TUMVIE":
 
-    #     print(f"camera intrinsic parameters before undistortion: \n{K}\n")
-    #     print(f"event camera intrinsic parameters before undistortion:: \n{K_event}\n")
-        
-    #     # Get new intrinsic parameters after undistortion
-    #     raw_img_res = np.array([H, W])
-    #     new_img_res = np.array([H, W])
-    #     raw_evt_res = np.array([args.h_event, args.w_event])
-    #     new_evt_res = np.array([args.h_event, args.w_event])
-    #     img_K_new, evt_K_new = undistorter.GetNewIntrinsicMatrix(
-    #         raw_img_res, raw_evt_res, new_img_res, new_evt_res
-    #     )
-    #     K = img_K_new
-    #     K_event = evt_K_new
-        
-    #     # Undistort image
-    #     img_dist = images[0].reshape(1024, 1024)
-    #     img_undist = undistorter.UndistortImage(img_dist, K, new_img_res)
-    #     images[0] = img_undist.reshape((1024, 1024, 1))
+    # rgb camera intrinsic matrix
+    K_rgb = np.array([
+        [img_calib["fx"], 0, img_calib["cx"]], 
+        [0, img_calib["fy"], img_calib["cy"]], 
+        [0, 0, 1]], dtype = np.float32
+    )
 
-    H_render = args.render_h
-    W_render = args.render_w
-    if args.render_h == 0 and args.render_w == 0:
-        K_render = K
+    # event camera intrinsic matrix
+    K_event = np.array([
+        [evt_calib["fx"], 0, evt_calib["cx"]],
+        [0, evt_calib["fy"], evt_calib["cy"]],
+        [0, 0, 1]], dtype = np.float32
+    )
+
+    # camera for rendering
+    K_render = np.array([
+        [args.render_fx, 0, args.render_cx],
+        [0, args.render_fy, args.render_cy],
+        [0, 0, 1]], dtype = np.float32
+    )
+
+    H_render = args.render_height
+    W_render = args.render_width
+    if args.render_height == 0 and args.render_width == 0:
+        K_render = K_rgb
         H_render = H
         W_render = W
 
     print("hight of render image", H_render)
     print("weight of render image", W_render)
-    print(f"camera intrinsic parameters: \n{K}\n")
+    print(f"rgb camera intrinsic parameters: \n{K_rgb}\n")
     print(f"event camera intrinsic parameters: \n{K_event}\n")
     print(f"render camera intrinsic parameters: \n{K_render}\n")
 
     # Create log dir and copy the config file
-    logdir = os.path.join(os.path.expanduser(args.logdir), args.expname)
+    logdir = os.path.join(os.path.expanduser(args.logdir), str(args.index))
     os.makedirs(logdir, exist_ok=True)
     f = os.path.join(logdir, "args.txt")
     with open(f, "w") as file:
@@ -179,34 +121,15 @@ def train(args):
             file.write(open(args.config, "r").read())
 
     # choose model
-    if args.model == "cubic_optimpose":
-        model = nerf_cubic_optimpose.Model(args)
-    elif args.model == "cubic_optimtrans":
-        model = nerf_cubic_optimtrans.Model(args)
-    elif args.model == "cubic_optimtrans_event":
-        model = nerf_cubic_optimtrans_event.Model(args)
-    elif args.model == "cubic_optimposeset":
-        model = nerf_cubic_optimposeset.Model(args)
-    elif args.model == "cubic_optim_exposure":
-        model = nerf_cubic_optimexposure.Model(args)
-    elif args.model == "cubic_rigidtrans":
-        model = nerf_cubic_rigidtrans.Model(args)
-    elif args.model == "linear_optimpose":
-        model = nerf_linear_optimpose.Model(args)
-    elif args.model == "linear_optimtrans":
-        model = nerf_linear_optimtrans.Model(args)
-    elif args.model == "linear_optimposeset":
-        model = nerf_linear_optimposeset.Model(args)
-    elif args.model == "test":
-        model = test_model.Model(args)
+    if args.model == "benerf":
+        model = optimize.Model(args)
     else:
         print("Unknown model type")
         return
-
     print(f"Use model type {args.model}")
 
     # init model
-    if args.load_weights:
+    if args.load_checkpoint:
         graph = model.build_network(args)
         optimizer, optimizer_pose, optimizer_trans, optimizer_rgb_crf, optimizer_event_crf = model.setup_optimizer(args)
         path = os.path.join(logdir, "{:06d}.tar".format(args.weight_iter))
@@ -226,7 +149,7 @@ def train(args):
         graph = model.build_network(args, poses = poses, event_poses = ev_poses)
 
         (
-            optimizer,
+            optimizer_nerf,
             optimizer_pose,
             optimizer_trans,
             optimizer_rgb_crf,
@@ -235,17 +158,18 @@ def train(args):
 
         print("No pre-trained weights are used!")
         # initial optimizer
+        optimizer_nerf.zero_grad()
         optimizer_pose.zero_grad()
         optimizer_trans.zero_grad()
-        optimizer.zero_grad()
         optimizer_rgb_crf.zero_grad()
         optimizer_event_crf.zero_grad()
 
     print("Training is executed...")
     N_iters = args.max_iter + 1
+    # N_iters = args.max_iter
 
     start = 0
-    if not args.load_weights:
+    if not args.load_checkpoint:
         global_step = start
     global_step_ = global_step
 
@@ -258,7 +182,7 @@ def train(args):
 
         # interpolate poses, ETA and render
         ret_event, ret_rgb, ray_idx_event, ray_idx_rgb, events_accu = graph.forward(
-            i, events, rgb_exp_ts, H, W, K, K_event, args, img_xy_remap, evt_xy_remap 
+            i, events, rgb_exp_ts, H, W, K_rgb, K_event, args, img_xy_remap, evt_xy_remap 
         )
         pixels_num = ray_idx_event.shape[0]
 
@@ -276,7 +200,7 @@ def train(args):
         # observed eta
         target_s = events_accu.reshape(-1, 1)[ray_idx_event]
 
-        # use crf for event data
+        # use crf 
         if args.optimize_event_crf:
             ret_gray1_fine = graph.event_crf.forward(ret_gray1["rgb_map"])
             ret_gray1_coarse = graph.event_crf.forward(ret_gray1["rgb0"])
@@ -286,16 +210,15 @@ def train(args):
 
             ret_gray1 = {"rgb_map": ret_gray1_fine, "rgb0": ret_gray1_coarse}
             ret_gray2 = {"rgb_map": ret_gray2_fine, "rgb0": ret_gray2_coarse}
-
         if args.optimize_rgb_crf:
             ret_rgb_fine = graph.rgb_crf.forward(ret_rgb["rgb_map"])
             ret_rgb_coarse = graph.rgb_crf.forward(ret_rgb["rgb0"])
             ret_rgb = {"rgb_map": ret_rgb_fine, "rgb0": ret_rgb_coarse}
 
         # zero grad
+        optimizer_nerf.zero_grad()
         optimizer_pose.zero_grad()
         optimizer_trans.zero_grad()
-        optimizer.zero_grad()
         optimizer_rgb_crf.zero_grad()
         optimizer_event_crf.zero_grad()
 
@@ -303,182 +226,149 @@ def train(args):
         loss = 0
 
         # Event loss
-        # Synthetic dataset
-        if args.threshold > 0:
-            # compute acc * C
-            target_s *= torch.tensor(args.threshold)
-
-            if args.channels == 3:
-                img_loss = mse_loss(
-                    lin_log(rgb2gray(ret_gray2["rgb_map"])) - lin_log(rgb2gray(ret_gray1["rgb_map"])),
-                    target_s,
-                )
-            else:
-                img_loss = mse_loss(
-                    lin_log(ret_gray2["rgb_map"]) - lin_log(ret_gray1["rgb_map"]),
-                    target_s,
-                )
-            img_loss *= args.event_coefficient
-            #logger.write("train_event_loss_fine", img_loss.item())
-
-            if "rgb0" in ret_event:
+        if args.event_loss:
+            # Synthetic dataset
+            if args.event_threshold > 0:
+                # compute acc * C
+                target_s *= torch.tensor(args.event_threshold)
                 if args.channels == 3:
-                    img_loss0 = mse_loss(
-                        lin_log(rgb2gray(ret_gray2["rgb0"])) - lin_log(rgb2gray(ret_gray1["rgb0"])),
-                        target_s,
-                    )
+                    fine_bright2 = rgb2brightlog(rgb2gray(ret_gray2["rgb_map"]), args.dataset)
+                    fine_bright1 = rgb2brightlog(rgb2gray(ret_gray1["rgb_map"]), args.dataset)
+                    event_loss_fine = mse_loss((fine_bright2 - fine_bright1), target_s)
                 else:
-                    img_loss0 = mse_loss(
-                        lin_log(ret_gray2["rgb0"]) - lin_log(ret_gray1["rgb0"]),
-                        target_s,
+                    fine_bright2 = rgb2brightlog(ret_gray2["rgb_map"], args.dataset)
+                    fine_bright1 = rgb2brightlog(ret_gray1["rgb_map"], args.dataset)
+                    event_loss_fine = mse_loss((fine_bright2 - fine_bright1), target_s)
+                event_loss_fine *= args.event_coeff_syn
+                logger.write("train_event_loss_fine", event_loss_fine.item())
+
+                if "rgb0" in ret_event:
+                    if args.channels == 3:
+                        coarse_bright2 = rgb2brightlog(rgb2gray(ret_gray2["rgb0"]), args.dataset)
+                        coarse_bright1 = rgb2brightlog(rgb2gray(ret_gray1["rgb0"]), args.dataset)
+                        event_loss_coarse = mse_loss((coarse_bright2 - coarse_bright1), target_s)
+                    else:
+                        coarse_bright2 = rgb2brightlog(ret_gray2["rgb0"], args.dataset)
+                        coarse_bright1 = rgb2brightlog(ret_gray1["rgb0"], args.dataset)
+                        event_loss_coarse = mse_loss((coarse_bright2 - coarse_bright1), target_s)
+                    event_loss_coarse *= args.event_coeff_syn
+                    logger.write("train_event_loss_coarse", event_loss_coarse.item())
+
+                # coarse + fine
+                event_loss = event_loss_coarse + event_loss_fine
+                logger.write("train_event_loss", event_loss.item())
+                loss += event_loss
+            # Real dataset
+            else:
+                if args.channels == 3:
+                    fine_bright2 = rgb2brightlog(rgb2gray(ret_gray2["rgb_map"]), args.dataset)
+                    fine_bright1 = rgb2brightlog(rgb2gray(ret_gray1["rgb_map"]), args.dataset)
+                    render_brightness_diff = fine_bright2 - fine_bright1
+                    render_norm = render_brightness_diff / (
+                        torch.linalg.norm(render_brightness_diff, dim=0, keepdim=True) + 1e-9
                     )
-                img_loss0 *= args.event_coefficient
-                #logger.write("train_event_loss_coarse", img_loss0.item())
+                    target_s_norm = target_s / (
+                        torch.linalg.norm(target_s, dim=0, keepdim=True) + 1e-9
+                    )
+                    event_loss_fine = mse_loss(render_norm, target_s_norm)
+                else:
+                    fine_bright2 = rgb2brightlog(ret_gray2["rgb_map"], args.dataset)
+                    fine_bright1 = rgb2brightlog(ret_gray1["rgb_map"], args.dataset)
+                    render_brightness_diff = fine_bright2 - fine_bright1
+                    render_norm = render_brightness_diff / (
+                        torch.linalg.norm(render_brightness_diff, dim=0, keepdim=True) + 1e-9
+                    )
+                    target_s_norm = target_s / (
+                        torch.linalg.norm(target_s, dim=0, keepdim=True) + 1e-9
+                    )
+                    event_loss_fine = mse_loss(render_norm, target_s_norm)
+                event_loss_fine *= args.event_coeff_real
+                logger.write("train_event_loss_fine", event_loss_fine.item())
 
-            # coarse + fine
-            event_loss = img_loss0 + img_loss
+                if "rgb0" in ret_event:
+                    if args.channels == 3:
+                        coarse_bright2 = rgb2brightlog(rgb2gray(ret_gray2["rgb0"]), args.dataset)
+                        coarse_bright1 = rgb2brightlog(rgb2gray(ret_gray1["rgb0"]), args.dataset)
+                        render_brightness_diff = coarse_bright2 - coarse_bright1
+                        render_norm = render_brightness_diff / (
+                            torch.linalg.norm(render_brightness_diff, dim=0, keepdim=True) + 1e-9
+                        )
+                        target_s_norm = target_s / (
+                            torch.linalg.norm(target_s, dim=0, keepdim=True) + 1e-9
+                        )
+                        event_loss_coarse = mse_loss(render_norm, target_s_norm)
+                    else:
+                        coarse_bright2 = rgb2brightlog(ret_gray2["rgb0"], args.dataset)
+                        coarse_bright1 = rgb2brightlog(ret_gray1["rgb0"], args.dataset)
+                        render_brightness_diff = coarse_bright2 - coarse_bright1
+                        render_norm = render_brightness_diff / (
+                            torch.linalg.norm(render_brightness_diff, dim=0, keepdim=True) + 1e-9
+                        )
+                        target_s_norm = target_s / (
+                            torch.linalg.norm(target_s, dim=0, keepdim=True) + 1e-9
+                        )
+                        event_loss_coarse = mse_loss(render_norm, target_s_norm)
+                    event_loss_coarse *= args.event_coeff_real
+                    logger.write("train_event_loss_coarse", event_loss_coarse.item())
+                event_loss = event_loss_coarse + event_loss_fine
+                logger.write("train_event_loss", event_loss.item())
 
-            #logger.write("train_event_loss", event_loss.item())
-
-            loss += event_loss
-        # Real dataset
+                loss += event_loss
         else:
-            if args.channels == 3:
-                render_brightness_diff = lin_log(rgb2gray(ret_gray2["rgb_map"])) - lin_log(rgb2gray(ret_gray1["rgb_map"]))
-                render_norm = render_brightness_diff / (
-                    torch.linalg.norm(render_brightness_diff, dim=0, keepdim=True) + 1e-9
-                )
-                target_s_norm = target_s / (
-                    torch.linalg.norm(target_s, dim=0, keepdim=True) + 1e-9
-                )
-                img_loss = mse_loss(render_norm, target_s_norm)
-            else:
-                render_brightness_diff = lin_log(ret_gray2["rgb_map"]) - lin_log(ret_gray1["rgb_map"])
-                render_norm = render_brightness_diff / (
-                    torch.linalg.norm(render_brightness_diff, dim=0, keepdim=True) + 1e-9
-                )
-                target_s_norm = target_s / (
-                    torch.linalg.norm(target_s, dim=0, keepdim=True) + 1e-9
-                )
-                img_loss = mse_loss(render_norm, target_s_norm)
-            img_loss *= args.event_coefficient
-            img_loss *= args.real_coeff
-            #logger.write("train_event_loss_fine", img_loss.item())
-
-            if "rgb0" in ret_event:
-                if args.channels == 3:
-                    render_brightness_diff = lin_log(rgb2gray(ret_gray2["rgb0"])) - lin_log(rgb2gray(ret_gray1["rgb0"]))
-                    render_norm = render_brightness_diff / (
-                        torch.linalg.norm(render_brightness_diff, dim=0, keepdim=True) + 1e-9
-                    )
-                    target_s_norm = target_s / (
-                        torch.linalg.norm(target_s, dim=0, keepdim=True) + 1e-9
-                    )
-                    img_loss0 = mse_loss(render_norm, target_s_norm)
-                else:
-                    render_brightness_diff = lin_log(ret_gray2["rgb0"]) - lin_log(ret_gray1["rgb0"])
-                    render_norm = render_brightness_diff / (
-                        torch.linalg.norm(render_brightness_diff, dim=0, keepdim=True) + 1e-9
-                    )
-                    target_s_norm = target_s / (
-                        torch.linalg.norm(target_s, dim=0, keepdim=True) + 1e-9
-                    )
-                    img_loss0 = mse_loss(render_norm, target_s_norm)
-
-                img_loss0 *= args.event_coefficient
-                img_loss0 *= args.real_coeff
-                #logger.write("train_event_loss_coarse", img_loss0.item())
-
-            event_loss = img_loss0 + img_loss
-
-            #logger.write("train_event_loss", event_loss.item())
-
-            loss += event_loss
+            event_loss = torch.tensor(0)
+            event_loss_fine = torch.tensor(0)
+            event_loss_coarse = torch.tensor(0)
 
         # RGB loss
         if args.rgb_loss:
-            image = torch.Tensor(images[0])
+            image = torch.Tensor(img[0])
             target_s = image.reshape(-1, H * W, args.channels)
-            target_s = target_s[:, ray_idx_rgb]
-            target_s = target_s.reshape(-1, args.channels)
+            target_s = target_s[:, ray_idx_rgb].reshape(-1, args.channels)
             interval = target_s.shape[0]
-            rgb_ = 0
-            extras_ = 0
-            blur_loss, extras_blur_loss = 0, 0
-            rgb_list = []
-            extras_list = []
-            for j in range(0, args.deblur_images):
-                # accumulate sharp rgb to blur rgb
+            synthesized_blur_rgb = 0
+            synthesized_blur_rgb0 = 0
+
+            # accumulate sharp RGB images to one blur RGB image
+            for j in range(0, args.num_interpolated_pose):
                 ray_rgb = ret_rgb["rgb_map"][j * interval : (j + 1) * interval]
-                rgb_ += ray_rgb
-
-                # loss for blur image
-                if args.rgb_blur_loss and j % (args.deblur_images // 2) == 0:
-                    blur_loss += mse_loss(ray_rgb, target_s)
-
+                synthesized_blur_rgb += ray_rgb
                 if "rgb0" in ret_rgb:
                     ray_extras = ret_rgb["rgb0"][j * interval : (j + 1) * interval]
-                    extras_ += ray_extras
+                    synthesized_blur_rgb0 += ray_extras
 
-                    # loss for blur image
-                    if args.rgb_blur_loss and j % (args.deblur_images // 2) == 0:
-                        extras_blur_loss += mse_loss(ray_extras, target_s)
-
-                if (j + 1) % args.deblur_images == 0:
-                    rgb_ = rgb_ / args.deblur_images
-                    rgb_list.append(rgb_)
-                    rgb_ = 0
+                if (j + 1) % args.num_interpolated_pose == 0:
+                    synthesized_blur_rgb = synthesized_blur_rgb / args.num_interpolated_pose
                     if "rgb0" in ret_rgb:
-                        extras_ = extras_ / args.deblur_images
-                        extras_list.append(extras_)
-                        extras_ = 0
-
-            rgb_blur = torch.stack(rgb_list, 0)
-            rgb_blur = rgb_blur.reshape(-1, args.channels)
-
-            if "rgb0" in ret_rgb:
-                extras_blur = torch.stack(extras_list, 0)
-                extras_blur = extras_blur.reshape(-1, args.channels)
+                        synthesized_blur_rgb0 = synthesized_blur_rgb0 / args.num_interpolated_pose
 
             # rgb loss
-            rgb_loss_fine = mse_loss(rgb_blur, target_s)
-            rgb_loss_fine *= args.rgb_coefficient
-            #logger.write("train_rgb_loss_fine", rgb_loss_fine.item())
-
+            rgb_loss_fine = mse_loss(synthesized_blur_rgb, target_s)
+            rgb_loss_fine *= args.rgb_coeff
+            logger.write("train_rgb_loss_fine", rgb_loss_fine.item())
             if "rgb0" in ret_rgb:
-                rgb_loss_coarse = mse_loss(extras_blur, target_s)
-                rgb_loss_coarse *= args.rgb_coefficient
-                #logger.write("train_rgb_loss_coarse", rgb_loss_coarse.item())
-
+                rgb_loss_coarse = mse_loss(synthesized_blur_rgb0, target_s)
+                rgb_loss_coarse *= args.rgb_coeff
+                logger.write("train_rgb_loss_coarse", rgb_loss_coarse.item())
             rgb_loss = rgb_loss_fine + rgb_loss_coarse
-            #logger.write("train_rgb_loss", rgb_loss)
-            loss += rgb_loss
+            logger.write("train_rgb_loss", rgb_loss)
 
-            # loss for blur image
-            if args.rgb_blur_loss:
-                blur_loss *= args.rgb_blur_coefficient
-                extras_blur_loss *= args.rgb_blur_coefficient
-                #logger.write("train_rgb_blur_loss_fine", blur_loss.item())
-                #logger.write("train_rgb_blur_loss_coarse", extras_blur_loss.item())
-                rgb_blur_loss = blur_loss + extras_blur_loss
-                #logger.write("train_rgb_blur_loss", rgb_blur_loss.item())
-                loss += rgb_blur_loss
+            loss += rgb_loss
         else:
             rgb_loss = torch.tensor(0)
             rgb_loss_fine = torch.tensor(0)
             rgb_loss_coarse = torch.tensor(0)
 
-        #logger.write("train_loss", loss.item())
+        logger.write("train_loss", loss.item())
 
         # backwawrd
         loss.backward()
 
         # step
         if args.optimize_nerf:
-            optimizer.step()
-        if args.optimize_se3:
+            optimizer_nerf.step()
+        if args.optimize_pose:
             optimizer_pose.step()
-        if args.optimize_event:
+        if args.optimize_trans:
             optimizer_trans.step()
         if args.optimize_rgb_crf:
             optimizer_rgb_crf.step()
@@ -492,7 +382,7 @@ def train(args):
             decay_rate ** (global_step / decay_steps)
         )
         #logger.write("lr_nerf", new_lrate)
-        for param_group in optimizer.param_groups:
+        for param_group in optimizer_nerf.param_groups:
             param_group["lr"] = new_lrate
 
         decay_rate_pose = args.decay_rate_pose
@@ -528,129 +418,83 @@ def train(args):
             param_group["lr"] = new_lrate_event_crf
 
         # print result in console
-        if i % args.i_print == 0:
+        if i % args.console_log_iter == 0:
             tqdm.write(
                 f"[TRAIN] Iter: {i} Loss: {loss.item()}, event_loss: {event_loss.item()}, rgb_loss: {rgb_loss.item()}, "
-                f"event_fine_loss: {img_loss.item()}, event_coarse_loss: {img_loss0.item()}, "
+                f"event_loss_fine: {event_loss_fine.item()}, event_loss_coarse: {event_loss_coarse.item()}, "
                 f"rgb_loss_fine: {rgb_loss_fine.item()}, rgb_loss_coarse: {rgb_loss_coarse.item()}"
             )
+        # render image for testing
+        if i % args.render_image_iter == 0 and i > 0:
+            save_poses = graph.get_pose_rgb(args, rgb_exp_ts, seg_num = 51)
+            save_poses_as_kitti_format(i, logdir, save_poses)
+            test_poses = graph.get_pose_rgb(args, rgb_exp_ts, seg_num = args.num_interpolated_pose)
 
+            with torch.no_grad():
+                if args.load_checkpoint == False:
+                    img_test_dir  = "images_test"
+                else:
+                    img_test_dir = "results"
+                    
+                imgs, depth = render_image_test(
+                    i, graph, test_poses, H_render, W_render, K_render, args, logdir, img_xy_remap,
+                    dir = img_test_dir, need_depth = args.depth,
+                )
+
+                if len(imgs) > 0:
+                    logger.write_img("test_img_mid", imgs[len(imgs) // 2])
+                    logger.write_imgs("test_img_all", imgs)
+                    # logger.write_img("test_radience_mid", radiences[len(radiences) // 2])
+                    # logger.write_imgs("test_radience_all", radiences)
+                    if args.dataset in ["BeNeRF_Unreal", "BeNeRF_Blender", "E2NeRF_Synthetic"]:
+                        imgtest = torch.Tensor(imgtest)
+                        img_mid = imgs[len(imgs) // 2] / 255.0
+                        img_mid = torch.unsqueeze(torch.tensor(img_mid, dtype=torch.float32), dim=0)
+
+                        test_mid_psnr = compute_img_metric(img_mid, imgtest, metric="psnr")
+                        test_mid_ssim = compute_img_metric(img_mid, imgtest, metric="ssim")
+                        test_mid_lpips = compute_img_metric(img_mid, imgtest, metric="lpips")
+
+                        logger.write("test_mid_psnr", test_mid_psnr)
+                        logger.write("test_mid_ssim", test_mid_ssim)
+                        logger.write("test_mid_lpips", test_mid_lpips)
+                if len(depth) > 0:
+                    pass
+        # render video for test
+        if i % args.render_video_iter == 0 and i > 0 and not args.load_checkpoint:
+            render_poses = graph.get_pose_rgb(args, rgb_exp_ts, 90)
+            with torch.no_grad():
+                rgbs, disps = render_video_test(i, graph, render_poses, H_render, W_render, K_render, args, img_xy_remap)
+            print("Done, saving", rgbs.shape, disps.shape)
+            moviebase = os.path.join(logdir, "{}_spiral_{:06d}_".format(args.index, i))
+            imageio.mimsave(moviebase + "rgb.mp4", img_utils.to8bit(rgbs), fps = 30, quality = 8)
+            # imageio.mimsave(moviebase + 'radience.mp4', radiences, fps = 30, quality = 8)
+            imageio.mimsave(moviebase + "disp.mp4", img_utils.to8bit(disps / np.max(disps)), fps = 30, quality = 8)
         # save checkpoint
-        if i % args.i_weights == 0 and i > 0:
+        if i % args.save_model_iter == 0 and i > 0:
             path = os.path.join(logdir, "{:06d}.tar".format(i))
-            torch.save(
-                {
-                    "global_step": global_step,
-                    "graph": graph.state_dict(),
-                    "optimizer": optimizer.state_dict(),
-                    "optimizer_pose": optimizer_pose.state_dict(),
-                    "optimizer_trans": optimizer_trans.state_dict(),
-                },
-                path,
+            torch.save({
+                "global_step": global_step,
+                "graph": graph.state_dict(),
+                "optimizer_nerf": optimizer_nerf.state_dict(),
+                "optimizer_pose": optimizer_pose.state_dict(),
+                "optimizer_trans": optimizer_trans.state_dict(),
+                "optimizer_rgb_crf": optimizer_rgb_crf.state_dict(),
+                "optimizer_event_crf": optimizer_event_crf.state_dict()}, 
+                path
             )
             # save to logger
             #logger.write_checkpoint(path, args.expname)
             print("Saved checkpoints at", path)
 
-        # test
-        if i % args.i_img == 0 and i > 0:
-            test_poses = graph.get_pose_rgb(
-                args,
-                rgb_exp_ts,
-                seg_num = args.deblur_images
-                # if args.deblur_images % 2 == 1
-                # else args.deblur_images + 1,
-            )
+        logger.update_buffer()
 
-            # test_poses = graph.get_pose_evt(
-            #     args,
-            #     [0, 1],
-            #     seg_num = args.deblur_images
-            #     if args.deblur_images % 2 == 1
-            #     else args.deblur_images + 1,
-            # )
-
-
-            with torch.no_grad():
-
-                if args.load_weights == False:
-                    img_test_dir  = "images_test"
-                else:
-                    img_test_dir = "results"
-
-                imgs, depth = render_image_test(
-                    i,
-                    graph,
-                    test_poses,
-                    H_render,
-                    W_render,
-                    K_render,
-                    args,
-                    logdir,
-                    img_xy_remap,
-                    dir = img_test_dir, 
-                    need_depth = args.depth,
-                )
-
-                if len(imgs) > 0:
-                    #logger.write_img("test_img_mid", imgs[len(imgs) // 2])
-                    #logger.write_imgs("test_img_all", imgs)
-                    # logger.write_img("test_radience_mid", radiences[len(radiences) // 2])
-                    # logger.write_imgs("test_radience_all", radiences)
-                    if args.dataset == "Unreal" or args.dataset == "Blender" or args.dataset == "E2NeRF_Synthetic":
-                        imgtests = torch.Tensor(imgtests)
-                        img_mid = imgs[len(imgs) // 2] / 255.0
-                        img_mid = torch.unsqueeze(
-                            torch.tensor(img_mid, dtype=torch.float32), dim=0
-                        )
-                        test_mid_psnr = compute_img_metric(
-                            img_mid, imgtests, metric="psnr"
-                        )
-                        test_mid_ssim = compute_img_metric(img_mid, imgtests, metric="ssim")
-                        test_mid_lpips = compute_img_metric(
-                            img_mid, imgtests, metric="lpips"
-                        )
-
-                        #logger.write("test_mid_psnr", test_mid_psnr)
-                        #logger.write("test_mid_ssim", test_mid_ssim)
-                        #logger.write("test_mid_lpips", test_mid_lpips)
-                if len(depth) > 0:
-                    pass
-                    #logger.write_img("test_depth_mid", depth[len(depth) // 2])
-                    #logger.write_imgs("test_depth_all", depth)
-
-        if i % args.i_video == 0 and i > 0 and not args.load_weights:
-            render_poses = graph.get_pose_rgb(args, rgb_exp_ts, 90)
-            #render_poses = graph.get_pose_evt(args, [0, 1], 90)
-
-            with torch.no_grad():
-                rgbs, disps = render_video_test(
-                    graph, render_poses, H_render, W_render, K_render, args, img_xy_remap,
-                )
-            print("Done, saving", rgbs.shape, disps.shape)
-            moviebase = os.path.join(
-                logdir, "{}_spiral_{:06d}_".format(args.expname, i)
-            )
-            imageio.mimsave(
-                moviebase + "rgb.mp4", img_utils.to8bit(rgbs), fps=30, quality=8, 
-            )
-            # imageio.mimsave(moviebase + 'radience.mp4', radiences, fps = 30, quality = 8)
-            imageio.mimsave(
-                moviebase + "disp.mp4",
-                img_utils.to8bit(disps / np.max(disps)),
-                fps=30,
-                quality=8,
-            )
-
-        #logger.update_buffer()
-
-        if args.load_weights:
+        if args.load_checkpoint:
             break
         global_step += 1
 
     # after train callback
     model.after_train()
-
 
 if __name__ == "__main__":
     # load config

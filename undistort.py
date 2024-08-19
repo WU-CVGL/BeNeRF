@@ -2,9 +2,7 @@ import cv2 as cv
 import numpy as np
 from typing import Union
 
-
 class UndistortFisheyeCamera:
-
     class KannalaBrandt:
         def __init__(self, image_calibdata, event_calibdata) -> None:
             self.img_calib = image_calibdata
@@ -143,21 +141,17 @@ class UndistortFisheyeCamera:
 
             return xys_remap.astype(np.float32)
                
-
     class Unified:
         def __init__(self) -> None:
             pass
-
 
     class ExtendedUnified:
         def __init__(self) -> None:
             pass
 
-
     class FOV:
         def __init__(self) -> None:
             pass
-
 
     class DoubleSphere:
         def __init__(self) -> None:

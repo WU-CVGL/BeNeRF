@@ -1,7 +1,6 @@
 import torch
 import torch.nn as nn
 
-
 class Grid_gradient_central_diff():
     def __init__(self, nc, padding=True, diagonal=False):
         self.conv_x = nn.Conv2d(nc, nc, kernel_size=2, stride=1, bias=False)
@@ -47,7 +46,6 @@ class Grid_gradient_central_diff():
             return dx, dy, dxy
         return dx, dy
 
-
 class EdgeAwareVariationLoss(nn.Module):
     def __init__(self, in1_nc, grad_fn=Grid_gradient_central_diff):
         super(EdgeAwareVariationLoss, self).__init__()
@@ -68,7 +66,6 @@ class EdgeAwareVariationLoss(nn.Module):
         if mean != False:
             return variation.mean()
         return variation.sum()
-
 
 class GrayEdgeAwareVariationLoss(nn.Module):
     def __init__(self, in1_nc, in2_nc, grad_fn=Grid_gradient_central_diff):

@@ -4,10 +4,9 @@ import math
 import h5py
 import weakref
 import numpy as np
-from typing import Dict, Tuple
 from numba import jit
 from pathlib import Path
-
+from typing import Dict, Tuple
 
 class EventSlicer:
     def __init__(self, h5f: h5py.File):
@@ -39,14 +38,11 @@ class EventSlicer:
             self.t_offset = 0
         self.t_final = int(self.events['t'][-1]) + self.t_offset
 
-
     def get_start_time_us(self):
         return self.t_offset
 
-
     def get_final_time_us(self):
         return self.t_final
-
 
     def get_events(self, t_start_us: int, t_end_us: int) -> Dict[str, np.ndarray]:
         """Get events (p, x, y, t) within the specified time window

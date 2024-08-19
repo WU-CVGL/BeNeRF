@@ -1,0 +1,94 @@
+## settings
+project = e2nerf_synthetic_hotdog
+datadir = ~/ssd_data/BeNeRF_datasets/e2nerf_synthetic/hotdog
+logdir = ./logs/e2nerf_synthetic_hotdog
+dataset = E2NeRF_Synthetic
+viewer = wandb
+model = benerf
+depth = False
+debug = False
+
+## camera parameters
+rgb_fx = 1111.1110311937682
+rgb_fy = 1111.1110311937682
+rgb_cx = 400
+rgb_cy = 400
+rgb_width = 800
+rgb_height = 800
+rgb_dist = [0, 0, 0, 0]
+event_fx = 1111.1110311937682
+event_fy = 1111.1110311937682
+event_cx = 400
+event_cy = 400
+event_width = 800
+event_height = 800
+event_dist = [0, 0, 0, 0]
+
+## event stream parameters
+event_threshold = 0.2
+event_shift_start = 0
+event_shift_end = 0
+accumulate_time_length = 0.25
+random_sampling_window = True
+event_time_window = True
+
+## nerf parameters
+channels = 3
+sampling_event_rays = 1024
+sampling_rgb_rays = 1024
+N_samples = 64
+N_importance = 64
+use_viewdirs = True
+raw_noise_std = 0
+
+## training option for nerf
+optimize_nerf = True
+load_checkpoint = False
+lrate = 5e-4
+decay_rate = 0.1
+
+## training option for pose 
+optimize_pose = True
+traj = spline
+num_interpolated_pose = 19
+use_barf_c2f = False
+loadpose = False
+pose_lrate = 5e-4
+decay_rate_pose = 0.1
+
+## training option for transform
+optimize_trans = False
+loadtrans = False
+transform_lrate = 5e-4
+decay_rate_transform = 0.1
+
+## training option for rgb_crf
+optimize_rgb_crf = False
+rgb_crf_net_hidden = 0
+rgb_crf_net_width = 128
+rgb_crf_lrate = 5e-4
+decay_rate_rgb_crf = 0.1
+
+## training option for event_crf
+optimize_event_crf = False
+event_crf_net_hidden = 0
+event_crf_net_width = 128
+event_crf_lrate = 5e-4
+decay_rate_event_crf = 0.1
+
+## logging/saving
+console_log_iter = 100
+render_image_iter = 5000
+render_video_iter = 80000
+save_model_iter = 80000
+max_iter = 80000
+
+## loss config
+rgb_loss = True
+event_loss = True
+event_coeff_syn = 0.1
+event_coeff_real = 2.0
+rgb_coeff = 1.0
+
+
+#weight_iter = 10000
