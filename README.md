@@ -1,4 +1,4 @@
-<h1 align="center">BeNeRF: BeNeRF: Neural Radiance Fields from a Single Blurry Image and Event Stream</h1>
+<h1 align="center">BeNeRF: Neural Radiance Fields from a Single Blurry Image and Event Stream</h1>
 <p align="center">
     <a href="https://akawincent.github.io">Wenpu Li</a><sup>1,5*</sup> &emsp;&emsp;
     <a href="https://github.com/pianwan">Pian Wan </a><sup>1,2*</sup> &emsp;&emsp;
@@ -16,8 +16,8 @@
     <sup>1</sup>Westlake University &emsp;&emsp;
     <sup>2</sup>EPFL &emsp;&emsp;
     <sup>3</sup>Zhejiang University &emsp;&emsp;
-    <sup>4</sup>Hunan University &emsp;&emsp;
-    <sup>5</sup>Guangdong University of Technology &emsp;&emsp;
+    <sup>4</sup>Hunan University &emsp;&emsp; </br>
+    <sup>5</sup>Guangdong University of Technology 
 </p>
 
 <hr>
@@ -29,9 +29,11 @@
 <h5 align="center">
 
 
-[![arXiv](https://img.shields.io/badge/Arxiv-2407.02174-b31b1b.svg?logo=arXiv)](https://arxiv.org/abs/2407.02174) 
-[![Home Page](https://img.shields.io/badge/Project-Homepage-blue.svg?logo=GitHub)](https://akawincent.github.io/BeNeRF/) 
-[![Dataset](https://img.shields.io/badge/Dataset-OneDrive-green.svg?logo=ProtonDrive)](https://westlakeu-my.sharepoint.com/:f:/g/personal/cvgl_westlake_edu_cn/EjZNs8MwoXBDqT61v_j5V3EBIoKb8dG9KlYtYmLxcNJG_Q?e=AFXeUB)
+[![arXiv](https://img.shields.io/badge/Arxiv-2407.02174-b31b1b.svg?logo=arXiv)](https://arxiv.org/abs/2407.02174)
+[![pdf](https://img.shields.io/badge/PDF-Paper-orange.svg?logo=GoogleDocs)](./doc/2024_ECCV_BeNeRF_camera_ready_paper.pdf) 
+[![pdf](https://img.shields.io/badge/PDF-Supplementary-orange.svg?logo=GoogleDocs)](./doc/2024_ECCV_BeNeRF_camera_ready_supplementary.pdf) 
+[![Home Page](https://img.shields.io/badge/GitHubPages-ProjectPage-blue.svg?logo=GitHubPages)](https://akawincent.github.io/BeNeRF/) 
+[![Dataset](https://img.shields.io/badge/OneDrive-Dataset-green.svg?logo=ProtonDrive)](https://westlakeu-my.sharepoint.com/:f:/g/personal/cvgl_westlake_edu_cn/EjZNs8MwoXBDqT61v_j5V3EBIoKb8dG9KlYtYmLxcNJG_Q?e=AFXeUB)
 ![GitHub Repo stars](https://img.shields.io/github/stars/WU-CVGL/BeNeRF)
 
 
@@ -39,20 +41,24 @@
 </h5>
 
 <div align="center">
-This is an official PyTorch implementation of the paper "BeNeRF: Neural Radiance Fields from a Single Blurry Image and Event Stream". We explore the possibility of recovering the neural radiance fields and camera motion trajectory from a single blurry image. This allows BeNeRF to decode the underlying sharp video from a single blurred image.
+This repository is an official PyTorch implementation of the paper "BeNeRF: Neural Radiance Fields from a Single Blurry Image and Event Stream". We explore the possibility of recovering the neural radiance fields and camera motion trajectory from a single blurry image. This allows BeNeRF to decode the underlying sharp video from a single blurred image.
 </div>
 
-<p align="center">
-    International Conference on 3D Vision (3DV) 2024, Davos, CH
-</p>
+## 📢 News
+- `2024.08.20` Training Code and datasets have been released. 
+- `2024.07.01` Our paper was accepted by ECCV2024!! Thanks to all collaborators!!
 
-## ✨News
+## 📋 Overview
+
+![pipeline](./doc/pipeline.jpg)
+
+<div>
+Given a single blurry image and its corresponding event stream, BeNeRF recovers the underlying 3D scene representation and the camera motion trajectory jointly. In particular, we represent the 3D scene with neural radiance fields and the camera motion trajectory with a cubic B-Spline in SE(3) space. Both the blurry image and accumulated events within a time interval can thus be synthesized from the 3D scene representation providing the camera poses. The camera trajectory, NeRF, are then optimized by minimizing the difference between the synthesized data and the real measurements.
+</div>
 
 ## Result
 
-## Method overview
 
-![pipeline](./doc/teaser_v2.png)
 
 ## Quickstart
 
