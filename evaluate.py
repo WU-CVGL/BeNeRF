@@ -36,8 +36,8 @@ def evaluate(sharp_path, deblur_path):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--dataset', type=str, help='name of dataset')
-    parser.add_argument('--scene', type=str, help='scene')
+    parser.add_argument('--dataset', type=str, help='Name of dataset')
+    parser.add_argument('--scene', type=str, help='Name of scene')
     parser.add_argument('--result', type=str, help='Path to the directory of results')
     parser.add_argument('--groundtruth', type=str, help='Path to the directory of groundtruth')
     args = parser.parse_args()

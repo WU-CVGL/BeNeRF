@@ -37,9 +37,8 @@
 
 </h5>
 
-<div align="center">
-This repository is an official PyTorch implementation of the paper "BeNeRF: Neural Radiance Fields from a Single Blurry Image and Event Stream". We explore the possibility of recovering the neural radiance fields and camera motion trajectory from a single blurry image. This allows BeNeRF to decode the underlying sharp video from a single blurred image.
-</div>
+> This repository is an official PyTorch implementation of the paper "BeNeRF: Neural Radiance Fields from a Single Blurry Image and Event Stream". We explore the possibility of recovering the neural radiance fields and camera motion trajectory from a single blurry image. This allows BeNeRF to decode the underlying sharp video from a single blurred image.
+
 
 ## 📢 News
 - `2024.08.20` Training Code and datasets have been released. 
@@ -55,7 +54,7 @@ This repository is an official PyTorch implementation of the paper "BeNeRF: Neur
 Given a single blurry image and its corresponding event stream, BeNeRF recovers the underlying 3D scene representation and the camera motion trajectory jointly. In particular, we represent the 3D scene with neural radiance fields and the camera motion trajectory with a cubic B-Spline in SE(3) space. Both the blurry image and accumulated events within a time interval can thus be synthesized from the 3D scene representation providing the camera poses. The camera trajectory, NeRF, are then optimized by minimizing the difference between the synthesized data and the real measurements.
 </div>
 
-## QuickStart
+## 🔥 QuickStart
 ### 1.Installation
 In the path where your want to store code, enter the following terminal command:
 
@@ -100,12 +99,20 @@ After training, all results including render image, render video and camera traj
 
 
 ### 5.Evaluation
+To compute metrics like PSNR, SSIM, LPIPS for evaluating model performance on synthetic dataset, you can run script as follow:
+```bash
+python evaluate.py --dataset <dataset name> --scene <scene name> \
+                   --result <path to folder of image results> --groundtruth <path to folder of groundtruth image>
+```
+For real-world datasets, since sharp ground truth images are not available, we choose to use the no-reference image quality metric `BRISQUE` to quantitatively evaluate the model's performance on real-world datasets. You can run the following script in MATLAB.
+```bash
+matlab -r "eval_brisque('<path to folder of image results>')"
 
-
+```
 ## Results
 
 
-## Citation
+## ✒️ Citation 
 If you find this repository useful, please consider citing our paper:
 ```bibtex
 @inproceedings{BeNeRF,
@@ -116,5 +123,5 @@ If you find this repository useful, please consider citing our paper:
 } 
 ```
 
-## Acknowledgment
+## 🙏 Acknowledgment
 In our work, the camera optimization and event stream integration into NeRF were inspired by [BAD-NeRF](https://github.com/WU-CVGL/BAD-NeRF) and [E-NeRF](https://github.com/knelk/enerf), respectively. The overall code framework is based on [nerf-pytorch](https://github.com/yenchenlin/nerf-pytorch/). We appreciate the effort of the contributors to these amazing repositories.
