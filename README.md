@@ -23,20 +23,17 @@
 <hr>
 
 <h5 align="center"> This paper was accepted by European Conference on Computer Vision (ECCV) 2024.</h5>
-<h5 align="center"> If you like our project, please give us a star ⭐ on GitHub for the latest update.</h5>
-
+<h5 align="center"> If you like our project, please give us a star ⭐ on GitHub.</h5>
 
 <h5 align="center">
-
 
 [![arXiv](https://img.shields.io/badge/Arxiv-2407.02174-b31b1b.svg?logo=arXiv)](https://arxiv.org/abs/2407.02174)
 [![pdf](https://img.shields.io/badge/PDF-Paper-orange.svg?logo=GoogleDocs)](./doc/2024_ECCV_BeNeRF_camera_ready_paper.pdf) 
 [![pdf](https://img.shields.io/badge/PDF-Supplementary-orange.svg?logo=GoogleDocs)](./doc/2024_ECCV_BeNeRF_camera_ready_supplementary.pdf) 
-[![Home Page](https://img.shields.io/badge/GitHubPages-ProjectPage-blue.svg?logo=GitHubPages)](https://akawincent.github.io/BeNeRF/) 
+[![Home Page](https://img.shields.io/badge/GitHubPages-ProjectPage-blue.svg?logo=GitHubPages)](https://akawincent.github.io/BeNeRF/)
+[![Paper With Code](https://img.shields.io/badge/Website-PaperwithCode-yellow.svg?logo=paperswithcode)](https://paperswithcode.com/paper/benerf-neural-radiance-fields-from-a-single)  
 [![Dataset](https://img.shields.io/badge/OneDrive-Dataset-green.svg?logo=ProtonDrive)](https://westlakeu-my.sharepoint.com/:f:/g/personal/cvgl_westlake_edu_cn/EjZNs8MwoXBDqT61v_j5V3EBIoKb8dG9KlYtYmLxcNJG_Q?e=AFXeUB)
 ![GitHub Repo stars](https://img.shields.io/github/stars/WU-CVGL/BeNeRF)
-
-
 
 </h5>
 
@@ -50,20 +47,47 @@ This repository is an official PyTorch implementation of the paper "BeNeRF: Neur
 
 ## 📋 Overview
 
-![pipeline](./doc/pipeline.jpg)
+<p align="center">
+    <img src="./doc/pipeline.jpg" alt="Pipeline" style="width:75%; height:auto;">
+</p>
 
 <div>
 Given a single blurry image and its corresponding event stream, BeNeRF recovers the underlying 3D scene representation and the camera motion trajectory jointly. In particular, we represent the 3D scene with neural radiance fields and the camera motion trajectory with a cubic B-Spline in SE(3) space. Both the blurry image and accumulated events within a time interval can thus be synthesized from the 3D scene representation providing the camera poses. The camera trajectory, NeRF, are then optimized by minimizing the difference between the synthesized data and the real measurements.
 </div>
 
-## Result
+## QuickStart
+### 1.Installation
+In the path where your want to store code, enter the following terminal command:
+
+```bash
+git clone https://github.com/WU-CVGL/BeNeRF.git
+cd BeNeRF
+conda env create -f environmental.yml
+conda activate benerf
+```
+
+### 2.Train
 
 
+### 3.Test
 
-## Quickstart
+
+### 4.Evaluation
+
+
+## Results
+
 
 ## Citation
+If you find this repository useful, please consider citing our paper:
+```bibtex
+@inproceedings{BeNeRF,
+    author = {Wenpu Li and Pian Wan and Peng Wang and Jinghang Li and Yi Zhou and Peidong Liu},
+    title = {BeNeRF: Neural Radiance Fields from a Single Blurry Image and Event Stream},
+    booktitle = {European Conference on Computer Vision (ECCV)},
+    year = {2024}
+} 
+```
 
 ## Acknowledgment
-
-The overall framework, metrics computing and camera transformation are derived from [nerf-pytorch](https://github.com/yenchenlin/nerf-pytorch/), [BAD-NeRF](https://github.com/WU-CVGL/BAD-NeRF) respectively. We appreciate the effort of the contributors to these repositories.
+In our work, the camera optimization and event stream integration into NeRF were inspired by [BAD-NeRF](https://github.com/WU-CVGL/BAD-NeRF) and [E-NeRF](https://github.com/knelk/enerf), respectively. The overall code framework is based on [nerf-pytorch](https://github.com/yenchenlin/nerf-pytorch/). We appreciate the effort of the contributors to these amazing repositories.
