@@ -1,6 +1,6 @@
+import os
 import numpy
 import torch
-import os
 
 @torch.no_grad()
 def save_poses_as_kitti_format(iter_step, logdir, poses_matrices):

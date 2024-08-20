@@ -1,7 +1,6 @@
 import torch
 from torch import nn
 
-
 class Embedder:
     def __init__(self, **kwargs):
         self.kwargs = kwargs

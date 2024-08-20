@@ -1,6 +1,6 @@
 import os
-import torch
 import h5py
+import torch
 import hdf5plugin
 import numpy as np
 from tqdm import tqdm

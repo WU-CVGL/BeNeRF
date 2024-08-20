@@ -1,8 +1,8 @@
-import numpy as np
 import torch
-from imageio.v3 import imread
-from torch import Tensor
+import numpy as np
 
+from torch import Tensor
+from imageio.v3 import imread
 
 class RGB2Gray:
     def __init__(self) -> None:

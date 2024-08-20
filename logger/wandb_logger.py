@@ -1,7 +1,6 @@
 import wandb
 
 class WandbLogger:
-
     def __init__(self, args) -> None:
         args.expname = str(args.index)
         self.run = wandb.init(project=args.project, config=args, name=args.expname)

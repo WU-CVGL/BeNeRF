@@ -1,8 +1,7 @@
-import torch.hub
 import urllib
+import torch.hub
 import numpy as np
 from skimage import metrics
-
 
 proxy = urllib.request.ProxyHandler({'http': '192.168.233.8:8889', 'https': '192.168.233.8:8889'})
 # construct a new opener using your proxy settings
