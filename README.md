@@ -62,17 +62,26 @@ In the path where your want to store code, enter the following terminal command:
 ```bash
 git clone https://github.com/WU-CVGL/BeNeRF.git
 cd BeNeRF
-conda env create -f environmental.yml
+conda create -n benerf python=3.9
 conda activate benerf
+pip install -r requirements.txt
+```
+If the network speed is slow when using pip to download dependencies, you may consider changing the pip source:
+```bash
+python -m pip install --upgrade pip
+pip config set global.index-url https://mirrors.bfsu.edu.cn/pypi/web/simple
 ```
 
-### 2.Train
+### 2.Download Dtasets
 
 
-### 3.Test
+### 3.Train
 
 
-### 4.Evaluation
+### 4.Test
+
+
+### 5.Evaluation
 
 
 ## Results

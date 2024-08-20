@@ -1,0 +1,11 @@
+torch==2.0.1
+torchvision==0.15.2
+numpy==1.24.1
+scikit-image==0.19.3
+lpips==0.1.4
+wandb
+tqdm
+opencv-python
+imageio[ffmpeg]
+hdf5plugin
+configargparse
