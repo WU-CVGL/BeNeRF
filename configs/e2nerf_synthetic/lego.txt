@@ -1,6 +1,6 @@
 ## settings
 project = e2nerf_synthetic_lego
-datadir = ~/ssd_data/BeNeRF_datasets/e2nerf_synthetic/lego
+datadir = /run/user/1000/gvfs/sftp:host=login.cvgl.lab,port=22332,user=lwp/datasets/BeNeRF_Datasets/synthetic/e2nerf_synthetic/lego
 logdir = ./logs/e2nerf_synthetic_lego
 dataset = E2NeRF_Synthetic
 viewer = wandb

@@ -72,11 +72,30 @@ python -m pip install --upgrade pip
 pip config set global.index-url https://mirrors.bfsu.edu.cn/pypi/web/simple
 ```
 
-### 2.Download Dtasets
+### 2.Download Datasets
+You can download `BeNeRF_Datasets` by clicking this [link](https://westlakeu-my.sharepoint.com/:f:/g/personal/cvgl_westlake_edu_cn/EjZNs8MwoXBDqT61v_j5V3EBIoKb8dG9KlYtYmLxcNJG_Q?e=AFXeUB). 
 
+It contains real-world dataset(e.g. *e2nerf_real*) and synthetic dataset(*benerf_blender*, *benerf_unreal* and *e2nerf_synthetic*). For the every scene, the folder `images` includes blurry images and folder `events` includes event stream for entire sequence. The timestamps of the start and end of exposure for each image are stored in a   `txt file`. These timestamps are used to segment the entire event stream into individual event streams corresponding to each image. Additionally, we provide grounth sharp images in folder `images_test` for syntehtic dataset in order to evaluate metrics.
+
+For the scenes of `benerf_blender` and `benerf_unreal`, We provide two versions of the images: one in color and one in grayscale. The grayscale version is used for quantitative evaluation, while the color version is used for qualitative evaluation. Since event-enhanced baseline methods we compared to can only run with gray image due to the single channel event stream we synthesized, we compute the metrics of all methods with gray images for consistency.
 
 ### 3.Train
+First, you need to modify the path of datasets in config file:
+```yml
+datadir = XXXXX/BeNeRF_Datasets/real or synthetic/<dataset>/<scene>
+```
+Then, You can train model by entering terminal command as follow:
+```bash
+python train.py --device <cuda_id> --config ./configs/<dataset>/<scene>.txt --index <img_id>
+```
+We use wandb as a viewr to moniter monitor the training process by defalut:
 
+<div style="text-align: center;">
+    <img src="./doc/viewer.png" alt="display loss" style="width:45%; height:auto;">
+    <img src="./doc/viewer_2.png" alt="display render images" style="width:45%; height:auto;">
+</div>
+
+After training, all results including render image, render video and camera trajectory will be saved in the path specified by `logdir` in the config file.
 
 ### 4.Test
 
