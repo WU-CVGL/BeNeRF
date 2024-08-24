@@ -77,11 +77,11 @@ event_crf_lrate = 5e-4
 decay_rate_event_crf = 0.1
 
 ## logging/saving
-console_log_iter = 50
-render_image_iter = 100
-render_video_iter = 1600
-save_model_iter = 1600
-max_iter = 1600
+console_log_iter = 100
+render_image_iter = 5000
+render_video_iter = 80000
+save_model_iter = 80000
+max_iter = 80000
 
 ## loss config
 rgb_loss = True
@@ -90,5 +90,10 @@ event_coeff_syn = 0.1
 event_coeff_real = 2.0
 rgb_coeff = 1.0
 
-
-#weight_iter = 10000
+## testing options
+checkpoint = 80000
+num_render_images = 19
+num_extract_poses = 19
+render_images = False
+render_video = False
+extract_poses = False

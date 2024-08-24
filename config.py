@@ -94,12 +94,18 @@ def config_parser():
                         help='std dev of noise added to regularize sigma_a output, 1e0 recommended')
     
     ## render test
-    parser.add_argument("--render_only", action='store_true',
-                        help='do not optimize, reload weights and render out render_poses path')
-    parser.add_argument("--render_test", action='store_true',
-                        help='render the test set instead of render_poses path')
-    parser.add_argument("--render_factor", type=int, default=0,
-                        help='downsampling factor to speed up rendering, set 4 or 8 for fast preview')
+    parser.add_argument("--render_images", action='store_true',
+                        help='whether to render images when testing')
+    parser.add_argument("--render_video", action='store_true',
+                        help='whether to render video when testing')
+    parser.add_argument("--extract_poses", action='store_true',
+                        help='whether to extract poses when testing')
+    parser.add_argument("--checkpoint", type=int, default=80000,
+                        help='which checkpoint to load')
+    parser.add_argument("--num_render_images", type=int, default=19,
+                        help='the number of render images')
+    parser.add_argument("--num_extract_poses", type=int, default=19,
+                        help='the number of poses extracted')
     parser.add_argument("--ndc", type=bool, default=True,
                         help='downsampling factor to speed up rendering, set 4 or 8 for fast preview')
     parser.add_argument("--render_height", type=int, default=0,

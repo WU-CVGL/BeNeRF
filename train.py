@@ -2,12 +2,12 @@ import os
 import random
 import imageio
 import torch.nn
-from tqdm import trange, tqdm
 
-from loss import imgloss
-from utils import img_utils
 from model.nerf import *
+from loss import imgloss
 from model import optimize
+from utils import img_utils
+from tqdm import trange, tqdm
 from load_data import load_data
 from config import config_parser
 from metrics import compute_img_metric
@@ -426,7 +426,7 @@ def train(args):
             )
         # render image for testing
         if i % args.render_image_iter == 0 and i > 0:
-            save_poses = graph.get_pose_rgb(args, rgb_exp_ts, seg_num = 51)
+            save_poses = graph.get_pose_rgb(args, rgb_exp_ts, seg_num = args.num_interpolated_pose)
             save_poses_as_kitti_format(i, logdir, save_poses)
             test_poses = graph.get_pose_rgb(args, rgb_exp_ts, seg_num = args.num_interpolated_pose)
 
