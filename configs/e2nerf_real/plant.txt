@@ -90,5 +90,11 @@ event_coeff_syn = 0.1
 event_coeff_real = 2.0
 rgb_coeff = 1.0
 
+## testing options
+checkpoint = 80000
+num_render_images = 19
+num_extract_poses = 19
+render_images = False
+render_video = False
+extract_poses = False
 
-#weight_iter = 10000
