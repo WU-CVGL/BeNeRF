@@ -42,7 +42,7 @@
 
 ## 📢 News
 - `2024.08.20` Training Code and datasets have been released. 
-- `2024.07.01` Our paper was accepted by ECCV2024!! Thanks to all collaborators!!
+- `2024.07.01` Our paper was accepted by ECCV2024!! Congratulates to all collaborators!!
 
 ## 📋 Overview
 
