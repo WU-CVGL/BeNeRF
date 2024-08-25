@@ -41,6 +41,7 @@
 
 
 ## 📢 News
+- `2024.08.25` Testing and Evaluation Code have been released.
 - `2024.08.20` Training Code and datasets have been released. 
 - `2024.07.01` Our paper was accepted by ECCV2024!! Congratulates to all collaborators!!
 
@@ -98,21 +99,21 @@ After training, all results including render image, render video, camera traject
 ### 4.Test
 You can test the model by loading the checkpoint file saved in the `logdir/<img_id>/` path. We provide three options to test model.
 
-- Extract poses
+#### Extract poses
 ```bash
 python test.py --device <cuda_id> --config ./configs/<dataset>/<scene>.txt --index <img_id> \
                --extract_poses --num_extract_poses <the number of poses you want to extract>
 ```
 We have set the default number of extracted poses to 19, i.e., `num_extract_poses = 19`.
 
-- Render images
+#### Render images
 ```bash
 python test.py --device <cuda_id> --config ./configs/<dataset>/<scene>.txt --index <img_id> \ 
                --render_images --num_render_images <the number of images you want to render>
 ```
 We have set the default number of render images to 19, i.e., `num_render_images = 19`.
 
-- Render video
+#### Render video
 ```bash
 python test.py --device <cuda_id> --config ./configs/<dataset>/<scene>.txt --index <img_id> --render_video
 ```
