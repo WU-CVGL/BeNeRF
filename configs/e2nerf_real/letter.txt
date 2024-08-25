@@ -1,7 +1,7 @@
 ## settings
 project = e2nerf_real_letter
 datadir = ~/ssd_data/BeNeRF_datasets/e2nerf_real/letter
-logdir = ./logs/e2nerf_real_letter
+logdir = ./logs/e2nerf_real/letter
 dataset = E2NeRF_Real
 viewer = wandb
 model = benerf

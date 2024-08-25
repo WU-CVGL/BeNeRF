@@ -1,7 +1,7 @@
 ## settings
 project = e2nerf_real_lego
 datadir = ~/ssd_data/BeNeRF_datasets/e2nerf_real/lego
-logdir = ./logs/e2nerf_real_lego
+logdir = ./logs/e2nerf_real/lego
 dataset = E2NeRF_Real
 viewer = wandb
 model = benerf

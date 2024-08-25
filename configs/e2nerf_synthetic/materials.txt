@@ -1,7 +1,7 @@
 ## settings
 project = e2nerf_synthetic_materials
 datadir = ~/ssd_data/BeNeRF_datasets/e2nerf_synthetic/materials
-logdir = ./logs/e2nerf_synthetic_materials
+logdir = ./logs/e2nerf_synthetic/materials
 dataset = E2NeRF_Synthetic
 viewer = wandb
 model = benerf

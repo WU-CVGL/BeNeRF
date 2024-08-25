@@ -1,7 +1,7 @@
 ## settings
 project = benerf_blender_outdoorpool
 datadir = ~/ssd_data/wp-event/synthetic_blender/outdoorpool
-logdir = ./logs/benerf_blender_outdoorpool
+logdir = ./logs/benerf_blender/outdoorpool
 dataset = BeNeRF_Blender
 viewer = wandb
 model = benerf

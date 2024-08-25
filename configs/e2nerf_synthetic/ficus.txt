@@ -1,7 +1,7 @@
 ## settings
 project = e2nerf_synthetic_ficus
 datadir = ~/ssd_data/BeNeRF_datasets/e2nerf_synthetic/ficus
-logdir = ./logs/e2nerf_synthetic_ficus
+logdir = ./logs/e2nerf_synthetic/ficus
 dataset = E2NeRF_Synthetic
 viewer = wandb
 model = benerf

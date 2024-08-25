@@ -1,7 +1,7 @@
 ## settings
 project = benerf_unreal_whiteroom
 datadir = ~/ssd_data/wp-event/synthetic_unreal/whiteroom
-logdir = ./logs/benerf_unreal_whiteroom
+logdir = ./logs/benerf_unreal/whiteroom
 dataset = BeNeRF_Unreal
 viewer = wandb
 model = benerf

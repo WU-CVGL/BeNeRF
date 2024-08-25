@@ -1,7 +1,7 @@
 ## settings
 project = e2nerf_synthetic_chair
 datadir = ~/ssd_data/BeNeRF_datasets/e2nerf_synthetic/chair
-logdir = ./logs/e2nerf_synthetic_chair
+logdir = ./logs/e2nerf_synthetic/chair
 dataset = E2NeRF_Synthetic
 viewer = wandb
 model = benerf

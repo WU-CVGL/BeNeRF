@@ -1,7 +1,7 @@
 ## settings
 project = benerf_blender_outdoorpool
-datadir = ~/ssd_data/wp-event/synthetic_blender/outdoorpool_gray
-logdir = ./logs/benerf_blender_outdoorpool
+datadir = /run/user/1000/gvfs/sftp:host=login.cvgl.lab,port=22332,user=lwp/datasets/BeNeRF_Datasets/synthetic/benerf_blender/outdoorpool_gray
+logdir = ./logs/benerf_blender/outdoorpool_gray
 dataset = BeNeRF_Blender
 viewer = wandb
 model = benerf

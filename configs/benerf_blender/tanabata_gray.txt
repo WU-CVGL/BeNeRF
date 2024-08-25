@@ -1,7 +1,7 @@
 ## settings
 project = benerf_blender_tanabata
 datadir = ~/ssd_data/wp-event/synthetic_blender/tanabata_1_gray
-logdir = ./logs/benerf_blender_tanabata
+logdir = ./logs/benerf_blender/tanabata_gray
 dataset = BeNeRF_Blender
 viewer = wandb
 model = benerf

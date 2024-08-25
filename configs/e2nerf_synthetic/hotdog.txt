@@ -1,7 +1,7 @@
 ## settings
 project = e2nerf_synthetic_hotdog
 datadir = ~/ssd_data/BeNeRF_datasets/e2nerf_synthetic/hotdog
-logdir = ./logs/e2nerf_synthetic_hotdog
+logdir = ./logs/e2nerf_synthetic/hotdog
 dataset = E2NeRF_Synthetic
 viewer = wandb
 model = benerf

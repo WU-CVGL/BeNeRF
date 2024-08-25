@@ -1,7 +1,7 @@
 ## settings
 project = e2nerf_real_camera
 datadir = ~/ssd_data/BeNeRF_datasets/e2nerf_real/camera
-logdir = ./logs/e2nerf_real_camera
+logdir = ./logs/e2nerf_real/camera
 dataset = E2NeRF_Real
 viewer = wandb
 model = benerf

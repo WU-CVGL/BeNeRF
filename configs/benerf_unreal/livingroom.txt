@@ -1,7 +1,7 @@
 ## settings
 project = benerf_unreal_livingroom
 datadir = ~/ssd_data/wp-event/synthetic_unreal/livingroom
-logdir = ./logs/benerf_unreal_livingroom
+logdir = ./logs/benerf_unreal/livingroom
 dataset = BeNeRF_Unreal
 viewer = wandb
 model = benerf
