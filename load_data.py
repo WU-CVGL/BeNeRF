@@ -8,10 +8,9 @@ from pathlib import Path
 from utils import img_utils
 
 def load_img_data(datadir, datasource = None, gray = False):
-
     # Load images
     imgdir = os.path.join(datadir, "images")
-    if datasource == "BeNeRF_Blender" or datasource == "BeNeRF_Unreal" or datasource == "E2NeRF_Synthetic":
+    if datasource in ["BeNeRF_Blender", "BeNeRF_Unreal", "E2NeRF_Synthetic"]:
         testdir = os.path.join(datadir, "images" + "_test")
 
     imgfiles = [
@@ -21,7 +20,7 @@ def load_img_data(datadir, datasource = None, gray = False):
     ]
 
     imgtests_file = []
-    if datasource == "BeNeRF_Blender" or datasource == "BeNeRF_Unreal" or datasource == "E2NeRF_Synthetic":
+    if datasource in ["BeNeRF_Blender", "BeNeRF_Unreal", "E2NeRF_Synthetic"]:
         imgtests_file = [
             os.path.join(testdir, f)
             for f in sorted(os.listdir(testdir))
@@ -42,7 +41,7 @@ def load_img_data(datadir, datasource = None, gray = False):
             imgs[i, :, :, :] = img_utils.load_image(imgfiles[i], gray)
     
     imgtests = []
-    if datasource == "BeNeRF_Blender" or datasource == "BeNeRF_Unreal" or datasource == "E2NeRF_Synthetic":
+    if datasource in ["BeNeRF_Blender", "BeNeRF_Unreal", "E2NeRF_Synthetic"]:
         if gray == True:
             h, w = img_utils.load_image(imgtests_file[0], gray).shape
             imgtests = np.empty((len(imgtests_file), h, w), dtype = np.float64)
@@ -119,7 +118,7 @@ def load_timestamps(basedir, args):
         times_start = int(st * 1e19)
         times_end = int(ed * 1e19)
     else:
-        print("Cannot load timestamps for images")
+        print("[ERROR] Cannot load timestamps for images")
         assert False
 
     if args.dataset == "E2NeRF_Synthetic":
@@ -268,7 +267,7 @@ def load_data(
 
     # load imges
     # [num, height, width, channel]
-    print("Loading images...")
+    print("[INFO] Loading images...")
     img = []            # input
     imgtest = []        # groundtruth
     imgs, imgtests = load_img_data(datadir, datasource, gray = gray)
@@ -282,15 +281,15 @@ def load_data(
             imgtests = np.expand_dims(imgtests, -1)
         # select one image
         imgtest = np.expand_dims(imgtests[args.index], 0)
-    print("Load images successfully!!")
+    print("[INFO] Load images successfully!!")
 
     # load start and end timestamps of exposure time
-    print("Loading timestamps...")
+    print("[INFO] Loading timestamps...")
     img_ts_start, img_ts_end, evt_ts_start, evt_ts_end = load_timestamps(datadir, args)
-    print("Load timestamps successfully!!")
+    print("[INFO] Load timestamps successfully!!")
 
     # load events
-    print("Loading events...")
+    print("[INFO] Loading events...")
     eventdir = os.path.join(datadir, "events")
     # BeNeRF Synthetic
     if datasource in ["BeNeRF_Blender", "BeNeRF_Unreal"]:
@@ -361,7 +360,7 @@ def load_data(
         "ts": (events[:, 2] - evt_ts_start) / (evt_ts_end - evt_ts_start),
         "pol": events[:, 3],
     }
-    print("Load events successfully!!")
+    print("[INFO] Load events successfully!!")
     # process poses
     poses, ev_poses, trans, poses_ts = None, None, None, None
     if load_pose:
