@@ -93,9 +93,38 @@ We use wandb as a viewr to moniter the training process by defalut:
     <img src="./doc/viewer.png" alt="display loss" style="width:75%; height:auto;">
 </p>
 
-After training, all results including render image, render video and camera trajectory will be saved in the path specified by `logdir` in the config file.
+After training, all results including render image, render video, camera trajectory and checkpoint file will be saved in the path specified by `logdir/<img_id>/` in the config file.
 
 ### 4.Test
+You can test the model by loading the checkpoint file saved in the `logdir/<img_id>/` path. We provide three options to test model.
+
+- Extract poses
+```bash
+python test.py --device <cuda_id> --config ./configs/<dataset>/<scene>.txt --index <img_id> \
+               --extract_poses --num_extract_poses <the number of poses you want to extract>
+```
+We have set the default number of extracted poses to 19, i.e., `num_extract_poses = 19`.
+
+- Render images
+```bash
+python test.py --device <cuda_id> --config ./configs/<dataset>/<scene>.txt --index <img_id> \ 
+               --render_images --num_render_images <the number of images you want to render>
+```
+We have set the default number of render images to 19, i.e., `num_render_images = 19`.
+
+- Render video
+```bash
+python test.py --device <cuda_id> --config ./configs/<dataset>/<scene>.txt --index <img_id> --render_video
+```
+
+Of course, you can choose all three options simultaneously to test the model.
+```bash
+python test.py --device <cuda_id> --config ./configs/<dataset>/<scene>.txt --index <img_id> \
+               --extract_poses --num_extract_poses <the number of poses you want to extract> \
+               --render_images --num_render_images <the number of images you want to render> \
+               --render_video                                                           
+```
+The test results will be saved in `logdir/<img_id>/test_results` path.
 
 
 ### 5.Evaluation
