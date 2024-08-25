@@ -61,8 +61,8 @@ def test(args):
     W_render = args.render_width
     if args.render_height == 0 and args.render_width == 0:
         K_render = K_rgb
-        H_render = args.rgb_height
-        W_render = args.rgb_width
+        H_render = int(args.rgb_height)
+        W_render = int(args.rgb_width)
 
     print("hight of render image", H_render)
     print("weight of render image", W_render)
@@ -88,38 +88,39 @@ def test(args):
     if args.model == "benerf":
         model = optimize.Model(args)
     else:
-        print("Unknown model type")
+        print("[Warning] Unknown model type")
         return
-    print(f"Use model type {args.model}")
+    print(f"[INFO] Use model type: {args.model}")
 
     # Load checkpoint of model
     graph = model.build_network(args)
-    optimizer, optimizer_pose, optimizer_trans, optimizer_rgb_crf, optimizer_event_crf = model.setup_optimizer(args)
+    optimizer_nerf, optimizer_pose, optimizer_trans, optimizer_rgb_crf, optimizer_event_crf = model.setup_optimizer(args)
     path = os.path.join(logdir, "{:06d}.tar".format(args.checkpoint))
     graph_ckpt = torch.load(path)
     
     graph.load_state_dict(graph_ckpt["graph"])
-    optimizer.load_state_dict(graph_ckpt["optimizer"])
+    optimizer_nerf.load_state_dict(graph_ckpt["optimizer_nerf"])
     optimizer_pose.load_state_dict(graph_ckpt["optimizer_pose"])
     optimizer_trans.load_state_dict(graph_ckpt["optimizer_trans"])
     optimizer_rgb_crf.load_state_dict(graph_ckpt["optimizer_rgb_crf"])
     optimizer_event_crf.load_state_dict(graph_ckpt["optimizer_event_crf"])
     global_step = graph_ckpt["global_step"]
-    print("Model Load Done!")
+    print("[INFO] Model Load Done!")
 
     # save poses for test
-    if args.save_poses and global_step > 0:
+    if args.extract_poses and global_step > 0:
         extract_poses = graph.get_pose_rgb(args, [0,1], seg_num = args.num_extract_poses)
         pose_utils.save_poses_as_kitti_format(global_step, testdir, extract_poses)
+        print("[INFO] Successfully extract camera poses.")
     # render images for test
     if args.render_images and global_step > 0:
         render_images_poses = graph.get_pose_rgb(args, [0,1], seg_num = args.num_render_images)  
         with torch.no_grad(): 
             imgs, depth = render_image_test(
                 global_step, graph, render_images_poses, H_render, W_render, K_render, args, testdir, img_xy_remap,
-                dir = None, need_depth = args.depth,
+                dir = "image_test", need_depth = args.depth,
             )
-            assert len(imgs) > 0 and len(depth) > 0, f"[ERROR] Can't successfully render images."
+            assert len(imgs) > 0, f"[ERROR] Can't successfully render images."
             print("[INFO] Successfully render images.")
     # render video for test
     if args.render_video and global_step > 0:
@@ -130,12 +131,12 @@ def test(args):
         moviebase = os.path.join(testdir, "{}_spiral_{:06d}_".format(args.index, global_step))
         imageio.mimsave(moviebase + "rgb.mp4", img_utils.to8bit(rgbs), fps = 30, quality = 8)
         # imageio.mimsave(moviebase + 'radience.mp4', radiences, fps = 30, quality = 8)
-        imageio.mimsave(moviebase + "disp.mp4", img_utils.to8bit(disps / np.max(disps)), fps = 30, quality = 8)
+        # imageio.mimsave(moviebase + "disp.mp4", img_utils.to8bit(disps / np.max(disps)), fps = 30, quality = 8)
         print("[INFO] Successfully render video.")
 
 if __name__ == '__main__':
     # load config
-    print("Loading config")
+    print("[INFO] Loading config...")
     parser = config_parser()
     args = parser.parse_args()
 
@@ -155,9 +156,9 @@ if __name__ == '__main__':
         torch.backends.cudnn.benchmark = False
 
     # setup device
-    print(f"Use device: {args.device}")
+    print(f"[INFO] Use device: {args.device}")
     os.environ["CUDA_VISIBLE_DEVICES"] = str(args.device)
 
     # test
-    print("Start testing...")
+    print("[INFO] Start testing...")
     test(args=args)

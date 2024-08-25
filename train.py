@@ -7,6 +7,7 @@ from model.nerf import *
 from loss import imgloss
 from model import optimize
 from utils import img_utils
+from utils import pose_utils
 from tqdm import trange, tqdm
 from load_data import load_data
 from config import config_parser
@@ -14,7 +15,6 @@ from metrics import compute_img_metric
 from utils.math_utils import rgb2brightlog
 from logger.wandb_logger import WandbLogger
 from undistort import UndistortFisheyeCamera
-from utils.pose_utils import save_poses_as_kitti_format
 from run_nerf_helpers import init_nerf, render_image_test, render_video_test
 
 def train(args):
@@ -25,15 +25,15 @@ def train(args):
     mse_loss = imgloss.MSELoss()
     rgb2gray = img_utils.RGB2Gray()
 
-    print("Loading data...")
+    print("[INFO] Loading data...")
     # imgtest: groundtruth shape image
     events, img, imgtest, rgb_exp_ts, poses_ts, poses, ev_poses, trans = load_data(
         args.datadir, args, load_pose = args.loadpose, load_trans = args.loadtrans,
         cubic = "cubic" in args.model, datasource = args.dataset,
     )
-    print("Load data successfully!!")
+    print("[INFO] Load data successfully!!")
 
-    print("exposure time of rgb image", rgb_exp_ts)
+    print("Exposure time of rgb image", rgb_exp_ts)
     print(f"Loaded data from {args.datadir}")
     print(f"Loaded image idx: {args.index}")
     print(f"Loaded image size: {img.shape}")
@@ -59,8 +59,8 @@ def train(args):
         "k1": args.event_dist[0], "k2": args.event_dist[1], "k3": args.event_dist[2], "k4": args.event_dist[3],
     }
 
-    print(f"distortion coefficients of rgb camera: \n{args.rgb_dist[0],args.rgb_dist[1],args.rgb_dist[2],args.rgb_dist[3]}\n")
-    print(f"distortion coefficients of evt camera: \n{args.event_dist[0],args.event_dist[1],args.event_dist[2],args.event_dist[3]}\n")
+    print(f"Distortion coefficients of rgb camera: \n{args.rgb_dist[0],args.rgb_dist[1],args.rgb_dist[2],args.rgb_dist[3]}\n")
+    print(f"Distortion coefficients of evt camera: \n{args.event_dist[0],args.event_dist[1],args.event_dist[2],args.event_dist[3]}\n")
 
     # create undistorter
     img_xy_remap = np.array([])
@@ -70,8 +70,8 @@ def train(args):
         # lookup table
         img_xy_remap = undistorter.UndistortImageCoordinate(W, H)
         evt_xy_remap = undistorter.UndistortStreamEventsCoordinate(args.event_width, args.event_height)
-    print("shape of image remap", img_xy_remap.shape)
-    print("shape of event remap", evt_xy_remap.shape)
+    print("Shape of image remap", img_xy_remap.shape)
+    print("Shape of event remap", evt_xy_remap.shape)
 
     # rgb camera intrinsic matrix
     K_rgb = np.array([
@@ -101,11 +101,11 @@ def train(args):
         H_render = H
         W_render = W
 
-    print("hight of render image", H_render)
-    print("weight of render image", W_render)
-    print(f"rgb camera intrinsic parameters: \n{K_rgb}\n")
-    print(f"event camera intrinsic parameters: \n{K_event}\n")
-    print(f"render camera intrinsic parameters: \n{K_render}\n")
+    print("Hight of render image", H_render)
+    print("Weight of render image", W_render)
+    print(f"RGB camera intrinsic parameters: \n{K_rgb}\n")
+    print(f"Event camera intrinsic parameters: \n{K_event}\n")
+    print(f"Render camera intrinsic parameters: \n{K_render}\n")
 
     # Create log dir and copy the config file
     logdir = os.path.join(os.path.expanduser(args.logdir), str(args.index))
@@ -124,57 +124,33 @@ def train(args):
     if args.model == "benerf":
         model = optimize.Model(args)
     else:
-        print("Unknown model type")
+        print("[Warning] Unknown model type")
         return
-    print(f"Use model type {args.model}")
+    print(f"[INFO] Use model type: {args.model}")
 
     # init model
-    if args.load_checkpoint:
-        graph = model.build_network(args)
-        optimizer, optimizer_pose, optimizer_trans, optimizer_rgb_crf, optimizer_event_crf = model.setup_optimizer(args)
-        path = os.path.join(logdir, "{:06d}.tar".format(args.weight_iter))
-        graph_ckpt = torch.load(path)
+    graph = model.build_network(args, poses = poses, event_poses = ev_poses)
+    (
+        optimizer_nerf,
+        optimizer_pose,
+        optimizer_trans,
+        optimizer_rgb_crf,
+        optimizer_event_crf,
+    ) = model.setup_optimizer(args)
+    optimizer_nerf.zero_grad()
+    optimizer_pose.zero_grad()
+    optimizer_trans.zero_grad()
+    optimizer_rgb_crf.zero_grad()
+    optimizer_event_crf.zero_grad()
+    print("[INFO] Build graph and optimizer of BeNeRF!")
 
-        graph.load_state_dict(graph_ckpt["graph"])
-        optimizer.load_state_dict(graph_ckpt["optimizer"])
-        optimizer_pose.load_state_dict(graph_ckpt["optimizer_pose"])
-        optimizer_trans.load_state_dict(graph_ckpt["optimizer_trans"])
-        if args.two_phase:
-            global_step = 1
-        else:
-            global_step = graph_ckpt["global_step"]
-
-        print("Model Load Done!")
-    else:
-        graph = model.build_network(args, poses = poses, event_poses = ev_poses)
-
-        (
-            optimizer_nerf,
-            optimizer_pose,
-            optimizer_trans,
-            optimizer_rgb_crf,
-            optimizer_event_crf,
-        ) = model.setup_optimizer(args)
-
-        print("No pre-trained weights are used!")
-        # initial optimizer
-        optimizer_nerf.zero_grad()
-        optimizer_pose.zero_grad()
-        optimizer_trans.zero_grad()
-        optimizer_rgb_crf.zero_grad()
-        optimizer_event_crf.zero_grad()
-
-    print("Training is executed...")
+    # train
+    print("[INFO] Training is executed...")
     N_iters = args.max_iter + 1
-    # N_iters = args.max_iter
-
     start = 0
-    if not args.load_checkpoint:
-        global_step = start
-    global_step_ = global_step
+    global_step = start
 
-    for i in trange(start, N_iters):
-        i = i + global_step_          
+    for i in trange(start, N_iters):        
         if i == 0:
             # init weights of nn using Xavier value
             init_nerf(graph.nerf)
@@ -426,50 +402,43 @@ def train(args):
             )
         # render image for testing
         if i % args.render_image_iter == 0 and i > 0:
-            save_poses = graph.get_pose_rgb(args, rgb_exp_ts, seg_num = args.num_interpolated_pose)
-            save_poses_as_kitti_format(i, logdir, save_poses)
-            test_poses = graph.get_pose_rgb(args, rgb_exp_ts, seg_num = args.num_interpolated_pose)
+            render_image_poses = graph.get_pose_rgb(args, rgb_exp_ts, seg_num = args.num_interpolated_pose)
+            pose_utils.save_poses_as_kitti_format(i, logdir, render_image_poses)
 
-            with torch.no_grad():
-                if args.load_checkpoint == False:
-                    img_test_dir  = "images_test"
-                else:
-                    img_test_dir = "results"
-                    
+            with torch.no_grad():  
                 imgs, depth = render_image_test(
-                    i, graph, test_poses, H_render, W_render, K_render, args, logdir, img_xy_remap,
-                    dir = img_test_dir, need_depth = args.depth,
+                    i, graph, render_image_poses, H_render, W_render, K_render, args, logdir, img_xy_remap,
+                    dir = "images_test", need_depth = args.depth,
                 )
+                assert len(imgs) > 0, f"[ERROR] Can't successfully render images."
+                print("[INFO] Successfully render images.")
+                logger.write_img("test_img_mid", imgs[len(imgs) // 2])
+                logger.write_imgs("test_img_all", imgs)
+                # logger.write_img("test_radience_mid", radiences[len(radiences) // 2])
+                # logger.write_imgs("test_radience_all", radiences)
+                if args.dataset in ["BeNeRF_Unreal", "BeNeRF_Blender", "E2NeRF_Synthetic"]:
+                    imgtest = torch.Tensor(imgtest)
+                    img_mid = imgs[len(imgs) // 2] / 255.0
+                    img_mid = torch.unsqueeze(torch.tensor(img_mid, dtype=torch.float32), dim=0)
 
-                if len(imgs) > 0:
-                    logger.write_img("test_img_mid", imgs[len(imgs) // 2])
-                    logger.write_imgs("test_img_all", imgs)
-                    # logger.write_img("test_radience_mid", radiences[len(radiences) // 2])
-                    # logger.write_imgs("test_radience_all", radiences)
-                    if args.dataset in ["BeNeRF_Unreal", "BeNeRF_Blender", "E2NeRF_Synthetic"]:
-                        imgtest = torch.Tensor(imgtest)
-                        img_mid = imgs[len(imgs) // 2] / 255.0
-                        img_mid = torch.unsqueeze(torch.tensor(img_mid, dtype=torch.float32), dim=0)
+                    test_mid_psnr = compute_img_metric(img_mid, imgtest, metric="psnr")
+                    test_mid_ssim = compute_img_metric(img_mid, imgtest, metric="ssim")
+                    test_mid_lpips = compute_img_metric(img_mid, imgtest, metric="lpips")
 
-                        test_mid_psnr = compute_img_metric(img_mid, imgtest, metric="psnr")
-                        test_mid_ssim = compute_img_metric(img_mid, imgtest, metric="ssim")
-                        test_mid_lpips = compute_img_metric(img_mid, imgtest, metric="lpips")
-
-                        logger.write("test_mid_psnr", test_mid_psnr)
-                        logger.write("test_mid_ssim", test_mid_ssim)
-                        logger.write("test_mid_lpips", test_mid_lpips)
-                if len(depth) > 0:
-                    pass
+                    logger.write("test_mid_psnr", test_mid_psnr)
+                    logger.write("test_mid_ssim", test_mid_ssim)
+                    logger.write("test_mid_lpips", test_mid_lpips)
         # render video for test
-        if i % args.render_video_iter == 0 and i > 0 and not args.load_checkpoint:
+        if i % args.render_video_iter == 0 and i > 0:
             render_poses = graph.get_pose_rgb(args, rgb_exp_ts, 90)
             with torch.no_grad():
                 rgbs, disps = render_video_test(i, graph, render_poses, H_render, W_render, K_render, args, img_xy_remap)
-            print("Done, saving", rgbs.shape, disps.shape)
+                assert len(rgbs) > 0 and len(disps) > 0, f"[ERROR] Can't successfully render video."
             moviebase = os.path.join(logdir, "{}_spiral_{:06d}_".format(args.index, i))
             imageio.mimsave(moviebase + "rgb.mp4", img_utils.to8bit(rgbs), fps = 30, quality = 8)
+            print("[INFO] Successfully render video.")
             # imageio.mimsave(moviebase + 'radience.mp4', radiences, fps = 30, quality = 8)
-            imageio.mimsave(moviebase + "disp.mp4", img_utils.to8bit(disps / np.max(disps)), fps = 30, quality = 8)
+            # imageio.mimsave(moviebase + "disp.mp4", img_utils.to8bit(disps / np.max(disps)), fps = 30, quality = 8)
         # save checkpoint
         if i % args.save_model_iter == 0 and i > 0:
             path = os.path.join(logdir, "{:06d}.tar".format(i))
@@ -483,14 +452,9 @@ def train(args):
                 "optimizer_event_crf": optimizer_event_crf.state_dict()}, 
                 path
             )
-            # save to logger
-            #logger.write_checkpoint(path, args.expname)
-            print("Saved checkpoints at", path)
+            print("[INFO] Saved checkpoints at", path)
 
         logger.update_buffer()
-
-        if args.load_checkpoint:
-            break
         global_step += 1
 
     # after train callback
@@ -498,7 +462,7 @@ def train(args):
 
 if __name__ == "__main__":
     # load config
-    print("Loading config")
+    print("[INFO] Loading config")
     parser = config_parser()
     args = parser.parse_args()
 
@@ -518,9 +482,9 @@ if __name__ == "__main__":
         torch.backends.cudnn.benchmark = False
 
     # setup device
-    print(f"Use device: {args.device}")
+    print(f"[INFO] Use device: {args.device}")
     os.environ["CUDA_VISIBLE_DEVICES"] = str(args.device)
 
     # train
-    print("Start training...")
+    print("[INFO] Start training...")
     train(args=args)
