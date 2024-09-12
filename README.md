@@ -145,7 +145,7 @@ matlab -r "eval_brisque('<path to folder of image results>')"
 ## ✒️ Citation 
 If you find this repository useful, please consider citing our paper:
 ```bibtex
-@inproceedings{BeNeRF,
+@inproceedings{li2024benerf,
     author = {Wenpu Li and Pian Wan and Peng Wang and Jinghang Li and Yi Zhou and Peidong Liu},
     title = {BeNeRF: Neural Radiance Fields from a Single Blurry Image and Event Stream},
     booktitle = {European Conference on Computer Vision (ECCV)},
