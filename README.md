@@ -56,7 +56,7 @@ Given a single blurry image and its corresponding event stream, BeNeRF recovers 
 </div>
 
 ## 🔥 QuickStart
-### 1.Installation
+### 1. Installation
 In the path where your want to store code, enter the following terminal command:
 
 ```bash
@@ -72,14 +72,14 @@ python -m pip install --upgrade pip
 pip config set global.index-url https://mirrors.bfsu.edu.cn/pypi/web/simple
 ```
 
-### 2.Download Datasets
+### 2. Download Datasets
 You can download `BeNeRF_Datasets` by clicking this [link](https://westlakeu-my.sharepoint.com/personal/cvgl_westlake_edu_cn/_layouts/15/onedrive.aspx?ga=1). 
 
 It contains real-world dataset(e.g. *e2nerf_real*) and synthetic dataset(*benerf_blender*, *benerf_unreal* and *e2nerf_synthetic*). For the every scene, the folder `images` includes blurry images and folder `events` includes event stream for entire sequence. The timestamps of the start and end of exposure for each image are stored in a `txt` file. These timestamps are used to segment the entire event stream into individual event streams corresponding to each image. Additionally, we provide grounth sharp images in folder `images_test` for syntehtic dataset in order to evaluate metrics.
 
 For the scenes of `benerf_blender` and `benerf_unreal`, We provide two versions of the images: one in color and one in grayscale. The grayscale version is used for quantitative evaluation, while the color version is used for qualitative evaluation. Since event-enhanced baseline methods we compared to can only run with gray image due to the single channel event stream we synthesized, we compute the metrics of all methods with gray images for consistency.
 
-### 3.Train
+### 3. Train
 First, you need to modify the path of datasets in config file:
 ```yml
 datadir = XXXXX/BeNeRF_Datasets/real or synthetic/<dataset>/<scene>
@@ -96,7 +96,7 @@ We use wandb as a viewr to moniter the training process by defalut:
 
 After training, all results including render image, render video, camera trajectory and checkpoint file will be saved in the path specified by `logdir/<img_id>/` in the config file.
 
-### 4.Test
+### 4. Test
 You can test the model by loading the checkpoint file saved in the `logdir/<img_id>/` path. We provide three options to test model.
 
 #### Extract poses
@@ -128,7 +128,7 @@ python test.py --device <cuda_id> --config ./configs/<dataset>/<scene>.txt --ind
 The test results will be saved in `logdir/<img_id>/test_results` path.
 
 
-### 5.Evaluation
+### 5. Evaluation
 To compute metrics like PSNR, SSIM, LPIPS for evaluating model performance on synthetic dataset, you can run script as follow:
 ```bash
 python evaluate.py --dataset <dataset name> --scene <scene name> \
