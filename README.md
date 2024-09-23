@@ -42,7 +42,7 @@
 
 ## 📢 News
 - `2024.09.24` We have completed the construction of the project homepage. You can access it by clicking this [link](https://akawincent.github.io/BeNeRF/). 
-- `2024.08.25` Testing and Evaluation Code have been released.
+- `2024.08.25` Testing and evaluation Code have been released.
 - `2024.08.20` Training Code and datasets have been released. 
 - `2024.07.01` Our paper was accepted by ECCV2024!! Congratulates to all collaborators!!
 
