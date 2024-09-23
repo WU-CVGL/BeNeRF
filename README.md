@@ -32,7 +32,7 @@
 [![pdf](https://img.shields.io/badge/PDF-Supplementary-orange.svg?logo=GoogleDocs)](./doc/2024_ECCV_BeNeRF_camera_ready_supplementary.pdf) 
 [![Home Page](https://img.shields.io/badge/GitHubPages-ProjectPage-blue.svg?logo=GitHubPages)](https://akawincent.github.io/BeNeRF/)
 [![Paper With Code](https://img.shields.io/badge/Website-PaperwithCode-yellow.svg?logo=paperswithcode)](https://paperswithcode.com/paper/benerf-neural-radiance-fields-from-a-single)  
-[![Dataset](https://img.shields.io/badge/OneDrive-Dataset-green.svg?logo=ProtonDrive)](https://westlakeu-my.sharepoint.com/personal/cvgl_westlake_edu_cn/_layouts/15/onedrive.aspx?ga=1)
+[![Dataset](https://img.shields.io/badge/OneDrive-Dataset-green.svg?logo=ProtonDrive)](https://westlakeu-my.sharepoint.com/:f:/g/personal/cvgl_westlake_edu_cn/EjZNs8MwoXBDqT61v_j5V3EBIoKb8dG9KlYtYmLxcNJG_Q?e=AFXeUB)
 ![GitHub Repo stars](https://img.shields.io/github/stars/WU-CVGL/BeNeRF)
 
 </h5>
@@ -41,6 +41,7 @@
 
 
 ## 📢 News
+- `2024.09.24` We have completed the construction of the project homepage. You can access it by clicking this [link]([https://westlakeu-my.sharepoint.com/personal/cvgl_westlake_edu_cn/_layouts/15/onedrive.aspx?ga=1](https://akawincent.github.io/BeNeRF/)). 
 - `2024.08.25` Testing and Evaluation Code have been released.
 - `2024.08.20` Training Code and datasets have been released. 
 - `2024.07.01` Our paper was accepted by ECCV2024!! Congratulates to all collaborators!!
@@ -73,7 +74,7 @@ pip config set global.index-url https://mirrors.bfsu.edu.cn/pypi/web/simple
 ```
 
 ### 2. Download Datasets
-You can download `BeNeRF_Datasets` by clicking this [link](https://westlakeu-my.sharepoint.com/personal/cvgl_westlake_edu_cn/_layouts/15/onedrive.aspx?ga=1). 
+You can download `BeNeRF_Datasets` by clicking this [link](https://westlakeu-my.sharepoint.com/:f:/g/personal/cvgl_westlake_edu_cn/EjZNs8MwoXBDqT61v_j5V3EBIoKb8dG9KlYtYmLxcNJG_Q?e=AFXeUB). 
 
 It contains real-world dataset(e.g. *e2nerf_real*) and synthetic dataset(*benerf_blender*, *benerf_unreal* and *e2nerf_synthetic*). For the every scene, the folder `images` includes blurry images and folder `events` includes event stream for entire sequence. The timestamps of the start and end of exposure for each image are stored in a `txt` file. These timestamps are used to segment the entire event stream into individual event streams corresponding to each image. Additionally, we provide grounth sharp images in folder `images_test` for syntehtic dataset in order to evaluate metrics.
 
