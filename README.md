@@ -141,7 +141,10 @@ matlab -r "eval_brisque('<path to folder of image results>')"
 
 ```
 ## Results
+You can check our results at the following link.
 
+- [https://arxiv.org/abs/2407.02174](https://arxiv.org/abs/2407.02174)
+- [https://akawincent.github.io/BeNeRF/](https://akawincent.github.io/BeNeRF/)
 
 ## ✒️ Citation 
 If you find this repository useful, please consider citing our paper:
