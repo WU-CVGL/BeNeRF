@@ -1,6 +1,6 @@
 ## settings
 project = e2nerf_real_plant
-datadir = ~/ssd_data/BeNeRF_datasets/e2nerf_real/plant
+datadir = ~/data/BeNeRF_Datasets/real/e2nerf_real/plant
 logdir = ./logs/e2nerf_real/plant
 dataset = E2NeRF_Real
 viewer = wandb

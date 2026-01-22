@@ -1,6 +1,6 @@
 ## settings
 project = e2nerf_synthetic_mic
-datadir = ~/ssd_data/BeNeRF_datasets/e2nerf_synthetic/mic
+datadir = ~/data/BeNeRF_Datasets/synthetic/e2nerf_synthetic/mic
 logdir = ./logs/e2nerf_synthetic/mic
 dataset = E2NeRF_Synthetic
 viewer = wandb

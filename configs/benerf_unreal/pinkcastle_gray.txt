@@ -1,6 +1,6 @@
 ## settings
 project = benerf_unreal_pinkcastle
-datadir = ~/ssd_data/wp-event/synthetic_unreal/pinkcastle_gray
+datadir = ~/data/BeNeRF_Datasets/synthetic/benerf_unreal/pinkcastle_gray
 logdir = ./logs/benerf_unreal/pinkcastle_gray
 dataset = BeNeRF_Unreal
 viewer = wandb
